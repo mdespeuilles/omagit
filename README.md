@@ -23,6 +23,11 @@ scripts/check.sh
 CI runs on Linux and macOS. A milestone is one PR, and it lands green on both
 (SPEC §3 rule 8).
 
+Running it locally only compiles **this** host's half of
+`omagit-app/src/platform/`, so a break in the other one is invisible until CI
+says so. CI also runs `cargo deny` and checks that `vendor/` has not drifted
+from upstream.
+
 ## Documentation
 
 | File | Authority over |

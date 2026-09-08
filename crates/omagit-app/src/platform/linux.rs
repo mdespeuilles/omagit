@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use gpui_kit::{Pixels, TitlebarOptions, WindowDecorations, px};
+use gpui_kit::{Pixels, TitlebarOptions, WindowDecorations};
 
 use super::{Platform, PrimaryModifier, TopbarReserve};
 

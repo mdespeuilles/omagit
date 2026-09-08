@@ -10,6 +10,15 @@ targets = [
 [advisories]
 version = 2
 yanked = "deny"
+# Security advisories are denied everywhere, and always will be.
+#
+# "unmaintained" is scoped to the workspace's own direct dependencies, which are
+# the only ones anyone here can act on. The alternative is a permanent list of
+# ignored RUSTSEC ids for crates buried under `gpui-kit` — bincode, instant,
+# paste, rustls-pemfile — that omagit neither chose nor can replace. A list like
+# that goes stale and trains people to skim past advisories, which is the
+# opposite of what this check is for.
+unmaintained = "workspace"
 
 [licenses]
 version = 2
@@ -27,12 +36,22 @@ allow = [
     "MPL-2.0",
     "BSL-1.0",
     "OpenSSL",
+    # bzip2's own permissive BSD-style licence, carried by `libbz2-rs-sys` under
+    # the asset pipeline.
+    "bzip2-1.0.6",
+    # The root-certificate bundle in `webpki-roots` is data, not code, and ships
+    # under a permissive data licence.
+    "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.9
 
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# omagit's own crates are referenced by path and never published, so they carry
+# no version to pin. The guard stays on for registry dependencies, where a
+# wildcard would actually mean an unpinned third party.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
