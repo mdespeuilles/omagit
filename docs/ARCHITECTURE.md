@@ -221,8 +221,15 @@ A seventh, found while building M0 and worth watching: `block 0.1.6`, deep under
 `gpui-pre-apple`, emits a future-incompatibility warning. Not actionable from
 here; re-check at each `gpui-kit` bump.
 
-An eighth, from M1: **the Omarchy watcher has only ever run on FSEvents.** Its
-integration test drives a real symlink replacement and passes on macOS, and the
-`Tracker` it depends on is unit-tested independently, but inotify has not been
-exercised. First Linux CI run is where that gets answered — and SPEC §10 will
-need the same question asked again for the repository watcher.
+An eighth, from M1, now **closed**: the Omarchy watcher had only ever run on
+FSEvents. Its integration test — a real symlink replacement, delivered exactly
+once — passes on inotify as well, verified on the first green Linux CI run
+(2026-09-08). SPEC §10 will still need the same question asked separately for
+the repository watcher at M2, which watches different paths for different
+events.
+
+A ninth, from that same run: **local `scripts/check.sh` only compiles this
+host's half of `omagit-app/src/platform/`.** The first CI run failed on an
+unused import in `platform/linux.rs` that macOS never compiles. The script and
+the README now say so; the two-platform matrix is the only thing that answers
+for the other half, and a green local run is not a green milestone.
