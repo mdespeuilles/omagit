@@ -9,5 +9,14 @@ publish = false
 # The Git core knows nothing about the UI (SPEC §3 rule 5): no gpui, no
 # gpui-omarchy. Testable and usable from a CLI.
 [dependencies]
+gix = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
+# SPEC §8 rule 3: a cancelled subprocess is signalled on its process *group*,
+# which `std` cannot express. Unix-only, and the project is Unix-only (SPEC §2).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = { workspace = true }

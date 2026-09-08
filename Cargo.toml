@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/omagit-git",
+    "crates/omagit-git-cli",
     "crates/omagit-theme",
     "crates/omagit-settings",
     "crates/omagit-ui",
@@ -27,6 +28,19 @@ omagit-theme = { path = "crates/omagit-theme" }
 omagit-settings = { path = "crates/omagit-settings" }
 omagit-ui = { path = "crates/omagit-ui" }
 
+# Git — `gix` for reads (SPEC §8). Default features are trimmed to the read
+# path: no network client (the `git` binary does the network), no
+# worktree-mutation, no merge, no blame (out of MVP scope, SPEC §11).
+# `max-performance-safe` is the parallel, pure-Rust profile: keeping the C
+# zlib out is half the reason `gix` was chosen (SPEC §4).
+gix = { version = "=0.87.1", default-features = false, features = [
+    "max-performance-safe",
+    "basic",
+    "status",
+    "sha1",
+    "auto-chain-error",
+] }
+
 # Shared third-party
 anyhow = "1"
 thiserror = "2"
@@ -39,6 +53,7 @@ palette = "0.7"
 notify = "8"
 async-channel = "2"
 tempfile = "3"
+clap = { version = "4", features = ["derive"] }
 
 # Note for whoever bumps gpui-kit: upstream gpui-omarchy carries a
 # `[profile.release.package.gpui-pre-macros] debug-assertions = true` workaround

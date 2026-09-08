@@ -1,15 +1,61 @@
-//! omagit's Git core.
+//! omagit's Git core — the read path.
 //!
-//! No UI dependency (SPEC §3 rule 5). The hybrid backend of SPEC §8 — `gix` for
-//! reads, the `git` binary for writes and the network — lands at M2. M0 ships
-//! the two things every later milestone builds on: the error type that carries
-//! Git failures to the UI as a state, and the render-thread guard.
+//! No UI dependency (SPEC §3 rule 5): this crate compiles, tests and runs from a
+//! command line with no window and no renderer, which is what makes the Git
+//! behaviour testable at all. `omagit-git-cli` in this workspace is that command
+//! line.
+//!
+//! The pieces, in the order a screen needs them:
+//!
+//! * [`repo`] — opening a repository, `HEAD`, and any half-finished operation.
+//! * [`refs`] — branches, remotes and tags, with ahead/behind.
+//! * [`status`] — the working copy: staged, unstaged, untracked, conflicted.
+//! * [`history`] — a resumable walk over commits.
+//! * [`diff`] — hunks, lines, and intra-line refinement.
+//! * [`paths`] — Git paths as bytes, and the one place they meet the filesystem.
+//! * [`cli`] — running the `git` binary, under the rules of SPEC §8.
+//! * [`cancel`] — the token everything long-running polls.
+//! * [`thread_guard`] — the assertion that none of this runs on the render
+//!   thread.
+//!
+//! ## Which backend does what
+//!
+//! SPEC §8 splits the work: `gix` reads, the `git` binary writes and talks to
+//! the network. M2 is entirely reads, and the measurements in
+//! `docs/notes/gitoxide-capabilities.md` say `gix` covers them — so every module
+//! here is `gix`, and [`cli`] carries the start-up check that a usable `git`
+//! exists for the milestones that need it. The `GitBackend` trait SPEC §8
+//! describes arrives with its second implementation at M5, not before: a trait
+//! with one implementation is an abstraction nobody has tested (SPEC §2).
 
+pub mod cancel;
+pub mod cli;
+pub mod diff;
 pub mod error;
+pub mod history;
+pub mod paths;
+pub mod refs;
+pub mod repo;
+pub mod status;
 pub mod thread_guard;
 
+pub use cancel::Cancel;
+pub use diff::{Diff, DiffOptions, FileDiff, Hunk, Line, LineKind, Refinement};
 pub use error::{GitError, Result};
+pub use history::{Commit, HistoryQuery, Signature, Walk};
+pub use paths::RepoPath;
+pub use refs::{Branch, Refs, Remote, Tag, Tracking};
+pub use repo::{Head, Operation, Repository};
+pub use status::{Conflict, StageChange, Status, StatusEntry, StatusOptions, WorktreeChange};
 pub use thread_guard::{assert_off_render_thread, mark_render_thread, on_render_thread};
+
+/// A Git object hash.
+///
+/// `gix`'s own type, re-exported rather than wrapped: it is already the right
+/// shape (inline, `Copy`, hex on `Display`), and a newtype would only add
+/// conversions at every call site. It carries no UI dependency, so re-exporting
+/// it does not weaken rule 5.
+pub type ObjectId = gix::ObjectId;
 
 /// The oldest `git` omagit runs against (SPEC §8).
 pub const MINIMUM_GIT_VERSION: &str = "2.35";
