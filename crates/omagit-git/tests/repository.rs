@@ -3,8 +3,27 @@
 
 mod support;
 
+use std::path::Path;
+
 use omagit_git::{GitError, Head, Operation, Repository};
 use support::TestRepo;
+
+/// Two paths naming the same directory.
+///
+/// Not string equality, and macOS is why: `/var` is a symlink to `/private/var`
+/// there, so a temporary directory has two true names and `gix` hands back the
+/// one it was given rather than the resolved one. Comparing the strings passes
+/// on Linux — where `/tmp` is a real directory — and fails on macOS, which is
+/// exactly the shape of bug the two-platform matrix exists to catch (and did).
+///
+/// What the app actually needs is weaker than either: every path it joins or
+/// strips comes from the same source, so it only has to be *consistent*. This
+/// asserts the useful property instead of the incidental one.
+fn assert_same_dir(actual: Option<&Path>, expected: &Path, what: &str) {
+    let actual = actual.expect("a work tree");
+    let resolve = |path: &Path| std::fs::canonicalize(path).expect("the path exists");
+    assert_eq!(resolve(actual), resolve(expected), "{what}");
+}
 
 #[test]
 fn opens_a_work_tree_and_a_git_dir() {
@@ -12,10 +31,10 @@ fn opens_a_work_tree_and_a_git_dir() {
     fixture.commit_file("a.txt", "a\n", "first");
 
     let from_work_tree = Repository::open(fixture.path()).expect("a repository");
-    assert_eq!(
+    assert_same_dir(
         from_work_tree.work_dir(),
-        Some(std::fs::canonicalize(fixture.path()).unwrap().as_path()),
-        "the work tree is where the fixture is"
+        fixture.path(),
+        "the work tree is where the fixture is",
     );
     assert!(!from_work_tree.is_bare());
 
@@ -29,9 +48,10 @@ fn discovers_from_a_subdirectory() {
     fixture.commit_file("src/deep/file.rs", "fn main() {}\n", "first");
 
     let repo = Repository::discover(fixture.path().join("src/deep")).expect("discovery walks up");
-    assert_eq!(
+    assert_same_dir(
         repo.work_dir(),
-        Some(std::fs::canonicalize(fixture.path()).unwrap().as_path())
+        fixture.path(),
+        "discovery lands on the repository root",
     );
 }
 
