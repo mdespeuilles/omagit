@@ -26,6 +26,35 @@ pub enum GitError {
     #[error("git {command} failed: {stderr}")]
     CommandFailed { command: String, stderr: String },
 
+    /// SPEC §8 requires every subprocess to carry a deadline. Naming the
+    /// command matters: the useful next question is always *which* one hung.
+    #[error("git {command} did not finish within {seconds:.0}s")]
+    Timeout { command: String, seconds: f32 },
+
+    /// The user moved on — switched repository, closed the tab. Not a failure,
+    /// but it travels as an error because it ends the same call stack, and the
+    /// UI drops it instead of rendering it.
+    #[error("cancelled")]
+    Cancelled,
+
+    /// A `gix` operation failed. The variant is deliberately coarse: `gix` has
+    /// one error type per operation, roughly forty of them, and mirroring that
+    /// into this enum would make the UI match on the shape of a dependency.
+    /// `operation` is what the user was doing, and the source chain carries the
+    /// detail into the log.
+    #[error("{operation} failed: {source}")]
+    Backend {
+        operation: &'static str,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+
+    /// Asked for something the repository does not have: an unknown revision, a
+    /// path with no such entry, a branch that was deleted between listing and
+    /// reading.
+    #[error("{0} not found in this repository")]
+    NotFound(String),
+
     #[error("io error at {path}: {source}")]
     Io {
         path: PathBuf,
@@ -35,3 +64,23 @@ pub enum GitError {
 }
 
 pub type Result<T> = std::result::Result<T, GitError>;
+
+impl GitError {
+    /// Wrap a `gix` (or other backend) error, naming the operation the user
+    /// asked for.
+    pub fn backend<E>(operation: &'static str, source: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::Backend {
+            operation,
+            source: Box::new(source),
+        }
+    }
+
+    /// True when the error is the user's own doing and the UI should stay
+    /// silent rather than show a failed state.
+    pub fn is_cancelled(&self) -> bool {
+        matches!(self, Self::Cancelled)
+    }
+}

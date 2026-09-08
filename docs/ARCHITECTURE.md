@@ -3,8 +3,9 @@
 Maintained as the project goes (SPEC §7). It records the decisions that are
 expensive to reverse and the risks that have to be re-read at each milestone.
 
-**Status: M1 — theme.** What exists is listed under "What is built"; everything
-else here is the shape later milestones fill in, not code that is present.
+**Status: M2 — the Git core, reads.** What exists is listed under "What is
+built"; everything else here is the shape later milestones fill in, not code
+that is present.
 
 ---
 
@@ -14,6 +15,7 @@ else here is the shape later milestones fill in, not code that is present.
 omagit/
 ├── crates/
 │   ├── omagit-git/        Git core — no UI dependency
+│   ├── omagit-git-cli/    `omagit-git-cli`: the Git core, without a window
 │   ├── omagit-theme/      DESIGN-TOKENS.md, implemented — no UI dependency
 │   ├── omagit-settings/   TOML preferences
 │   ├── omagit-ui/         application components on gpui-omarchy
@@ -29,13 +31,17 @@ Dependency direction, strictly one-way:
 omagit-app ──▶ omagit-ui ──▶ omagit-theme
      │              │
      │              └──▶ gpui-omarchy ──▶ gpui-kit
-     ├──▶ omagit-git      (no UI dependency, ever)
+     ├──▶ omagit-git ──▶ gix        (no UI dependency, ever)
      └──▶ omagit-settings ──▶ omagit-theme
+
+omagit-git-cli ──▶ omagit-git
 ```
 
 `omagit-git` and `omagit-theme` compile and test with no window and no
 renderer. That is what makes them testable, and it is a rule, not a
-coincidence (SPEC §3 rules 5 and 6).
+coincidence (SPEC §3 rules 5 and 6). `omagit-git-cli` is that rule made
+executable: a binary that drives every read from a terminal cannot compile if
+the Git core has grown a UI dependency.
 
 ## 2. Decisions
 
@@ -109,9 +115,25 @@ reasons, all about not corrupting data: merge/rebase semantics are subtle
 workflows break; and existing credential helpers (`libsecret`, `osxkeychain`)
 then work with nothing reimplemented.
 
-The split is **provisional until M2**, which must measure what the resolved
-`gix` actually covers — see `docs/notes/gitoxide-capabilities.md` for the six
-questions it has to answer with a test each.
+**Measured at M2, and the answer moved the trait.** The six questions are
+answered with a test each in `crates/omagit-git/tests/capabilities.rs`, and the
+numbers are in `docs/notes/gitoxide-capabilities.md`: `gix` covers every read
+M2 needs — status with renames, ignored files, conflicts, submodules,
+`.gitattributes` conversions, non-UTF-8 names — at roughly a tenth of the
+budget SPEC §12 sets.
+
+So **nothing fell back to the CLI, and the `GitBackend` trait is not built
+yet.** It would have exactly one implementation, and an abstraction with no
+second implementation is a debt, not a preparation (SPEC §2). It arrives at M5,
+when writes give it its second one. What does exist is `omagit-git/cli.rs`: the
+subprocess rules of SPEC §8 implemented in full — machine formats, a scrubbed
+environment, a deadline, cancellation by `SIGTERM` to the process *group*, and
+`stderr` passed through verbatim — carrying the one job M2 has for it, the
+start-up check that a usable `git` is installed.
+
+The reasoning above is what a later milestone should re-read before moving an
+operation across the line. It has not changed: `gix` gaining a `merge` is not a
+reason to stop running the user's hooks.
 
 ### 2.7 Lane colours never read the theme
 
@@ -150,7 +172,68 @@ and report differently on inotify and FSEvents, and the tracker makes that
 irrelevant. A read failure is deliberately not a change, so a `colors.toml`
 caught mid-save does not bounce the app to the fallback theme and back.
 
-### 2.9 The vendored design system is not linted
+### 2.9 The history walk is ours, and it is resumable
+
+`gix` has a revision walk, and it is a good one, but it borrows the repository
+for the lifetime of the iterator — so a walk cannot outlive the background job
+that created it, and the History screen needs exactly that: a walk parked
+between pages while the user scrolls.
+
+`omagit_git::history::Walk` owns its traversal instead: a priority queue of
+commits whose parents have not been visited, ordered by commit time, and a page
+is *n* pops. Pages cost nothing to resume, the frontier stays small, and the
+order is `git log --date-order` — compared against `git log` itself in
+`tests/history.rs` rather than against an expectation written by hand.
+
+Two consequences worth holding. The `seen` set makes memory grow with the
+commits *visited*, not with the frontier — a few megabytes over 100 000 commits,
+and the price of not walking a merge-heavy history exponentially. And ties are
+broken by object id, so two commits made in the same second always come out in
+the same order; without it the same repository would render two different
+histories on two runs.
+
+M6's lane computation reads this same order, which is the only way a graph is
+guaranteed to line up with the rows beside it.
+
+### 2.10 Paths are bytes, and nothing here normalises them
+
+Git paths are byte strings; a file committed under a Latin-1 name is a valid Git
+path no `String` can hold. `omagit_git::RepoPath` carries bytes end to end and
+becomes an OS path in exactly one function, which refuses anything that would
+leave the work tree — an absolute path or a `..` in a corrupt index must not let
+a client write outside the repository it was told to open.
+
+SPEC §9 asks for this to be centralised for a macOS reason, and the measurement
+at M2 changed what the module does about it: **`gix` already honours
+`core.precomposeUnicode`**, so the names arriving here are in the form the index
+holds. Normalising again is how a name stops matching its own entry, so
+`paths.rs` deliberately does not. Case is left alone for the same reason:
+`Readme.md` and `README.md` are two distinct Git paths, and reconciling them on
+a case-insensitive volume is `core.ignorecase`'s job.
+
+### 2.11 A diff is computed per file, and refined only where it helps
+
+Three levels — which files, which lines, which words — each the input of the
+next, and all computed on demand: a commit touching 900 files must render its
+first file immediately (SPEC §12), and a diff view only ever shows one.
+
+The line diff is `gix`'s re-export of `imara-diff`, with Git's slider
+heuristics, so hunks land on the same lines the command line picks. A separate
+`imara-diff` dependency was deliberately not added: two copies of a diff engine
+eventually disagree, and the `@@` headers are compared against `git diff` in
+`tests/diff.rs` precisely so that agreement stays checkable.
+
+The intra-line refinement of DESIGN §4 pairs removed lines with added ones by
+position and marks the words that differ — but **gives up when the two lines
+share almost nothing**. Marking nine words in ten tells the reader less than
+marking none, and turns the 24% intra-line surface into a solid block.
+
+Two degradations rather than a freeze, both from SPEC §11: past 2 MiB a file is
+reported as oversized instead of diffed, and a NUL byte in the first 8 000 makes
+it binary — Git's own test, kept identical so omagit and the command line never
+disagree about which files they refuse to show.
+
+### 2.12 The vendored design system is not linted
 
 `vendor/gpui-omarchy/src/` is byte-identical to the published crate, and stays
 that way: it is what lets `scripts/sync-vendor.sh` tell an upstream change from
@@ -200,21 +283,56 @@ render-thread guard, and CI on both platforms.
 - The six tests of §10, plus the fallback, ordering and lane-distance tests they
   imply.
 
-Deliberately **not** built: anything that reads a repository (M2 onwards), and
-the preferences UI that would let a theme be chosen without editing
-`settings.toml` (M9).
+**M2 — the Git core, reads.** `omagit-git`, with no UI dependency and a debug
+binary that proves it:
+
+- Opening and discovery, telling a repository that moved from a directory that
+  never was one; `HEAD` as branch, detached or unborn; and the operation the
+  repository is in the middle of (merge, rebase, cherry-pick, revert, bisect,
+  `am`).
+- The working copy in one entry per path, both sides of the index at once:
+  modified, added, deleted, renamed, type-changed, untracked, ignored,
+  conflicted, submodule — with rename detection on both halves and `--ignored`
+  behaving as `git status` does.
+- Branches, remote branches, remotes and tags, with ahead/behind against the
+  upstream and an explicit "gone" when the upstream no longer exists.
+- A resumable, paged history walk (§2.9), matched against `git log --date-order`
+  and `--first-parent`.
+- Diffs of a commit, between two commits, of the index and of the working tree,
+  with hunks, context, intra-line refinement, and the binary / oversized /
+  submodule / mode-only cases (§2.11).
+- `cli.rs`: the SPEC §8 subprocess rules in full. M2 calls it once — the
+  start-up check that a usable `git` ≥ 2.35 exists, which now goes through the
+  same runner as everything else so the first `git` omagit ever runs already has
+  a deadline and a scrubbed environment. The rest of the contract is verified
+  rather than assumed (`tests/git_cli.rs`), including the one that is easy to
+  implement wrongly: cancelling reaches the *process group*, so a shell `git`
+  spawned dies with it.
+- `Cancel`: one token that `gix`'s worker threads, the history walk and a `git`
+  subprocess all poll, so a read stops when the user moves on.
+- 103 tests — one of them `#[ignore]`d because it writes 50 000 files — of
+  which the integration ones build real repositories with the real `git` and
+  compare against what it says — including the edge cases SPEC §13
+  names by name: no commits, detached `HEAD`, bare, merge and rebase in
+  progress, fifty roots, a one-megabyte line, non-UTF-8 and accented names, and
+  a rename that changes only case.
+
+Deliberately **not** built: the `GitBackend` trait, which has no second
+implementation until M5 (§2.6); the commit-graph lanes, which are M6's and need
+the walk that now exists; the filesystem watcher, which has nothing to
+invalidate until a screen reads a repository (M4); and the preferences UI (M9).
 
 ## 5. Risks
 
 Re-read at every milestone (SPEC §15).
 
-| # | Risk | State at M0 |
+| # | Risk | State at M2 |
 |---|---|---|
-| 1 | **The UI thread blocks.** The most likely failure mode. | Guard in place and tested (`omagit_git::thread_guard`), armed from the app's start-up. Holds only if every Git entry point calls it — a review item from M2. |
-| 2 | **The `gix` / CLI split lands wrong.** | Not yet exercised. The six questions M2 must answer are written down in `docs/notes/gitoxide-capabilities.md`. Rule: when `gix` does not cover a read case, move it to the CLI and write down why — never work around it. |
+| 1 | **The UI thread blocks.** The most likely failure mode. | Guard in place and armed from start-up. Every public entry point in `omagit-git` now opens with `assert_off_render_thread`, and every long read takes a `Cancel` — so a read that does reach the render thread panics in debug rather than freezing the window. Still only as good as the next entry point somebody adds: a review item, permanently. |
+| 2 | **The `gix` / CLI split lands wrong.** | **Answered.** `gix` covers every M2 read, with the measurements in `docs/notes/gitoxide-capabilities.md`; nothing fell back, and the trait is deferred to M5 rather than built empty (§2.6). The rule is unchanged for the milestones that follow: when `gix` does not cover a case, move it to the CLI and write down why — never work around it. |
 | 3 | **`gpui-omarchy` is incomplete.** | Confirmed: no diff view, no graph, no palette, no file tree, and a theme vocabulary that does not match ours. Mitigated by vendoring and by owning the tokens — M1 replaced its theme handling entirely rather than extending it. Its `virtual_list`, `resizable` and `tree` look reusable — to be confirmed against 100 000 rows at M6. |
-| 4 | **The commit graph.** The hardest algorithm here. | Not started. It stays in `omagit-git/graph.rs`, computing topology only, never colour, and never coupled to rendering. |
-| 5 | **Data loss.** | No mutating operation exists yet. The rule stands: every destructive command is logged with its exact command line **before** it runs, and when a Git semantic is in doubt, the CLI decides. |
+| 4 | **The commit graph.** The hardest algorithm here. | Not started, but its input now exists and is pinned down: the walk of §2.9 is total, reproducible and matched against `git log`. Lanes stay in `omagit-git/graph.rs` at M6, computing topology only, never colour, and never coupled to rendering. |
+| 5 | **Data loss.** | No mutating operation exists yet, and M2 added none. What did arrive is the machinery the rule needs: `cli::Invocation` is a value that can be logged exactly as it will run, before it runs, which is what SPEC §15 asks of every destructive command and what the operations journal of SPEC §11 shows. |
 | 6 | **macOS distribution cost.** | Unchanged and recurring: Apple developer account, signing, notarisation, a macOS CI runner. Budget it now, not at M10. |
 
 A seventh, found while building M0 and worth watching: `block 0.1.6`, deep under
@@ -224,12 +342,22 @@ here; re-check at each `gpui-kit` bump.
 An eighth, from M1, now **closed**: the Omarchy watcher had only ever run on
 FSEvents. Its integration test — a real symlink replacement, delivered exactly
 once — passes on inotify as well, verified on the first green Linux CI run
-(2026-09-08). SPEC §10 will still need the same question asked separately for
-the repository watcher at M2, which watches different paths for different
-events.
+(2026-09-08). The same question is still owed for the *repository* watcher,
+which watches different paths for different events; it moves to **M4**, because
+M2 deliberately built no watcher — there is nothing to invalidate until a screen
+holds a repository open (SPEC §2: no code without a caller).
 
 A ninth, from that same run: **local `scripts/check.sh` only compiles this
 host's half of `omagit-app/src/platform/`.** The first CI run failed on an
 unused import in `platform/linux.rs` that macOS never compiles. The script and
 the README now say so; the two-platform matrix is the only thing that answers
 for the other half, and a green local run is not a green milestone.
+
+A tenth, from M2, and the same lesson one layer down: **the macOS half of the
+read path is only ever exercised by CI.** Two behaviours differ there and
+nowhere else — APFS folds case, and the filesystem hands back decomposed names —
+and both are load-bearing for `status`. Two tests carry them
+(`a_rename_that_changes_only_case_is_a_rename`,
+`an_accented_name_matches_its_index_entry`), and a third is compiled out on
+macOS entirely because APFS rejects names that are not valid UTF-8. A green
+Linux run says nothing about any of them.

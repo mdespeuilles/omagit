@@ -10,6 +10,21 @@ cargo run -p omagit-app          # or: cargo run --bin omagit
 OMAGIT_LOG=debug cargo run       # logs to stderr and to the config directory
 ```
 
+The Git core also runs without a window, which is how it is validated and
+measured (SPEC §14, M2):
+
+```sh
+cargo run -p omagit-git-cli -- info                 # HEAD, work tree, git version
+cargo run -p omagit-git-cli -- status --ignored
+cargo run -p omagit-git-cli -- log -n 20 --all
+cargo run -p omagit-git-cli -- show <full-hash>     # message, then the diff
+cargo run -p omagit-git-cli -- diff --staged
+cargo run -p omagit-git-cli --release -- -C ~/some/repo bench
+```
+
+Add `--timing` to any of them. `bench` prints the reads SPEC §12 sets budgets
+for, against whatever repository it is pointed at.
+
 Requires the toolchain pinned in `rust-toolchain.toml`; `rustup` picks it up on
 its own.
 
@@ -61,8 +76,15 @@ Other sources: `omarchy` (Linux, follows the live Quattro palette),
 
 ## Current state
 
-**M1 — theme.** `DESIGN-TOKENS.md` is implemented in full: the four sources,
-OKLCH derivation with contrast correction, generated graph lanes, eight embedded
-themes, live Omarchy tracking and macOS appearance tracking, held by the six
-tests of §10. `docs/ARCHITECTURE.md` §4 lists exactly what is built and what is
-deliberately not.
+**M2 — the Git core, reads.** `omagit-git` opens repositories, reads the working
+copy, the references and a paged history, and computes diffs down to the changed
+words inside a line — with no UI dependency, and no screen to show it on yet.
+`omagit-git-cli` is how it gets driven in the meantime.
+
+The `gix` / `git` split of SPEC §8 was measured rather than assumed before being
+fixed: `gix` covers every read, the numbers and the six answers are in
+`docs/notes/gitoxide-capabilities.md`, and the `GitBackend` trait waits for M5,
+when writes give it a second implementation.
+
+`docs/ARCHITECTURE.md` §4 lists exactly what is built and what is deliberately
+not.

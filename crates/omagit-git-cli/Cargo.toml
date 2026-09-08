@@ -1,0 +1,19 @@
+[package]
+name = "omagit-git-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# The debug front end for `omagit-git` (SPEC §14, M2). It exists so the Git core
+# can be exercised, and its timings measured, without a window — which is also
+# what proves the core has no UI dependency.
+[[bin]]
+name = "omagit-git-cli"
+path = "src/main.rs"
+
+[dependencies]
+omagit-git = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
