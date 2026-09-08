@@ -36,6 +36,10 @@ fn main() {
         // actually has, before anything asks for one (DESIGN-TOKENS §8).
         omagit_ui::fonts::resolve(platform.system_ui_family(), cx);
 
+        // Named actions and their default bindings. M9 makes them
+        // reassignable; naming them now is what makes that possible.
+        omagit_app::actions::bind(cx);
+
         let settings = match config_dir.as_deref() {
             Some(dir) => Settings::load(dir),
             None => {
@@ -64,7 +68,7 @@ fn open_main_window(density: omagit_theme::DensityMode, cx: &mut App) -> Result<
         // Following the system appearance is a per-window subscription: the
         // window is what the platform reports light/dark through.
         let appearance = theme_runtime::follow_window_appearance(window);
-        cx.new(|_| Shell::new(density, appearance))
+        cx.new(|cx| Shell::new(density, appearance, window, cx))
     })
     .context("open_window failed")?;
     Ok(())

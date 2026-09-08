@@ -175,20 +175,7 @@ impl Refs {
             });
         }
 
-        let mut remotes = Vec::new();
-        for name in gix.remote_names() {
-            cancel.check()?;
-            let name = name.to_string();
-            let url = gix
-                .try_find_remote(name.as_str())
-                .and_then(std::result::Result::ok)
-                .and_then(|remote| {
-                    remote
-                        .url(gix::remote::Direction::Fetch)
-                        .map(ToString::to_string)
-                });
-            remotes.push(Remote { name, url });
-        }
+        let mut remotes = remotes(&gix);
 
         // Sorted here so every consumer — the sidebar, the CLI, the tests —
         // sees the same order. Reference iteration order is the packed-refs
@@ -209,6 +196,53 @@ impl Refs {
     pub fn head_branch(&self) -> Option<&Branch> {
         self.branches.iter().find(|branch| branch.is_head)
     }
+}
+
+/// The configured remotes, without touching a single commit.
+///
+/// Split out of [`Refs::load`] because the repository card needs the remotes
+/// and nothing else about the references.
+pub fn remotes(gix: &gix::Repository) -> Vec<Remote> {
+    let mut remotes: Vec<Remote> = gix
+        .remote_names()
+        .iter()
+        .map(|name| {
+            let name = name.to_string();
+            let url = gix
+                .try_find_remote(name.as_str())
+                .and_then(std::result::Result::ok)
+                .and_then(|remote| {
+                    remote
+                        .url(gix::remote::Direction::Fetch)
+                        .map(ToString::to_string)
+                });
+            Remote { name, url }
+        })
+        .collect();
+    remotes.sort_by(|a, b| a.name.cmp(&b.name));
+    remotes
+}
+
+/// The divergence of the branch `HEAD` is on, and only that one.
+///
+/// [`Refs::load`] counts every branch against its upstream because the sidebar
+/// of M7 shows every row at once. A repository *summary* shows one line, and on
+/// a repository with fifty branches paying for fifty traversals to draw it
+/// would be the difference between a list that appears and a list that arrives.
+pub fn head_tracking(repo: &Repository, cancel: &Cancel) -> Result<Option<Tracking>> {
+    assert_off_render_thread();
+    let gix = repo.gix();
+    let Some(reference) = gix
+        .head_ref()
+        .map_err(|error| GitError::backend("reading HEAD", error))?
+    else {
+        // Detached, or unborn: no branch, so nothing to be ahead of.
+        return Ok(None);
+    };
+    let Some(commit) = reference.target().try_id().map(ToOwned::to_owned) else {
+        return Ok(None);
+    };
+    tracking_of(&gix, &reference, &commit, cancel)
 }
 
 /// Resolve a branch's upstream and count the divergence.

@@ -10,6 +10,7 @@
 //! * [`repo`] — opening a repository, `HEAD`, and any half-finished operation.
 //! * [`refs`] — branches, remotes and tags, with ahead/behind.
 //! * [`status`] — the working copy: staged, unstaged, untracked, conflicted.
+//! * [`summary`] — the whole of one repository at a glance, in one read.
 //! * [`history`] — a resumable walk over commits.
 //! * [`diff`] — hunks, lines, and intra-line refinement.
 //! * [`paths`] — Git paths as bytes, and the one place they meet the filesystem.
@@ -37,16 +38,18 @@ pub mod paths;
 pub mod refs;
 pub mod repo;
 pub mod status;
+pub mod summary;
 pub mod thread_guard;
 
 pub use cancel::Cancel;
 pub use diff::{Diff, DiffOptions, FileDiff, Hunk, Line, LineKind, Refinement};
 pub use error::{GitError, Result};
-pub use history::{Commit, HistoryQuery, Signature, Walk};
+pub use history::{Civil, Commit, HistoryQuery, Signature, Time, Walk};
 pub use paths::RepoPath;
 pub use refs::{Branch, Refs, Remote, Tag, Tracking};
 pub use repo::{Head, Operation, Repository};
 pub use status::{Conflict, StageChange, Status, StatusEntry, StatusOptions, WorktreeChange};
+pub use summary::{Activity, Counts, Identity, Summary};
 pub use thread_guard::{assert_off_render_thread, mark_render_thread, on_render_thread};
 
 /// A Git object hash.

@@ -3,7 +3,7 @@
 Maintained as the project goes (SPEC §7). It records the decisions that are
 expensive to reverse and the risks that have to be re-read at each milestone.
 
-**Status: M2 — the Git core, reads.** What exists is listed under "What is
+**Status: M3 — the Repositories screen.** What exists is listed under "What is
 built"; everything else here is the shape later milestones fill in, not code
 that is present.
 
@@ -18,8 +18,9 @@ omagit/
 │   ├── omagit-git-cli/    `omagit-git-cli`: the Git core, without a window
 │   ├── omagit-theme/      DESIGN-TOKENS.md, implemented — no UI dependency
 │   ├── omagit-settings/   TOML preferences
-│   ├── omagit-ui/         application components on gpui-omarchy
-│   └── omagit-app/        binary `omagit`: windows, platform layer, global state
+│   ├── omagit-ui/         palette, icons, the atoms of board 01
+│   └── omagit-app/        binary `omagit`: windows, screens, state, platform layer
+├── assets/icons/          the SVG glyphs, compiled into the binary
 ├── vendor/gpui-omarchy/   vendored design system — see vendor/README.md
 ├── scripts/               check.sh (the milestone gate), sync-vendor.sh
 └── docs/                  SPEC · DESIGN-TOKENS · DESIGN · this file · notes/
@@ -233,7 +234,46 @@ reported as oversized instead of diffed, and a NUL byte in the first 8 000 makes
 it binary — Git's own test, kept identical so omagit and the command line never
 disagree about which files they refuse to show.
 
-### 2.12 The vendored design system is not linted
+### 2.12 State lives in a store, view state lives in the view
+
+SPEC §10 draws the line and M3 is where it first has to hold. `Store` owns the
+persisted library and an `AsyncState<Summary>` per repository; the screen owns
+the selection, the filter text, the focus and the drag. Nothing is duplicated
+across the line, so there is no pair of values that can disagree.
+
+Three consequences worth stating, because each is a bug that did not happen:
+
+**Every read carries a generation, and an older one is dropped.** Clicking
+through four repositories starts four reads that finish out of order; without
+the check, the card shows whichever finished last. `AsyncState::finish` refuses
+a result that a newer request has already superseded.
+
+**`Loading` carries the value it is replacing.** A refresh redraws the old
+figures rather than blanking the panel, which is the difference between "still
+working" and "gone". Only a *first* load has nothing to draw, and that is a
+distinct state (`is_blank`).
+
+**A cancelled read is not a failure.** The user moved on; something else is
+already loading, and an error state would report their own action back to them.
+
+The filesystem watcher of SPEC §10 is not here yet: nothing holds a repository
+open long enough to need invalidating. It arrives at M4 (see risk 8).
+
+### 2.13 The repository list is set aside, never overwritten
+
+`Settings` falls back to defaults when its file is malformed, which is right for
+preferences — losing a theme choice costs nothing. The library is different: it
+is a list the user arranged by hand, and defaulting to empty would mean the next
+write silently replaces it. So a `repositories.toml` that will not parse is
+**renamed to `repositories.toml.damaged`** and the app starts empty. No dialog,
+no new UI state, and nothing lost.
+
+The library holds only what the user put there — paths, names, notes, order. The
+branch, the ahead/behind and the status counts are read from the repository
+every time, because a cached branch name is wrong the moment someone checks out
+another one in a terminal.
+
+### 2.14 The vendored design system is not linted
 
 `vendor/gpui-omarchy/src/` is byte-identical to the published crate, and stays
 that way: it is what lets `scripts/sync-vendor.sh` tell an upstream change from
@@ -317,7 +357,34 @@ binary that proves it:
   progress, fifty roots, a one-megabyte line, non-UTF-8 and accented names, and
   a rename that changes only case.
 
-Deliberately **not** built: the `GitBackend` trait, which has no second
+**M3 — the Repositories screen.** The first screen, navigable end to end from
+the keyboard:
+
+- A sidebar of repositories in collapsible, drag-reorderable groups, filtered by
+  name or path, with a row that says what each repository is doing — the branch,
+  the divergence, the working-copy state, or the operation that is half-finished
+  — and a square status pip whose *shape* distinguishes a detached `HEAD`.
+- A card reading out location, last opened, last commit, the committer identity
+  and whether it is inherited, the branch and its upstream, the status by kind,
+  the stashes, the remotes with a copy button, and a 90-day activity sparkline.
+- Adding a repository from the folder picker or by dropping a folder into the
+  window; removing one from the list; relocating one that has moved; a
+  description edited in place, with no dialog and no edit button.
+- The six tab stops of DESIGN §5 in a fixed order, `1`/`2`/`3` zone jumps, `j`/`k`
+  and the arrows inside the list, `/` to filter, and `Esc` one level up — all as
+  named actions, so M9's reassignment and the macOS menu bar are a settings
+  screen rather than a rewrite (`docs/KEYMAP.md`).
+- `omagit_git::Summary`, which is that whole read-out in one background read
+  rather than six per row.
+
+Deliberately **not** built: cloning (M7, with the network and the progress
+overlay board 06 shows), the command palette (M9), and opening a repository into
+a screen — there is nowhere to go until M4, so "Ouvrir" records it as open and
+the topbar names it. The topbar draws *Cloner…* and *Rechercher* in board 01's
+disabled state rather than hiding them: board 02 fixes the topbar's content, and
+an action that will exist reads better as not-yet than as absent.
+
+Also deliberately not built: the `GitBackend` trait, which has no second
 implementation until M5 (§2.6); the commit-graph lanes, which are M6's and need
 the walk that now exists; the filesystem watcher, which has nothing to
 invalidate until a screen reads a repository (M4); and the preferences UI (M9).
@@ -326,13 +393,13 @@ invalidate until a screen reads a repository (M4); and the preferences UI (M9).
 
 Re-read at every milestone (SPEC §15).
 
-| # | Risk | State at M2 |
+| # | Risk | State at M3 |
 |---|---|---|
-| 1 | **The UI thread blocks.** The most likely failure mode. | Guard in place and armed from start-up. Every public entry point in `omagit-git` now opens with `assert_off_render_thread`, and every long read takes a `Cancel` — so a read that does reach the render thread panics in debug rather than freezing the window. Still only as good as the next entry point somebody adds: a review item, permanently. |
+| 1 | **The UI thread blocks.** The most likely failure mode. | **First real exercise, and it holds.** Every public entry point in `omagit-git` opens with `assert_off_render_thread`; the store runs every read through `cx.background_spawn` and lands it with `this.update`. A status, a reference read and a ninety-day walk per repository, on every launch, and the guard has not fired. It stays only as good as the next entry point somebody adds: a review item, permanently. |
 | 2 | **The `gix` / CLI split lands wrong.** | **Answered.** `gix` covers every M2 read, with the measurements in `docs/notes/gitoxide-capabilities.md`; nothing fell back, and the trait is deferred to M5 rather than built empty (§2.6). The rule is unchanged for the milestones that follow: when `gix` does not cover a case, move it to the CLI and write down why — never work around it. |
 | 3 | **`gpui-omarchy` is incomplete.** | Confirmed: no diff view, no graph, no palette, no file tree, and a theme vocabulary that does not match ours. Mitigated by vendoring and by owning the tokens — M1 replaced its theme handling entirely rather than extending it. Its `virtual_list`, `resizable` and `tree` look reusable — to be confirmed against 100 000 rows at M6. |
-| 4 | **The commit graph.** The hardest algorithm here. | Not started, but its input now exists and is pinned down: the walk of §2.9 is total, reproducible and matched against `git log`. Lanes stay in `omagit-git/graph.rs` at M6, computing topology only, never colour, and never coupled to rendering. |
-| 5 | **Data loss.** | No mutating operation exists yet, and M2 added none. What did arrive is the machinery the rule needs: `cli::Invocation` is a value that can be logged exactly as it will run, before it runs, which is what SPEC §15 asks of every destructive command and what the operations journal of SPEC §11 shows. |
+| 4 | **The commit graph.** The hardest algorithm here. | Not started; its input exists and is pinned down: the walk of §2.9 is total, reproducible and matched against `git log`. Lanes stay in `omagit-git/graph.rs` at M6, computing topology only, never colour, and never coupled to rendering. |
+| 5 | **Data loss.** | Still no mutating Git operation. M3 added the first thing omagit *writes*, though — the repository list — and it is handled as data rather than as a cache: a malformed file is set aside, not overwritten (§2.13), and "Retirer de la liste" removes an entry while touching nothing on disk. `cli::Invocation` remains loggable exactly as it will run, before it runs. |
 | 6 | **macOS distribution cost.** | Unchanged and recurring: Apple developer account, signing, notarisation, a macOS CI runner. Budget it now, not at M10. |
 
 A seventh, found while building M0 and worth watching: `block 0.1.6`, deep under
@@ -352,6 +419,24 @@ host's half of `omagit-app/src/platform/`.** The first CI run failed on an
 unused import in `platform/linux.rs` that macOS never compiles. The script and
 the README now say so; the two-platform matrix is the only thing that answers
 for the other half, and a green local run is not a green milestone.
+
+An eleventh, from M3, and it earned its place by paying for itself immediately:
+**the mouse has no interaction tests.** The keyboard now does —
+`crates/omagit-app/tests/keyboard.rs` drives real keystrokes through the real
+widget tree on GPUI's test platform — and writing it found two bugs that would
+otherwise have shipped in the milestone whose headline is "navigable from the
+keyboard":
+
+1. **The screen never took focus.** It rendered correctly and answered no key at
+   all: GPUI dispatches actions along the focus path, and a window that has
+   focused nothing has no path.
+2. **Bare letter and digit keys fired while the user was typing.** `/` then `j`
+   put a `j` in the filter *and* moved the selection. The single-character
+   bindings are now scoped `Repositories && !Input`.
+
+Neither is visible in a screenshot, and neither would have been caught by
+reading the code. Dragging a row between groups is still verified only by hand,
+and so is the folder picker.
 
 A tenth, from M2, and the same lesson one layer down: **the macOS half of the
 read path is only ever exercised by CI.** Two behaviours differ there and

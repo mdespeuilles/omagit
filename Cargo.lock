@@ -5675,6 +5675,7 @@ dependencies = [
  "async-channel",
  "gpui-kit",
  "gpui-omarchy",
+ "jiff",
  "notify",
  "omagit-git",
  "omagit-settings",

@@ -23,6 +23,11 @@ tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 notify = { workspace = true }
 async-channel = { workspace = true }
+jiff = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+# GPUI's test platform, for driving real keystrokes through the real widget
+# tree. A dev-dependency only: the feature is additive, so it is on for
+# `cargo test` and off in every build that ships.
+gpui-kit = { workspace = true, features = ["test-support"] }
