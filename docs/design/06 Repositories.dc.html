@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; }
+  a { color: var(--ac, #7aa2f7); text-decoration: none; }
+  a:hover { color: var(--fg, #c0caf5); text-decoration: underline; }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="--bg:#1a1b26; --fg:#c0caf5; --sel:#283457; --c8:#414868; --ac:#7aa2f7; --danger:#f7768e; --success:#9ece6a; --warning:#e0af68; --info:#7aa2f7; --mutedmix:65%; --dimmix:45%; --surface:color-mix(in srgb, var(--fg) 4%, var(--bg)); --raised:var(--sel); --border:var(--c8); --focus:var(--ac); --muted:color-mix(in srgb, var(--fg) var(--mutedmix), var(--bg)); --dim:color-mix(in srgb, var(--fg) var(--dimmix), var(--bg)); --hover:color-mix(in srgb, var(--fg) 6%, var(--bg)); --ui:system-ui, -apple-system, 'Segoe UI Variable Text', 'Inter', sans-serif; --mono:'JetBrains Mono', ui-monospace, monospace; background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 13px; line-height: 1.45; min-height: 100vh; padding: 0 0 64px; -webkit-font-smoothing: antialiased;">
+
+  <div style="position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 16px; min-height: 48px; flex-wrap: wrap; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <span style="font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.06em;">LAYERS</span>
+      <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">06 · Repositories</span>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;">
+      <span style="font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em;">Palette</span>
+      <div ref="{{ themeBar }}" style="display: flex; border: 1px solid var(--border);">
+        <button onClick="{{ setTokyo }}" data-theme="tokyo" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: var(--ac); color: var(--bg); cursor: pointer;">Tokyo Night</button>
+        <button onClick="{{ setGruv }}" data-theme="gruvbox" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Gruvbox</button>
+        <button onClick="{{ setMatte }}" data-theme="matte" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Matte Black</button>
+        <button onClick="{{ setLight }}" data-theme="light" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; background: transparent; color: var(--muted); cursor: pointer;">Claire</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px;">
+
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 32px 0 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Repositories — référence 1600 × 1000</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">topbar réduite à 40px · pas de dépôt ouvert</span>
+    </div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;">
+    <div style="width: 1600px; height: 1000px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: center; height: 40px; flex: none; border-bottom: 1px solid var(--border); padding: 0 8px; gap: 8px;">
+        <span style="font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.06em; padding-left: 4px;">LAYERS</span>
+        <span style="width: 1px; height: 18px; background: var(--border); margin: 0 4px;"></span>
+        <span style="font-size: 12.5px; color: var(--muted);">Dépôts</span>
+        <span style="flex: 1;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); font-size: 12px;">Ajouter un dépôt local<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘O</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); font-size: 12px;">Cloner…<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⇧⌘N</span></span>
+        <span style="width: 1px; height: 18px; background: var(--border); margin: 0 4px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; height: 24px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); font-size: 12px;">Rechercher<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘/Ctrl K</span></span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--border); color: var(--muted);">⚙</span>
+      </div>
+
+      <div style="flex: 1; display: flex; min-height: 0;">
+
+        <!-- SIDEBAR DÉPÔTS -->
+        <div style="width: 300px; flex: none; border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0;">
+          <div style="padding: 8px; flex: none;">
+            <span style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; background: var(--bg); border: 1px solid var(--border); color: var(--dim);">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none;"><circle cx="7" cy="7" r="4.25"></circle><path d="M10.2 10.2 L13.5 13.5"></path></svg>
+              <span style="font-size: 12px;">Filtrer les dépôts</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px;">/</span>
+            </span>
+          </div>
+
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▾</span><span>Récents</span></div>
+
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--ac); color: var(--bg);">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none;"><path d="M3.5 2.5h9v11h-9z"></path><path d="M3.5 11h9"></path><path d="M6 5.5h4"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+              <span style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">layers</span>
+              <span style="font-family: var(--mono); font-size: 10.5px; opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">main ↑8 ↓2</span>
+            </span>
+            <span style="width: 7px; height: 7px; background: var(--bg); flex: none;"></span>
+          </div>
+
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none; color: var(--muted);"><path d="M3.5 2.5h9v11h-9z"></path><path d="M3.5 11h9"></path><path d="M6 5.5h4"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">gpui-omarchy</span>
+              <span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">main · propre</span>
+            </span>
+            <span style="width: 7px; height: 7px; background: var(--success); flex: none;"></span>
+          </div>
+
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--hover);">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none; color: var(--muted);"><path d="M3.5 2.5h9v11h-9z"></path><path d="M3.5 11h9"></path><path d="M6 5.5h4"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">dotfiles</span>
+              <span style="font-family: var(--mono); font-size: 10.5px; color: var(--warning); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">main · 3 modifiés</span>
+            </span>
+            <span style="width: 7px; height: 7px; background: var(--warning); flex: none;"></span>
+          </div>
+
+          <div style="height: 2px; background: var(--ac); margin: 0 10px;"></div>
+
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; opacity: 0.6;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none; color: var(--muted);"><path d="M3.5 2.5h9v11h-9z"></path><path d="M3.5 11h9"></path><path d="M6 5.5h4"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">omarchy-themes</span>
+              <span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted);">glissé — relâcher pour déplacer</span>
+            </span>
+          </div>
+
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; margin-top: 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▾</span><span>Travail</span><span style="flex: 1;"></span><span style="font-family: var(--mono); letter-spacing: 0; color: var(--dim);">3</span></div>
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 20px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none; color: var(--muted);"><path d="M2 4.5h4.5l1.5 2H14v7H2z"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">api-gateway</span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--danger);">merge · 2 conflits</span></span>
+            <span style="width: 7px; height: 7px; background: var(--danger); flex: none;"></span>
+          </div>
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 20px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none; color: var(--muted);"><path d="M2 4.5h4.5l1.5 2H14v7H2z"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">billing-worker</span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted);">HEAD détaché · a10f6d4</span></span>
+            <span style="width: 7px; height: 7px; border: 1px solid var(--muted); flex: none;"></span>
+          </div>
+          <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 20px; color: var(--dim);">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none;"><path d="M2 4.5h4.5l1.5 2H14v7H2z"></path><path d="M5 9l6 3M11 9l-6 3"></path></svg>
+            <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">legacy-portal</span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--danger);">introuvable sur le disque</span></span>
+          </div>
+
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; margin-top: 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▸</span><span>Perso</span><span style="flex: 1;"></span><span style="font-family: var(--mono); letter-spacing: 0; color: var(--dim);">2</span></div>
+
+          <div style="flex: 1;"></div>
+          <div style="flex: none; border-top: 1px solid var(--border); height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--muted); font-size: 12px;">
+            <span style="font-family: var(--mono);">+</span><span>Nouveau groupe</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">glisser pour ranger</span>
+          </div>
+        </div>
+
+        <!-- FICHE DÉPÔT -->
+        <div style="flex: 1; min-width: 480px; display: flex; flex-direction: column; min-height: 0;">
+
+          <div style="flex: none; display: flex; align-items: flex-start; gap: 20px; padding: 16px 20px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 16px; font-weight: 600;">layers</span>
+                <span style="display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border: 1px solid var(--warning); color: var(--warning); font-size: 11px;"><span style="width: 6px; height: 6px; background: var(--warning);"></span>6 modifiés</span>
+                <span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--muted);">↑8 ↓2</span>
+              </div>
+              <span style="font-family: var(--mono); font-size: 12px; color: var(--muted);">Client Git graphique pour Omarchy — Rust + GPUI</span>
+            </div>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 12px; border: 1px solid var(--danger); color: var(--danger);">Retirer de la liste</span>
+                <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; background: var(--ac); color: var(--bg); font-weight: 500;">Ouvrir<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">⏎</span></span>
+              </div>
+              <div style="display: flex; align-items: flex-end; gap: 8px;">
+                <span style="font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em;">90 jours</span>
+                <span style="display: flex; align-items: flex-end; gap: 2px; height: 30px;">
+                  <span style="width: 5px; height: 6px; background: var(--border);"></span><span style="width: 5px; height: 11px; background: var(--border);"></span><span style="width: 5px; height: 4px; background: var(--border);"></span><span style="width: 5px; height: 17px; background: var(--muted);"></span><span style="width: 5px; height: 9px; background: var(--border);"></span><span style="width: 5px; height: 22px; background: var(--muted);"></span><span style="width: 5px; height: 13px; background: var(--border);"></span><span style="width: 5px; height: 3px; background: var(--border);"></span><span style="width: 5px; height: 19px; background: var(--muted);"></span><span style="width: 5px; height: 26px; background: var(--muted);"></span><span style="width: 5px; height: 8px; background: var(--border);"></span><span style="width: 5px; height: 14px; background: var(--border);"></span><span style="width: 5px; height: 5px; background: var(--border);"></span><span style="width: 5px; height: 21px; background: var(--muted);"></span><span style="width: 5px; height: 30px; background: var(--muted);"></span><span style="width: 5px; height: 12px; background: var(--border);"></span><span style="width: 5px; height: 7px; background: var(--border);"></span><span style="width: 5px; height: 16px; background: var(--muted);"></span><span style="width: 5px; height: 24px; background: var(--muted);"></span><span style="width: 5px; height: 10px; background: var(--border);"></span><span style="width: 5px; height: 2px; background: var(--border);"></span><span style="width: 5px; height: 18px; background: var(--muted);"></span><span style="width: 5px; height: 27px; background: var(--muted);"></span><span style="width: 5px; height: 15px; background: var(--border);"></span><span style="width: 5px; height: 6px; background: var(--border);"></span><span style="width: 5px; height: 20px; background: var(--muted);"></span><span style="width: 5px; height: 25px; background: var(--muted);"></span><span style="width: 5px; height: 28px; background: var(--ac);"></span><span style="width: 5px; height: 23px; background: var(--ac);"></span><span style="width: 5px; height: 30px; background: var(--ac);"></span>
+                </span>
+                <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">312 commits</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex: 1; min-height: 0; overflow: hidden; padding: 0 20px;">
+
+            <div style="height: 26px; display: flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border);">Repository</div>
+            <div style="display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 5px 16px; align-items: baseline; padding: 10px 0 14px;">
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Location</span>
+              <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">~/src/layers</span><span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--border); font-size: 11px; color: var(--muted); flex: none;">Révéler dans le gestionnaire</span></span>
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Last Opened</span>
+              <span style="font-family: var(--mono); font-size: 12.5px;">aujourd'hui 09:14</span>
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Last Commit</span>
+              <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 12.5px; color: var(--muted); flex: none;">9f3c1a2</span><span style="font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">theme: reload Omarchy palette without restart</span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim); flex: none;">il y a 2 h</span></span>
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">User Description</span>
+              <span style="display: flex; align-items: center; height: 24px; padding: 0 6px; margin-left: -7px; border: 1px solid var(--focus); font-size: 12.5px;">Client Git graphique pour Omarchy — Rust + GPUI<span style="width: 1px; height: 14px; background: var(--fg); margin-left: 1px;"></span></span>
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Committer Identity</span>
+              <span style="display: flex; align-items: center; gap: 8px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px;">EL</span><span>Élodie Laurent</span><span style="font-family: var(--mono); font-size: 12px; color: var(--muted);">&lt;e.laurent@layers.dev&gt;</span><span style="font-size: 11px; color: var(--dim);">hérité du global</span></span>
+            </div>
+
+            <div style="height: 26px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border);">Working Copy</div>
+            <div style="display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 5px 16px; align-items: baseline; padding: 10px 0 14px;">
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Current Branch</span>
+              <span style="display: flex; align-items: center; gap: 8px;"><span style="font-family: var(--mono); font-size: 12.5px;">main</span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; color: var(--info); border: 1px solid var(--info);">origin/main</span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">↑8 ↓2</span></span>
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Status</span>
+              <span style="display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12.5px;"><span style="color: var(--warning);">4 modifiés</span><span style="color: var(--success);">1 ajouté</span><span style="color: var(--danger);">1 conflit</span><span style="color: var(--dim);">1 non suivi</span></span>
+              <span style="text-align: right; color: var(--muted); font-size: 12px;">Stashes</span>
+              <span style="font-family: var(--mono); font-size: 12.5px;">3</span>
+            </div>
+
+            <div style="height: 26px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border);">Remotes</div>
+            <div style="display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 5px 16px; align-items: baseline; padding: 10px 0 14px;">
+              <span style="text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12.5px;">origin</span>
+              <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">git@github.com:layers/layers.git</span><span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--border); font-size: 11px; color: var(--muted); flex: none;">copier</span></span>
+              <span style="text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12.5px;">upstream</span>
+              <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">https://git.sr.ht/~layers/layers</span><span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--border); font-size: 11px; color: var(--dim); flex: none;">copier</span></span>
+            </div>
+          </div>
+
+          <div style="flex: none; height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;">
+            <span style="color: var(--muted);">9 dépôts · 2 groupes</span><span style="color: var(--border);">│</span><span style="color: var(--muted);">dernier fetch il y a 12 min</span>
+            <span style="flex: 1;"></span><span style="color: var(--danger);">! legacy-portal introuvable</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- ═══ ÉTATS ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 40px 0 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">États</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">aucun dépôt · dépôt introuvable · clonage en cours</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 16px; max-width: 1600px;">
+
+      <div style="border: 1px solid var(--border); display: flex; flex-direction: column; height: 340px; background: var(--bg);">
+        <div style="flex: none; height: 26px; display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Aucun dépôt</div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; text-align: center;">
+          <svg width="40" height="40" viewBox="0 0 16 16" fill="none" stroke="var(--dim)" stroke-width="1"><path d="M3.5 2.5h9v11h-9z"></path><path d="M3.5 11h9"></path><path d="M6 5.5h4"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 15px; font-weight: 500;">Aucun dépôt pour l'instant</span>
+            <span style="font-size: 12.5px; color: var(--muted); max-width: 340px;">Ajoute un dossier déjà versionné, ou clone une URL. Le glisser-déposer d'un dossier dans cette fenêtre fonctionne aussi.</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; background: var(--ac); color: var(--bg); font-weight: 500;">Ajouter un dépôt local<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">⌘O</span></span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border: 1px solid var(--border);">Cloner…<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⇧⌘N</span></span>
+          </div>
+        </div>
+        <div style="flex: none; height: 24px; display: flex; align-items: center; padding: 0 10px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px; color: var(--muted);">0 dépôt</div>
+      </div>
+
+      <div style="border: 1px solid var(--border); display: flex; flex-direction: column; height: 340px; background: var(--bg);">
+        <div style="flex: none; height: 26px; display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Dépôt introuvable sur le disque</div>
+        <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+          <div style="display: flex; align-items: flex-start; gap: 20px; padding: 16px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 16px; font-weight: 600; color: var(--muted);">legacy-portal</span>
+                <span style="display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border: 1px solid var(--danger); color: var(--danger); font-size: 11px;"><span style="width: 6px; height: 6px; background: var(--danger);"></span>introuvable</span>
+              </div>
+              <span style="font-family: var(--mono); font-size: 12px; color: var(--muted);">Le dossier n'existe plus à l'emplacement enregistré.</span>
+            </div>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; align-items: center; gap: 8px; flex: none;">
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 12px; border: 1px solid var(--danger); color: var(--danger);">Retirer</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 12px; background: var(--ac); color: var(--bg); font-weight: 500;">Localiser…</span>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 5px 16px; align-items: baseline; padding: 14px 16px;">
+            <span style="text-align: right; color: var(--muted); font-size: 12px;">Location</span>
+            <span style="font-family: var(--mono); font-size: 12.5px; color: var(--danger); text-decoration: line-through;">~/work/legacy-portal</span>
+            <span style="text-align: right; color: var(--muted); font-size: 12px;">Last Opened</span>
+            <span style="font-family: var(--mono); font-size: 12.5px; color: var(--muted);">14 mars 2026</span>
+            <span style="text-align: right; color: var(--muted); font-size: 12px;">Last Commit</span>
+            <span style="font-family: var(--mono); font-size: 12.5px; color: var(--dim);">indisponible hors ligne</span>
+          </div>
+        </div>
+        <div style="flex: none; height: 24px; display: flex; align-items: center; padding: 0 10px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px; color: var(--danger);">! chemin manquant — la fiche reste consultable</div>
+      </div>
+
+      <div style="border: 1px solid var(--border); display: flex; flex-direction: column; height: 340px; background: var(--bg);">
+        <div style="flex: none; height: 26px; display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Clonage en cours</div>
+        <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 16px; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 15px; font-weight: 500;">omarchy-themes</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border: 1px solid var(--info); color: var(--info); font-size: 11px;">clonage</span>
+            <span style="flex: 1;"></span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); font-size: 12px;">Annuler<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">Esc</span></span>
+          </div>
+          <div style="display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 5px 16px; align-items: baseline;">
+            <span style="text-align: right; color: var(--muted); font-size: 12px;">Source</span>
+            <span style="font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">https://github.com/basecamp/omarchy-themes.git</span>
+            <span style="text-align: right; color: var(--muted); font-size: 12px;">Destination</span>
+            <span style="font-family: var(--mono); font-size: 12.5px;">~/src/omarchy-themes</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="height: 4px; background: var(--raised);"><span style="display: block; width: 58%; height: 4px; background: var(--ac);"></span></div>
+            <div style="display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 11.5px;">
+              <span style="color: var(--muted);">Receiving objects</span><span>58 %</span><span style="color: var(--dim);">4 812 / 8 290 objets · 12.4 Mio/s</span>
+            </div>
+          </div>
+          <div style="flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--border); background: var(--surface); padding: 6px 8px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 18px;">
+            <div>remote: Enumerating objects: 8290, done.</div>
+            <div>remote: Counting objects: 100% (8290/8290), done.</div>
+            <div>remote: Compressing objects: 100% (3117/3117), done.</div>
+            <div style="color: var(--fg);">Receiving objects:  58% (4812/8290), 21.8 MiB</div>
+          </div>
+        </div>
+        <div style="flex: none; height: 24px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;">
+          <span style="color: var(--muted);">Clonage</span><span style="width: 80px; height: 2px; background: var(--raised); display: inline-block;"><span style="display: block; width: 58%; height: 2px; background: var(--ac);"></span></span><span style="color: var(--dim);">58 %</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 20px; max-width: 1600px;">
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Ce que Tower n'affiche pas</div>
+        <div>Sparkline d'activité sur 90 jours (1 barre = 3 jours, les 3 dernières en accent), compteur ahead/behind, et pastille d'état carrée : plein pour propre / modifié / conflit, contour vide pour HEAD détaché. La forme distingue autant que la couleur.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Glisser-déposer</div>
+        <div>La ligne glissée passe à 60 % d'opacité et l'insertion est marquée par un trait <span style="font-family: var(--mono);">accent</span> de 2px pleine largeur entre deux lignes — visible dans la sidebar entre <span style="font-family: var(--mono);">dotfiles</span> et <span style="font-family: var(--mono);">omarchy-themes</span>.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Deux icônes distinctes</div>
+        <div>Le dépôt est un rectangle à reliure, le groupe un dossier. Un dépôt introuvable garde son icône barrée d'une croix — l'entrée reste consultable, elle n'est jamais supprimée en silence.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Édition en place</div>
+        <div>User Description s'édite dans la fiche : le champ se dessine seulement au focus, avec un anneau <span style="font-family: var(--mono);">border_focus</span>, sans dialog ni bouton « modifier ».</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const THEMES = {
+  tokyo:  { '--bg':'#1a1b26','--fg':'#c0caf5','--sel':'#283457','--c8':'#414868','--ac':'#7aa2f7','--danger':'#f7768e','--success':'#9ece6a','--warning':'#e0af68','--info':'#7aa2f7','--mutedmix':'65%','--dimmix':'45%' },
+  gruvbox:{ '--bg':'#282828','--fg':'#ebdbb2','--sel':'#3c3836','--c8':'#928374','--ac':'#d79921','--danger':'#fb4934','--success':'#b8bb26','--warning':'#fabd2f','--info':'#83a598','--mutedmix':'65%','--dimmix':'45%' },
+  matte:  { '--bg':'#121212','--fg':'#eaeaea','--sel':'#262626','--c8':'#3a3a3a','--ac':'#9e9e9e','--danger':'oklch(0.68 0.17 25)','--success':'oklch(0.74 0.15 145)','--warning':'oklch(0.80 0.14 85)','--info':'oklch(0.70 0.13 250)','--mutedmix':'65%','--dimmix':'45%' },
+  light:  { '--bg':'#faf4ed','--fg':'#575279','--sel':'#f2e9e1','--c8':'#9893a5','--ac':'#286983','--danger':'#b4637a','--success':'#3e8c68','--warning':'#a6772a','--info':'#56949f','--mutedmix':'90%','--dimmix':'66%' }
+};
+
+class Component extends DCLogic {
+  state = { theme: 'tokyo' };
+  rootRef = React.createRef();
+  themeBar = React.createRef();
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+  apply() {
+    const el = this.rootRef.current; if (!el) return;
+    const t = THEMES[this.state.theme];
+    for (const k in t) el.style.setProperty(k, t[k]);
+    const b = this.themeBar.current;
+    if (b) b.querySelectorAll('button').forEach(btn => {
+      const on = btn.getAttribute('data-theme') === this.state.theme;
+      btn.style.background = on ? 'var(--ac)' : 'transparent';
+      btn.style.color = on ? 'var(--bg)' : 'var(--muted)';
+    });
+  }
+  renderVals() {
+    const set = o => () => this.setState(o);
+    return {
+      rootRef: this.rootRef, themeBar: this.themeBar,
+      setTokyo: set({ theme: 'tokyo' }), setGruv: set({ theme: 'gruvbox' }),
+      setMatte: set({ theme: 'matte' }), setLight: set({ theme: 'light' })
+    };
+  }
+}
+</script>
+</body>
+</html>

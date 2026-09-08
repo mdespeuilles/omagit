@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; }
+  a { color: var(--ac, #7aa2f7); text-decoration: none; }
+  a:hover { color: var(--fg, #c0caf5); text-decoration: underline; }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="--bg:#1a1b26; --fg:#c0caf5; --sel:#283457; --c8:#414868; --ac:#7aa2f7; --danger:#f7768e; --success:#9ece6a; --warning:#e0af68; --info:#7aa2f7; --mutedmix:65%; --dimmix:45%; --surface:color-mix(in srgb, var(--fg) 4%, var(--bg)); --raised:var(--sel); --border:var(--c8); --focus:var(--ac); --muted:color-mix(in srgb, var(--fg) var(--mutedmix), var(--bg)); --dim:color-mix(in srgb, var(--fg) var(--dimmix), var(--bg)); --hover:color-mix(in srgb, var(--fg) 6%, var(--bg)); --add:color-mix(in srgb, var(--success) 12%, var(--bg)); --addw:color-mix(in srgb, var(--success) 24%, var(--bg)); --del:color-mix(in srgb, var(--danger) 12%, var(--bg)); --delw:color-mix(in srgb, var(--danger) 24%, var(--bg)); --ui:system-ui, -apple-system, 'Segoe UI Variable Text', 'Inter', sans-serif; --mono:'JetBrains Mono', ui-monospace, monospace; background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 13px; line-height: 1.45; min-height: 100vh; padding: 0 0 64px; -webkit-font-smoothing: antialiased;">
+
+  <div style="position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 16px; min-height: 48px; flex-wrap: wrap; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <span style="font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.06em;">LAYERS</span>
+      <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">08 · Compact vs confortable</span>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;">
+      <span style="font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em;">Palette</span>
+      <div ref="{{ themeBar }}" style="display: flex; border: 1px solid var(--border);">
+        <button onClick="{{ setTokyo }}" data-theme="tokyo" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: var(--ac); color: var(--bg); cursor: pointer;">Tokyo Night</button>
+        <button onClick="{{ setGruv }}" data-theme="gruvbox" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Gruvbox</button>
+        <button onClick="{{ setMatte }}" data-theme="matte" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Matte Black</button>
+        <button onClick="{{ setLight }}" data-theme="light" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; background: transparent; color: var(--muted); cursor: pointer;">Claire</button>
+      </div>
+      <button onClick="{{ toggleGrid }}" ref="{{ gridBtn }}" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 26px; flex: none; white-space: nowrap; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Grille 4px</button>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px;">
+
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 32px 0 4px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Working Copy — les deux densités, même hauteur de fenêtre</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">820 × 600 chacune</span>
+    </div>
+    <div style="font-size: 11.5px; color: var(--dim); margin-bottom: 12px; max-width: 1000px;">La densité ne change ni la taille de police ni la graisse : elle change les hauteurs de ligne, les paddings et les gaps, tous multiples de 4. Les cibles cliquables ne descendent jamais sous 24×24px, même en compact — c'est ce qui fixe le plancher à 26px pour la ligne de liste plutôt que 24.</div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;">
+    <div style="display: flex; gap: 16px; width: max-content;">
+
+      <!-- ════ COMPACT ════ -->
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Compact</h3>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">ligne 26 · toolbar 22 · padding 6 · gap 4</span>
+        </div>
+        <div class="frame" style="--row:26px; --pad:6px; --hdr:20px; --gap:4px; --ctl:22px; width: 820px; height: 600px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column;">
+          <div style="flex: none; height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); border-bottom: 1px solid var(--border);">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--border); color: var(--muted); font-size: 12px;">◧</span>
+            <span style="display: flex; flex-direction: column;"><span style="font-family: var(--mono); font-size: 12.5px; font-weight: 500;">layers</span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted);">main ↑8 ↓2</span></span>
+            <span style="flex: 1;"></span>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border: 1px solid var(--border); font-size: 12px;">Fetch</span>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; font-size: 12px;">Push</span>
+          </div>
+          <div style="flex: 1; display: flex; min-height: 0;">
+            <div style="width: 170px; flex: none; border-right: 1px solid var(--border); background: var(--surface);">
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Workspace</div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px; background: var(--ac); color: var(--bg); font-weight: 500; font-size: 12.5px;">Working Copy<span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 10.5px;">6</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; padding: 0 8px; font-size: 12.5px;">History</div>
+              <div style="height: var(--row); display: flex; align-items: center; padding: 0 8px; font-size: 12.5px;">Stashes<span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted);">3</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; padding: 0 8px; font-size: 12.5px;">Branches Review</div>
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 8px; margin-top: var(--gap); font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Branches</div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px; background: var(--hover);"><span style="font-family: var(--mono); font-size: 12px;">main</span><span style="display: inline-flex; align-items: center; height: 15px; padding: 0 4px; font-family: var(--mono); font-size: 10px; background: var(--ac); color: var(--bg); flex: none;">HEAD</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px;"><span style="font-family: var(--mono); font-size: 12px; color: var(--muted);">feature/</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--dim);">4</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px 0 18px;"><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">theme-runtime</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted); flex: none;">↑3</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px 0 18px;"><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">side-by-side-diff</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px 0 18px;"><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">stash-preview</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px;"><span style="font-family: var(--mono); font-size: 12px; color: var(--muted);">fix/</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--dim);">6</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px;"><span style="font-family: var(--mono); font-size: 12px;">release-0.4</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 10.5px; color: var(--muted);">↓2</span></div>
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 8px; margin-top: var(--gap); font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Remotes</div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 8px 0 18px;"><span style="font-family: var(--mono); font-size: 12px; color: var(--info);">origin/main</span></div>
+            </div>
+            <div style="width: 300px; flex: none; border-right: 1px solid var(--border); display: flex; flex-direction: column;">
+              <div style="height: var(--ctl); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;"><span>main</span><span style="color: var(--dim);">→</span><span style="color: var(--info);">origin/main</span></div>
+              <div style="padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap); border-bottom: 1px solid var(--border);">
+                <span style="display: flex; align-items: center; height: var(--ctl); padding: 0 6px; background: var(--bg); border: 1px solid var(--ac); font-family: var(--mono); font-size: 11.5px;">theme: reload Omarchy palette</span>
+                <span style="display: flex; height: 40px; padding: 3px 6px; background: var(--bg); border: 1px solid var(--border); font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow: hidden;">Watch colors.toml and re-derive the 13 tokens.</span>
+                <span style="display: flex; align-items: center; gap: 12px; height: 22px;"><span style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border: 1px solid var(--border); background: var(--bg);"></span><span style="font-size: 12px;">Amend</span></span><span style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border: 1px solid var(--ac); background: var(--ac); color: var(--bg); font-size: 10px; line-height: 13px; text-align: center; font-weight: 600;">✓</span><span style="font-size: 12px;">Sign Off</span></span></span>
+                <span style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-flex; align-items: center; height: var(--ctl); padding: 0 10px; border: 1px solid var(--border); font-size: 12px;">Unstage All</span><span style="flex: 1;"></span><span style="display: inline-flex; align-items: center; gap: 6px; height: var(--ctl); padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; font-size: 12px;">Commit<span style="font-family: var(--mono); font-size: 10.5px; opacity: 0.75;">⌘⏎</span></span></span>
+              </div>
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="width: 20px;"></span><span style="width: 52px;">Status</span><span>Filename</span></div>
+              <div style="flex: 1; overflow: hidden;">
+                <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); background: var(--raised); box-shadow: inset 0 0 0 1px var(--focus);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 10px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning); flex: none;">M</span><span style="font-family: var(--mono); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">gpui_omarchy/src/</span>theme.rs</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); background: var(--raised);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 10px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning); flex: none;">M</span><span style="font-family: var(--mono); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">gpui_omarchy/src/</span>tokens.rs</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); background: var(--hover);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 10px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--success); border: 1px solid var(--success); flex: none;">A</span><span style="font-family: var(--mono); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">gpui_omarchy/src/</span>watcher.rs</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 10px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--danger); border: 1px solid var(--danger); flex: none;">D</span><span style="font-family: var(--mono); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">docs/</span>legacy_theme.md</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); background: var(--del);"><span style="width: 14px; height: 14px; border: 1px solid var(--border); flex: none;"></span><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--bg); background: var(--danger); flex: none;">U</span><span style="font-family: var(--mono); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">merge.rs</span><span style="flex: 1;"></span><span style="font-size: 10.5px; color: var(--danger); flex: none;">2 conflits</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); color: var(--dim);"><span style="width: 14px; height: 14px; border: 1px solid var(--border); flex: none;"></span><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; border: 1px solid var(--muted); flex: none;">?</span><span style="font-family: var(--mono); font-size: 11.5px;">notes.scratch.md</span></div>
+              </div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+              <div style="height: var(--ctl); display: flex; align-items: center; gap: 6px; padding: 0 var(--pad); border-bottom: 1px solid var(--border);"><span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning);">M</span><span style="font-family: var(--mono); font-size: 12px;">theme.rs</span><span style="flex: 1;"></span><span style="display: inline-flex; border: 1px solid var(--border);"><span style="height: 18px; display: inline-flex; align-items: center; padding: 0 6px; background: var(--ac); color: var(--bg); font-size: 11px;">Staged</span><span style="height: 18px; display: inline-flex; align-items: center; padding: 0 6px; color: var(--muted); font-size: 11px;">Unstaged</span></span></div>
+              <div style="height: var(--hdr); display: flex; align-items: center; gap: 10px; padding: 0 var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 10.5px;"><span style="color: var(--muted);">11 chunks</span><span style="color: var(--success);">+162</span><span style="color: var(--danger);">−136</span></div>
+              <div style="flex: 1; overflow: hidden; white-space: pre; font-family: var(--mono); font-size: 11.5px; line-height: 17px;">
+                <div style="height: 20px; display: flex; align-items: center; padding: 0 var(--pad); background: var(--raised); color: var(--muted); font-size: 10.5px; border-bottom: 1px solid var(--border);">@@ −26,30 +26,34 @@ impl Theme {</div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">26</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">26</span><span></span><span><span style="color: var(--info);">pub fn</span> <span style="color: var(--ac);">from_omarchy</span>(p: <span style="color: var(--warning);">&amp;Path</span>) {</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--del);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">28</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);"></span><span style="text-align: center; color: var(--danger);">−</span><span> <span style="color: var(--info);">let</span> t = toml::<span style="color: var(--ac);">from_str</span>(&amp;raw)<span style="background: var(--delw);">.expect("bad")</span>;</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">28</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> t = toml::<span style="color: var(--ac);">from_str</span>(&amp;raw)<span style="background: var(--addw);">.unwrap_or_default()</span>;</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">30</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">30</span><span></span><span> <span style="color: var(--dim);">// only five entries are guaranteed</span></span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">31</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> bg = t.background;</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">32</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> fg = t.foreground;</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">33</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> mode = t.mode.<span style="color: var(--ac);">unwrap_or</span>(<span style="color: var(--warning);">Mode</span>::Dark);</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">31</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">34</span><span></span><span></span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">35</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--warning);">Ok</span>(<span style="color: var(--warning);">Self</span> { bg, fg, danger: <span style="color: var(--ac);">derive</span>(t.red) })</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">33</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">36</span><span></span><span>}</span></div>
+                <div style="height: 18px; display: flex; align-items: center; justify-content: center; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 10.5px;">⌄ 24 lignes repliées</div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">91</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">99</span><span></span><span> <span style="color: var(--dim);">/// Watches the Omarchy state dir.</span></span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">100</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">pub fn</span> <span style="color: var(--ac);">watch</span>(cx: <span style="color: var(--warning);">&amp;mut App</span>) {</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">101</span><span style="text-align: center; color: var(--success);">+</span><span>   cx.<span style="color: var(--ac);">observe_fs</span>(<span style="color: var(--success);">"~/.local/state/omarchy"</span>);</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 6px; color: var(--dim);"></span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">102</span><span style="text-align: center; color: var(--success);">+</span><span>   cx.<span style="color: var(--ac);">refresh_theme</span>();</span></div>
+                <div style="display: grid; grid-template-columns: 32px 32px 14px minmax(0,1fr);"><span style="text-align: right; padding-right: 6px; color: var(--dim);">92</span><span style="text-align: right; padding-right: 6px; color: var(--dim); border-left: 1px solid var(--border);">105</span><span></span><span>}</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: none; height: 22px; display: flex; align-items: center; gap: 10px; padding: 0 var(--pad); border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 10.5px;"><span>⑂ main</span><span style="color: var(--muted);">↑8 ↓2</span><span style="color: var(--muted);">4 indexés</span><span style="flex: 1;"></span><span style="color: var(--danger);">! 2 conflits</span></div>
+        </div>
+        <div style="display: flex; gap: 10px; font-family: var(--mono); font-size: 11px; color: var(--muted); flex-wrap: wrap;">
+          <span style="border: 1px solid var(--border); padding: 2px 6px;">8 lignes de branches</span>
+          <span style="border: 1px solid var(--border); padding: 2px 6px;">6 fichiers sans défilement</span>
+          <span style="border: 1px solid var(--border); padding: 2px 6px;">14 lignes de diff</span>
+        </div>
+      </div>
+
+      <!-- ════ CONFORTABLE ════ -->
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Confortable</h3>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">ligne 34 · toolbar 26 · padding 10 · gap 8</span>
+        </div>
+        <div class="frame" style="--row:34px; --pad:10px; --hdr:24px; --gap:8px; --ctl:26px; width: 820px; height: 600px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column;">
+          <div style="flex: none; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); border-bottom: 1px solid var(--border);">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted);">◧</span>
+            <span style="display: flex; flex-direction: column;"><span style="font-family: var(--mono); font-size: 13px; font-weight: 500;">layers</span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">main ↑8 ↓2</span></span>
+            <span style="flex: 1;"></span>
+            <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 12px; border: 1px solid var(--border);">Fetch</span>
+            <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 12px; background: var(--ac); color: var(--bg); font-weight: 500;">Push</span>
+          </div>
+          <div style="flex: 1; display: flex; min-height: 0;">
+            <div style="width: 190px; flex: none; border-right: 1px solid var(--border); background: var(--surface);">
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Workspace</div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500;">Working Copy<span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px;">6</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; padding: 0 10px;">History</div>
+              <div style="height: var(--row); display: flex; align-items: center; padding: 0 10px;">Stashes<span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">3</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; padding: 0 10px;">Branches Review</div>
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 10px; margin-top: var(--gap); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Branches</div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--hover);"><span style="font-family: var(--mono); font-size: 12.5px;">main</span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; background: var(--ac); color: var(--bg); flex: none;">HEAD</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px;"><span style="font-family: var(--mono); font-size: 12.5px; color: var(--muted);">feature/</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">4</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px 0 22px;"><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">theme-runtime</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted); flex: none;">↑3</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px 0 22px;"><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">side-by-side-diff</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px 0 22px;"><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">stash-preview</span></div>
+              <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 10px;"><span style="font-family: var(--mono); font-size: 12.5px; color: var(--muted);">fix/</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">6</span></div>
+            </div>
+            <div style="width: 320px; flex: none; border-right: 1px solid var(--border); display: flex; flex-direction: column;">
+              <div style="height: var(--ctl); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 12px;"><span>main</span><span style="color: var(--dim);">→</span><span style="color: var(--info);">origin/main</span></div>
+              <div style="padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap); border-bottom: 1px solid var(--border);">
+                <span style="display: flex; align-items: center; height: var(--ctl); padding: 0 8px; background: var(--bg); border: 1px solid var(--ac); font-family: var(--mono); font-size: 12.5px;">theme: reload Omarchy palette</span>
+                <span style="display: flex; height: 52px; padding: 5px 8px; background: var(--bg); border: 1px solid var(--border); font-family: var(--mono); font-size: 12.5px; color: var(--muted); overflow: hidden;">Watch colors.toml and re-derive the 13 tokens.</span>
+                <span style="display: flex; align-items: center; gap: 16px; height: 24px;"><span style="display: flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border: 1px solid var(--border); background: var(--bg);"></span><span style="font-size: 12.5px;">Amend</span></span><span style="display: flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border: 1px solid var(--ac); background: var(--ac); color: var(--bg); font-size: 11px; line-height: 13px; text-align: center; font-weight: 600;">✓</span><span style="font-size: 12.5px;">Sign Off</span></span></span>
+                <span style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-flex; align-items: center; height: var(--ctl); padding: 0 12px; border: 1px solid var(--border);">Unstage All</span><span style="flex: 1;"></span><span style="display: inline-flex; align-items: center; gap: 8px; height: var(--ctl); padding: 0 12px; background: var(--ac); color: var(--bg); font-weight: 500;">Commit<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">⌘⏎</span></span></span>
+              </div>
+              <div style="height: var(--hdr); display: flex; align-items: center; padding: 0 var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="width: 22px;"></span><span style="width: 56px;">Status</span><span>Filename</span></div>
+              <div style="flex: 1; overflow: hidden;">
+                <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); background: var(--raised); box-shadow: inset 0 0 0 1px var(--focus);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 11px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning); flex: none;">M</span><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">gpui_omarchy/src/</span>theme.rs</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); background: var(--raised);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 11px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning); flex: none;">M</span><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">gpui_omarchy/src/</span>tokens.rs</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); background: var(--hover);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 11px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--success); border: 1px solid var(--success); flex: none;">A</span><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">gpui_omarchy/src/</span>watcher.rs</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad);"><span style="width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-size: 11px; line-height: 14px; text-align: center; font-weight: 600; flex: none;">✓</span><span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--danger); border: 1px solid var(--danger); flex: none;">D</span><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">docs/</span>legacy_theme.md</span></div>
+                <div style="height: var(--row); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); background: var(--del);"><span style="width: 14px; height: 14px; border: 1px solid var(--border); flex: none;"></span><span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--bg); background: var(--danger); flex: none;">U</span><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">merge.rs</span><span style="flex: 1;"></span><span style="font-size: 11px; color: var(--danger); flex: none;">2 conflits</span></div>
+              </div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+              <div style="height: var(--ctl); display: flex; align-items: center; gap: 8px; padding: 0 var(--pad); border-bottom: 1px solid var(--border);"><span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning);">M</span><span style="font-family: var(--mono); font-size: 12.5px;">theme.rs</span><span style="flex: 1;"></span><span style="display: inline-flex; border: 1px solid var(--border);"><span style="height: 20px; display: inline-flex; align-items: center; padding: 0 8px; background: var(--ac); color: var(--bg); font-size: 11.5px;">Staged</span><span style="height: 20px; display: inline-flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 11.5px;">Unstaged</span></span></div>
+              <div style="height: var(--hdr); display: flex; align-items: center; gap: 12px; padding: 0 var(--pad); border-bottom: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11px;"><span style="color: var(--muted);">11 chunks</span><span style="color: var(--success);">+162</span><span style="color: var(--danger);">−136</span></div>
+              <div style="flex: 1; overflow: hidden; white-space: pre; font-family: var(--mono); font-size: 12.5px; line-height: 20px;">
+                <div style="height: 24px; display: flex; align-items: center; padding: 0 var(--pad); background: var(--raised); color: var(--muted); font-size: 11.5px; border-bottom: 1px solid var(--border);">@@ −26,30 +26,34 @@ impl Theme {</div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr);"><span style="text-align: right; padding-right: 8px; color: var(--dim);">26</span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">26</span><span></span><span><span style="color: var(--info);">pub fn</span> <span style="color: var(--ac);">from_omarchy</span>(p: <span style="color: var(--warning);">&amp;Path</span>) {</span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr); background: var(--del);"><span style="text-align: right; padding-right: 8px; color: var(--dim);">28</span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);"></span><span style="text-align: center; color: var(--danger);">−</span><span> <span style="color: var(--info);">let</span> t = toml::<span style="color: var(--ac);">from_str</span>(&amp;raw)<span style="background: var(--delw);">.expect("bad")</span>;</span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 8px; color: var(--dim);"></span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">28</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> t = toml::<span style="color: var(--ac);">from_str</span>(&amp;raw)<span style="background: var(--addw);">.unwrap_or_default()</span>;</span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr);"><span style="text-align: right; padding-right: 8px; color: var(--dim);">30</span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">30</span><span></span><span> <span style="color: var(--dim);">// only five entries are guaranteed</span></span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 8px; color: var(--dim);"></span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">31</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> bg = t.background;</span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 8px; color: var(--dim);"></span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">32</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> fg = t.foreground;</span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 8px; color: var(--dim);"></span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">33</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">let</span> mode = t.mode.<span style="color: var(--ac);">unwrap_or</span>(<span style="color: var(--warning);">Mode</span>::Dark);</span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr);"><span style="text-align: right; padding-right: 8px; color: var(--dim);">31</span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">34</span><span></span><span></span></div>
+                <div style="height: 22px; display: flex; align-items: center; justify-content: center; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11.5px;">⌄ 24 lignes repliées</div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr);"><span style="text-align: right; padding-right: 8px; color: var(--dim);">91</span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">99</span><span></span><span> <span style="color: var(--dim);">/// Watches the Omarchy state dir.</span></span></div>
+                <div style="display: grid; grid-template-columns: 36px 36px 16px minmax(0,1fr); background: var(--add);"><span style="text-align: right; padding-right: 8px; color: var(--dim);"></span><span style="text-align: right; padding-right: 8px; color: var(--dim); border-left: 1px solid var(--border);">100</span><span style="text-align: center; color: var(--success);">+</span><span> <span style="color: var(--info);">pub fn</span> <span style="color: var(--ac);">watch</span>(cx: <span style="color: var(--warning);">&amp;mut App</span>) {</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: none; height: 24px; display: flex; align-items: center; gap: 12px; padding: 0 var(--pad); border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;"><span>⑂ main</span><span style="color: var(--muted);">↑8 ↓2</span><span style="color: var(--muted);">4 indexés</span><span style="flex: 1;"></span><span style="color: var(--danger);">! 2 conflits</span></div>
+        </div>
+        <div style="display: flex; gap: 10px; font-family: var(--mono); font-size: 11px; color: var(--muted); flex-wrap: wrap;">
+          <span style="border: 1px solid var(--border); padding: 2px 6px;">6 lignes de branches</span>
+          <span style="border: 1px solid var(--border); padding: 2px 6px;">5 fichiers sans défilement</span>
+          <span style="border: 1px solid var(--border); padding: 2px 6px;">10 lignes de diff</span>
+        </div>
+      </div>
+
+    </div>
+    </div>
+
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 36px 0 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Ce que la densité change — et ce qu'elle ne change pas</h2>
+    </div>
+    <div style="border: 1px solid var(--border); background: var(--surface); max-width: 1000px;">
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 26px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span>Mesure</span><span>Compact</span><span>Confortable</span><span>Règle</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px;"><span>Ligne de liste</span><span style="font-family: var(--mono);">26px</span><span style="font-family: var(--mono);">34px</span><span style="color: var(--muted); font-size: 12px;">plancher à 26 pour garder 24×24 de cible</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px;"><span>Contrôles (champ, bouton)</span><span style="font-family: var(--mono);">22px</span><span style="font-family: var(--mono);">26px</span><span style="color: var(--muted); font-size: 12px;">cible étendue de 2px au-delà du tracé</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px;"><span>Padding de colonne</span><span style="font-family: var(--mono);">6px</span><span style="font-family: var(--mono);">10px</span><span style="color: var(--muted); font-size: 12px;">multiples de 4, sauf 6 = demi-pas toléré</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px;"><span>Interligne du diff</span><span style="font-family: var(--mono);">17px</span><span style="font-family: var(--mono);">20px</span><span style="color: var(--muted); font-size: 12px;">seule variation typographique admise</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px;"><span>Taille et graisse de police</span><span style="font-family: var(--mono);">13 / 11</span><span style="font-family: var(--mono);">13 / 11</span><span style="color: var(--muted); font-size: 12px;">identiques — la densité n'est pas un zoom</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px;"><span>Épaisseur des bordures</span><span style="font-family: var(--mono);">1px</span><span style="font-family: var(--mono);">1px</span><span style="color: var(--muted); font-size: 12px;">jamais mise à l'échelle</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0,1.4fr) 110px 110px 1fr; align-items: center; height: 28px; padding: 0 12px; font-size: 12.5px;"><span>Topbar / statusbar</span><span style="font-family: var(--mono);">40 / 22</span><span style="font-family: var(--mono);">48 / 24</span><span style="color: var(--muted); font-size: 12px;">seules chrome bars affectées</span></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 20px; max-width: 1000px;">
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Un seul réglage, appliqué partout</div>
+        <div>Compact et confortable sont le même arbre de composants avec quatre variables : hauteur de ligne, hauteur de contrôle, padding, gap. Aucun écran n'a de mise en page alternative.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Le compact n'est pas un mode dégradé</div>
+        <div>Il gagne 2 lignes de branches, 1 fichier et 4 lignes de diff sur la même hauteur. C'est le mode par défaut sur Omarchy, où l'app vit à côté d'un terminal dense.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Cibles cliquables</div>
+        <div>Une ligne de 26px avec une checkbox de 14px garde une cible de 26×26 : la zone cliquable est la ligne entière, pas le tracé de la case. Bascule « Grille 4px » pour vérifier l'alignement.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const THEMES = {
+  tokyo:  { '--bg':'#1a1b26','--fg':'#c0caf5','--sel':'#283457','--c8':'#414868','--ac':'#7aa2f7','--danger':'#f7768e','--success':'#9ece6a','--warning':'#e0af68','--info':'#7aa2f7','--mutedmix':'65%','--dimmix':'45%' },
+  gruvbox:{ '--bg':'#282828','--fg':'#ebdbb2','--sel':'#3c3836','--c8':'#928374','--ac':'#d79921','--danger':'#fb4934','--success':'#b8bb26','--warning':'#fabd2f','--info':'#83a598','--mutedmix':'65%','--dimmix':'45%' },
+  matte:  { '--bg':'#121212','--fg':'#eaeaea','--sel':'#262626','--c8':'#3a3a3a','--ac':'#9e9e9e','--danger':'oklch(0.68 0.17 25)','--success':'oklch(0.74 0.15 145)','--warning':'oklch(0.80 0.14 85)','--info':'oklch(0.70 0.13 250)','--mutedmix':'65%','--dimmix':'45%' },
+  light:  { '--bg':'#faf4ed','--fg':'#575279','--sel':'#f2e9e1','--c8':'#9893a5','--ac':'#286983','--danger':'#b4637a','--success':'#3e8c68','--warning':'#a6772a','--info':'#56949f','--mutedmix':'90%','--dimmix':'66%' }
+};
+
+class Component extends DCLogic {
+  state = { theme: 'tokyo', grid: false };
+  rootRef = React.createRef();
+  themeBar = React.createRef();
+  gridBtn = React.createRef();
+
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+
+  apply() {
+    const el = this.rootRef.current; if (!el) return;
+    const t = THEMES[this.state.theme];
+    for (const k in t) el.style.setProperty(k, t[k]);
+    const b = this.themeBar.current;
+    if (b) b.querySelectorAll('button').forEach(btn => {
+      const on = btn.getAttribute('data-theme') === this.state.theme;
+      btn.style.background = on ? 'var(--ac)' : 'transparent';
+      btn.style.color = on ? 'var(--bg)' : 'var(--muted)';
+    });
+    el.querySelectorAll('.frame').forEach(f => {
+      f.style.backgroundImage = this.state.grid
+        ? 'repeating-linear-gradient(to bottom, color-mix(in srgb, var(--ac) 22%, transparent) 0 1px, transparent 1px 4px)'
+        : 'none';
+    });
+    if (this.gridBtn.current) {
+      this.gridBtn.current.style.background = this.state.grid ? 'var(--raised)' : 'transparent';
+      this.gridBtn.current.style.color = this.state.grid ? 'var(--fg)' : 'var(--muted)';
+    }
+  }
+
+  renderVals() {
+    const set = o => () => this.setState(o);
+    return {
+      rootRef: this.rootRef, themeBar: this.themeBar, gridBtn: this.gridBtn,
+      setTokyo: set({ theme: 'tokyo' }), setGruv: set({ theme: 'gruvbox' }),
+      setMatte: set({ theme: 'matte' }), setLight: set({ theme: 'light' }),
+      toggleGrid: () => this.setState(s => ({ grid: !s.grid }))
+    };
+  }
+}
+</script>
+</body>
+</html>

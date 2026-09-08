@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # SPEC §3 rule 8: a milestone is a PR, green on Linux *and* macOS.
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-24.04
+          - name: macos
+            os: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # The toolchain comes from rust-toolchain.toml; this only adds caching
+      # and makes the resolved version visible in the log.
+      - name: Toolchain
+        run: |
+          rustup show active-toolchain
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.name }}
+
+      # GPUI renders through Vulkan/Wayland/X11 on Linux and needs these to
+      # link. Kept in one place so a link failure reads as a missing package
+      # rather than a mysterious build error.
+      - name: Linux system dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libfontconfig-dev libwayland-dev libxkbcommon-x11-dev \
+            libssl-dev libzstd-dev libvulkan1 libgit2-dev mesa-vulkan-drivers \
+            pkg-config
+
+      - name: fmt
+        run: cargo fmt --all --check
+
+      # gpui-omarchy is in the workspace but silences clippy from its own
+      # manifest; see vendor/README.md.
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: test
+        run: cargo test --workspace
+
+      - name: release build
+        run: cargo build --workspace --release
+
+  # SPEC §13: licences and advisories are part of the gate, not an afterthought.
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check bans licenses sources advisories
+
+  # The vendored crate must stay byte-identical to its upstream release, so an
+  # accidental edit is caught here rather than at the next sync.
+  vendor:
+    name: vendor drift
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/sync-vendor.sh

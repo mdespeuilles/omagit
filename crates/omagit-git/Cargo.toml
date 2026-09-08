@@ -1,0 +1,13 @@
+[package]
+name = "omagit-git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# The Git core knows nothing about the UI (SPEC §3 rule 5): no gpui, no
+# gpui-omarchy. Testable and usable from a CLI.
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }

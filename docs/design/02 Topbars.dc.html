@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; }
+  a { color: var(--ac, #7aa2f7); text-decoration: none; }
+  a:hover { color: var(--fg, #c0caf5); text-decoration: underline; }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="--bg:#1a1b26; --fg:#c0caf5; --sel:#283457; --c8:#414868; --ac:#7aa2f7; --danger:#f7768e; --success:#9ece6a; --warning:#e0af68; --info:#7aa2f7; --surface:color-mix(in srgb, var(--fg) 4%, var(--bg)); --raised:var(--sel); --border:var(--c8); --focus:var(--ac); --muted:color-mix(in srgb, var(--fg) 65%, var(--bg)); --dim:color-mix(in srgb, var(--fg) 45%, var(--bg)); --ui:system-ui, -apple-system, 'Segoe UI Variable Text', 'Inter', sans-serif; --mono:'JetBrains Mono', ui-monospace, monospace; background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 13px; line-height: 1.45; min-height: 100vh; padding: 0 0 64px; -webkit-font-smoothing: antialiased;">
+
+  <div style="position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; min-height: 48px; flex-wrap: wrap; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <span style="font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.06em;">LAYERS</span>
+      <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">02 · Topbar — trois variantes</span>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;">
+      <span style="font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em;">Palette</span>
+      <div ref="{{ themeBar }}" style="display: flex; border: 1px solid var(--border);">
+        <button onClick="{{ setTokyo }}" data-theme="tokyo" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: var(--ac); color: var(--bg); cursor: pointer;">Tokyo Night</button>
+        <button onClick="{{ setGruv }}" data-theme="gruvbox" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Gruvbox</button>
+        <button onClick="{{ setMatte }}" data-theme="matte" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Matte Black</button>
+        <button onClick="{{ setLight }}" data-theme="light" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; background: transparent; color: var(--muted); cursor: pointer;">Claire</button>
+      </div>
+      <button onClick="{{ toggleCsd }}" ref="{{ csdBtn }}" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 26px; flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--raised); color: var(--fg); cursor: pointer;">Boutons Linux</button>
+      <button onClick="{{ toggleAnno }}" ref="{{ annoBtn }}" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 26px; flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--raised); color: var(--fg); cursor: pointer;">Cotes</button>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px;">
+
+    <!-- ═══ LINUX ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 32px 0 4px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Linux — Hyprland / Wayland</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">décoration côté client · réserve 0 / 0</span>
+    </div>
+    <div style="font-size: 11.5px; color: var(--dim); margin-bottom: 10px; max-width: 900px;">Aucune décoration système : le compositeur ne dessine ni barre de titre ni boutons, l'app les dessine elle-même. Sous Hyprland en tuilé, les trois boutons sont masqués (le compositeur gère fermeture et taille au clavier) ; sur un bureau classique — GNOME, KDE, XFCE, ou Hyprland en fenêtre flottante — ils apparaissent à droite. L'app lit <span style="font-family: var(--mono);">gtk-decoration-layout</span> pour connaître l'ordre et le jeu de boutons attendus, et respecte le côté (droite par défaut, gauche sur une session configurée ainsi).</div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;"><div ref="{{ linuxWrap }}" style="width: 1200px; border: 1px solid var(--border); background: var(--bg);">
+      <div class="anno" style="display: flex; height: 18px; font-family: var(--mono); font-size: 10px; color: var(--dim); border-bottom: 1px dashed var(--border);">
+        <span style="flex: 1; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border);">zone de drag — bande centrale · double-clic = maximiser/tuiler</span>
+        <span style="width: 115px; flex: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--warning) 18%, var(--bg)); color: var(--fg);">115 · conditionnel</span>
+      </div>
+      <div style="display: flex; align-items: center; height: 48px; border-bottom: 1px solid var(--border); padding: 0 8px; gap: 8px;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); font-size: 13px; color: var(--muted); flex: none;">◧</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--muted); flex: none;">←</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--dim); flex: none;">→</span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: none; max-width: 280px;">
+          <span style="font-family: var(--mono); font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">layers</span>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">~/src/layers · main ↑8 ↓2</span>
+        </span>
+        <span style="flex: 1; min-width: 24px; align-self: stretch;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Fetch<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘F</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Pull<span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">↓2</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; flex: none;">Push<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">↑8</span></span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); flex: none;">Rechercher<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘/Ctrl K</span></span>
+        <span ref="{{ linuxCaption }}" style="display: flex; align-self: stretch; flex: none; margin-left: 8px; border-left: 1px solid var(--border);">
+          <span style="width: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 8.5h9"></path></svg></span>
+          <span style="width: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg); background: var(--raised);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="3.5" width="9" height="9"></rect></svg></span>
+          <span style="width: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"></path></svg></span>
+        </span>
+      </div>
+      <div style="display: flex; height: 44px; background: var(--surface); border-bottom: 1px solid var(--border);">
+        <span style="width: 260px; border-right: 1px solid var(--border);"></span><span style="width: 400px; border-right: 1px solid var(--border);"></span><span style="flex: 1;"></span>
+      </div>
+    </div></div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; max-width: 1200px;">
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Deux sous-variantes, une seule mise en page</div>
+        <div>Tuilé (Hyprland) : réserve droite 0. Bureau classique ou fenêtre flottante : réserve droite 115px, soit 3 × 38 plus le séparateur 1px. Bascule « Boutons Linux » en haut à droite. La réserve est un spacer flex, donc rien d'autre ne bouge.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Boutons dessinés, pas empruntés</div>
+        <div>Glyphes linéaires 16px trait 1.5px sur la grille de l'app, angles droits, 38×48 chacun. Ni cercles macOS ni Segoe Fluent : la fenêtre reste une fenêtre LAYERS.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Survol et ordre</div>
+        <div>Minimiser et agrandir prennent <span style="font-family: var(--mono);">surface_raised</span>, fermer prend <span style="font-family: var(--mono);">danger</span> plein — comme sur Windows. L'ordre et le côté suivent <span style="font-family: var(--mono);">gtk-decoration-layout</span>.</div>
+      </div>
+    </div>
+
+    <!-- ═══ MACOS ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 40px 0 4px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">macOS</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">titlebar masquée, feux incrustés · réserve 78 / 0</span>
+    </div>
+    <div style="font-size: 11.5px; color: var(--dim); margin-bottom: 10px; max-width: 900px;">Les feux tricolores sont dessinés par le système par-dessus la topbar. Les 78 premiers pixels sont interdits : aucun contrôle ne doit y entrer, jamais. Menu applicatif natif dans la barre de menus du système ; ⌘ dans tous les raccourcis.</div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;"><div ref="{{ macWrap }}" style="width: 1200px; border: 1px solid var(--border); background: var(--bg);">
+      <div class="anno" style="display: flex; height: 18px; font-family: var(--mono); font-size: 10px; color: var(--dim); border-bottom: 1px dashed var(--border);">
+        <span style="width: 78px; flex: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--danger) 18%, var(--bg)); color: var(--fg); border-right: 1px solid var(--border);">78</span>
+        <span style="flex: 1; display: flex; align-items: center; justify-content: center;">zone de drag — bande centrale</span>
+      </div>
+      <div style="display: flex; align-items: center; height: 48px; border-bottom: 1px solid var(--border); padding: 0 8px 0 0; gap: 8px;">
+        <span style="width: 78px; flex: none; display: flex; align-items: center; gap: 8px; padding-left: 14px; align-self: stretch;">
+          <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; flex: none;"></span>
+          <span style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e; flex: none;"></span>
+          <span style="width: 12px; height: 12px; border-radius: 50%; background: #28c840; flex: none;"></span>
+        </span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); font-size: 13px; color: var(--muted); flex: none;">◧</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--muted); flex: none;">←</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--dim); flex: none;">→</span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: none; max-width: 280px;">
+          <span style="font-family: var(--mono); font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">layers</span>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">~/src/layers · main ↑8 ↓2</span>
+        </span>
+        <span style="flex: 1; min-width: 24px; align-self: stretch;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Fetch<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘F</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Pull<span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">↓2</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; flex: none;">Push<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">↑8</span></span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); flex: none;">Rechercher<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘K</span></span>
+      </div>
+      <div style="display: flex; height: 44px; background: var(--surface); border-bottom: 1px solid var(--border);">
+        <span style="width: 260px; border-right: 1px solid var(--border);"></span><span style="width: 400px; border-right: 1px solid var(--border);"></span><span style="flex: 1;"></span>
+      </div>
+    </div></div>
+
+    <!-- ═══ WINDOWS ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 40px 0 4px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Windows 11</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">décoration côté client, boutons caption dessinés · réserve 0 / 138</span>
+    </div>
+    <div style="font-size: 11.5px; color: var(--dim); margin-bottom: 10px; max-width: 900px;">Les trois boutons caption sont dessinés par l'app : 46×48px chacun, glyphes Segoe Fluent, pas de bordure entre eux, angles droits. Survol : minimiser/agrandir prennent <span style="font-family: var(--mono);">surface_raised</span>, fermer prend <span style="font-family: var(--mono);">danger</span> plein. Le survol prolongé du bouton agrandir ouvre le popover Snap Layouts du système — la zone doit donc être déclarée <span style="font-family: var(--mono);">HTMAXBUTTON</span>.</div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;"><div ref="{{ winWrap }}" style="width: 1200px; border: 1px solid var(--border); background: var(--bg);">
+      <div class="anno" style="display: flex; height: 18px; font-family: var(--mono); font-size: 10px; color: var(--dim); border-bottom: 1px dashed var(--border);">
+        <span style="flex: 1; display: flex; align-items: center; justify-content: center;">zone de drag — bande centrale</span>
+        <span style="width: 138px; flex: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--danger) 18%, var(--bg)); color: var(--fg); border-left: 1px solid var(--border);">138 (3 × 46)</span>
+      </div>
+      <div style="display: flex; align-items: center; height: 48px; border-bottom: 1px solid var(--border); padding: 0 0 0 8px; gap: 8px;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); font-size: 13px; color: var(--muted); flex: none;">◧</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--muted); flex: none;">←</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--dim); flex: none;">→</span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: none; max-width: 280px;">
+          <span style="font-family: var(--mono); font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">layers</span>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">C:\src\layers · main ↑8 ↓2</span>
+        </span>
+        <span style="flex: 1; min-width: 24px; align-self: stretch;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Fetch<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">Ctrl F</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Pull<span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">↓2</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; flex: none;">Push<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">↑8</span></span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); flex: none;">Rechercher<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">Ctrl K</span></span>
+        <span style="width: 138px; flex: none; display: flex; align-self: stretch; margin-left: 8px;">
+          <span style="width: 46px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px;">─</span>
+          <span style="width: 46px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg); font-size: 11px; background: var(--raised); position: relative;">▢
+            <span style="position: absolute; top: 100%; right: 0; width: 168px; background: var(--raised); border: 1px solid var(--border); box-shadow: 0 2px 16px -8px #000; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; z-index: 5;">
+              <span style="display: flex; gap: 2px; height: 30px; border: 1px solid var(--border); padding: 2px;"><span style="flex: 1; background: var(--ac);"></span><span style="flex: 1; background: var(--border);"></span></span>
+              <span style="display: flex; gap: 2px; height: 30px; border: 1px solid var(--border); padding: 2px;"><span style="flex: 2; background: var(--border);"></span><span style="flex: 1; background: var(--border);"></span></span>
+              <span style="display: flex; gap: 2px; height: 30px; border: 1px solid var(--border); padding: 2px;"><span style="flex: 1; background: var(--border);"></span><span style="display: flex; flex-direction: column; gap: 2px; flex: 1;"><span style="flex: 1; background: var(--border);"></span><span style="flex: 1; background: var(--border);"></span></span></span>
+              <span style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; height: 30px; border: 1px solid var(--border); padding: 2px;"><span style="background: var(--border);"></span><span style="background: var(--border);"></span><span style="background: var(--border);"></span><span style="background: var(--border);"></span></span>
+              <span style="grid-column: span 2; font-family: var(--mono); font-size: 10px; color: var(--dim); text-align: center;">Snap Layouts — système</span>
+            </span>
+          </span>
+          <span style="width: 46px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px;">✕</span>
+        </span>
+      </div>
+      <div style="display: flex; height: 132px; background: var(--surface); border-bottom: 1px solid var(--border);">
+        <span style="width: 260px; border-right: 1px solid var(--border);"></span><span style="width: 400px; border-right: 1px solid var(--border);"></span><span style="flex: 1;"></span>
+      </div>
+    </div></div>
+
+    <!-- ═══ ÉTATS ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 40px 0 12px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">États communs aux trois variantes</h2>
+      <span style="font-size: 11px; color: var(--dim);">Le contenu et l'ordre ne changent jamais ; seules les réserves de bord changent.</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px;">
+
+      <div style="border: 1px solid var(--border); background: var(--surface);">
+        <div style="height: 26px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Fenêtre inactive</div>
+        <div style="display: flex; align-items: center; height: 48px; padding: 0 8px; gap: 8px; background: var(--bg); color: var(--dim);">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid color-mix(in srgb, var(--border) 55%, var(--bg)); flex: none;">◧</span>
+          <span style="display: flex; flex-direction: column; justify-content: center; flex: none;">
+            <span style="font-family: var(--mono); font-size: 13px;">layers</span>
+            <span style="font-family: var(--mono); font-size: 11px;">main ↑8 ↓2</span>
+          </span>
+          <span style="flex: 1;"></span>
+          <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid color-mix(in srgb, var(--border) 55%, var(--bg)); flex: none;">Push</span>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding: 8px 12px; font-size: 11.5px; color: var(--dim);">Tout descend d'un cran : texte en <span style="font-family: var(--mono);">text_dim</span>, bordures à 55 %, l'accent disparaît. Aucune opacité globale.</div>
+      </div>
+
+      <div style="border: 1px solid var(--border); background: var(--surface);">
+        <div style="height: 26px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Opération en cours</div>
+        <div style="background: var(--bg);">
+          <div style="display: flex; align-items: center; height: 48px; padding: 0 8px; gap: 8px;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted); flex: none;">◧</span>
+            <span style="display: flex; flex-direction: column; justify-content: center; flex: none;">
+              <span style="font-family: var(--mono); font-size: 13px; font-weight: 500;">layers</span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">main ↑8 ↓2</span>
+            </span>
+            <span style="flex: 1;"></span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); flex: none;">Pushing…<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">Esc</span></span>
+          </div>
+          <div style="height: 2px; background: var(--raised);"><span style="display: block; width: 44%; height: 2px; background: var(--ac);"></span></div>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding: 8px 12px; font-size: 11.5px; color: var(--dim);">Le fil de progression de 2px se colle sous la bordure basse de la topbar. Le détail complet vit dans la statusbar.</div>
+      </div>
+
+      <div style="border: 1px solid var(--border); background: var(--surface);">
+        <div style="height: 26px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Fenêtre étroite — sous 1100px</div>
+        <div style="display: flex; align-items: center; height: 48px; padding: 0 8px; gap: 8px; background: var(--bg);">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted); flex: none;">◧</span>
+          <span style="display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1;">
+            <span style="font-family: var(--mono); font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">layers</span>
+            <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">main ↑8 ↓2</span>
+          </span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: var(--ac); color: var(--bg); flex: none;">↑</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted); flex: none;">⋯</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted); flex: none;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.25"></circle><path d="M10.2 10.2 L13.5 13.5"></path></svg></span>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding: 8px 12px; font-size: 11.5px; color: var(--dim);">Ordre d'effondrement : libellés des actions → Fetch/Pull dans le menu <span style="font-family: var(--mono);">⋯</span> → champ de recherche réduit à son icône. Push, action la plus fréquente, reste toujours visible.</div>
+      </div>
+
+      <div style="border: 1px solid var(--border); background: var(--surface);">
+        <div style="height: 26px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Ordre de tabulation</div>
+        <div style="display: flex; align-items: center; height: 48px; padding: 0 8px; gap: 8px; background: var(--bg);">
+          <span style="position: relative; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--focus); outline: 1px solid var(--focus); outline-offset: 1px; color: var(--fg); flex: none;">◧<span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; background: var(--ac); color: var(--bg); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center;">1</span></span>
+          <span style="position: relative; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; color: var(--muted); flex: none;">←<span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center; background: var(--bg);">2</span></span>
+          <span style="position: relative; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; color: var(--dim); flex: none;">→<span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center; background: var(--bg);">3</span></span>
+          <span style="flex: 1;"></span>
+          <span style="position: relative; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Fetch<span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center; background: var(--bg);">4</span></span>
+          <span style="position: relative; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Pull<span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center; background: var(--bg);">5</span></span>
+          <span style="position: relative; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; flex: none;">Push<span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center; background: var(--bg);">6</span></span>
+          <span style="position: relative; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); flex: none;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.25"></circle><path d="M10.2 10.2 L13.5 13.5"></path></svg><span style="position: absolute; top: -8px; left: -8px; width: 14px; height: 14px; border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: 9px; display: flex; align-items: center; justify-content: center; background: var(--bg);">7</span></span>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding: 8px 12px; font-size: 11.5px; color: var(--dim);">Tab sort ensuite vers la sidebar (cible 8). Les boutons caption Windows et les feux macOS ne sont jamais dans l'ordre de tabulation de l'app.</div>
+      </div>
+
+    </div>
+
+    <!-- ═══ RÈGLES ═══ -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 24px;">
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Réserves, pas marges</div>
+        <div>Les 78px macOS et les 138px Windows sont des <em>zones interdites</em> gérées par un spacer de flex, pas par un padding conditionnel. Un contrôle posé à 12px du bord gauche finirait sous les feux.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Rien n'est calé au pixel sur du texte</div>
+        <div>SF Pro, Segoe UI Variable et la police système Linux ont des métriques différentes. Tout est en flexbox : le bloc dépôt a un <span style="font-family: var(--mono);">max-width</span> avec ellipse, le spacer central absorbe la différence.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Un seul modificateur logique</div>
+        <div>La documentation dit <span style="font-family: var(--mono);">⌘/Ctrl</span>. L'app affiche <span style="font-family: var(--mono);">⌘K</span> sur macOS et <span style="font-family: var(--mono);">Ctrl K</span> ailleurs — jamais les deux.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const THEMES = {
+  tokyo:  { '--bg':'#1a1b26','--fg':'#c0caf5','--sel':'#283457','--c8':'#414868','--ac':'#7aa2f7','--danger':'#f7768e','--success':'#9ece6a','--warning':'#e0af68','--info':'#7aa2f7' },
+  gruvbox:{ '--bg':'#282828','--fg':'#ebdbb2','--sel':'#3c3836','--c8':'#928374','--ac':'#d79921','--danger':'#fb4934','--success':'#b8bb26','--warning':'#fabd2f','--info':'#83a598' },
+  matte:  { '--bg':'#121212','--fg':'#eaeaea','--sel':'#262626','--c8':'#3a3a3a','--ac':'#9e9e9e','--danger':'oklch(0.68 0.17 25)','--success':'oklch(0.74 0.15 145)','--warning':'oklch(0.80 0.14 85)','--info':'oklch(0.70 0.13 250)' },
+  light:  { '--bg':'#faf4ed','--fg':'#575279','--sel':'#f2e9e1','--c8':'#9893a5','--ac':'#286983','--danger':'#b4637a','--success':'#3e8c68','--warning':'#a6772a','--info':'#56949f' }
+};
+
+class Component extends DCLogic {
+  state = { theme: 'tokyo', anno: true, csd: true };
+  rootRef = React.createRef();
+  linuxCaption = React.createRef();
+  csdBtn = React.createRef();
+  themeBar = React.createRef();
+  annoBtn = React.createRef();
+  linuxWrap = React.createRef();
+  macWrap = React.createRef();
+  winWrap = React.createRef();
+
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+
+  apply() {
+    const el = this.rootRef.current; if (!el) return;
+    const t = THEMES[this.state.theme];
+    for (const k in t) el.style.setProperty(k, t[k]);
+    const b = this.themeBar.current;
+    if (b) b.querySelectorAll('button').forEach(btn => {
+      const on = btn.getAttribute('data-theme') === this.state.theme;
+      btn.style.background = on ? 'var(--ac)' : 'transparent';
+      btn.style.color = on ? 'var(--bg)' : 'var(--muted)';
+    });
+    [this.linuxWrap, this.macWrap, this.winWrap].forEach(r => {
+      const a = r.current && r.current.querySelector('.anno');
+      if (a) a.style.display = this.state.anno ? 'flex' : 'none';
+    });
+    if (this.linuxCaption.current) this.linuxCaption.current.style.display = this.state.csd ? 'flex' : 'none';
+    if (this.csdBtn.current) {
+      this.csdBtn.current.style.background = this.state.csd ? 'var(--raised)' : 'transparent';
+      this.csdBtn.current.style.color = this.state.csd ? 'var(--fg)' : 'var(--muted)';
+    }
+    if (this.annoBtn.current) {
+      this.annoBtn.current.style.background = this.state.anno ? 'var(--raised)' : 'transparent';
+      this.annoBtn.current.style.color = this.state.anno ? 'var(--fg)' : 'var(--muted)';
+    }
+  }
+
+  renderVals() {
+    const set = o => () => this.setState(o);
+    return {
+      rootRef: this.rootRef, themeBar: this.themeBar, annoBtn: this.annoBtn,
+      linuxCaption: this.linuxCaption, csdBtn: this.csdBtn,
+      toggleCsd: () => this.setState(s => ({ csd: !s.csd })),
+      linuxWrap: this.linuxWrap, macWrap: this.macWrap, winWrap: this.winWrap,
+      setTokyo: set({ theme: 'tokyo' }), setGruv: set({ theme: 'gruvbox' }),
+      setMatte: set({ theme: 'matte' }), setLight: set({ theme: 'light' }),
+      toggleAnno: () => this.setState(s => ({ anno: !s.anno }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; }
+  a { color: var(--ac, #7aa2f7); text-decoration: none; }
+  a:hover { color: var(--fg, #c0caf5); text-decoration: underline; }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="--bg:#1a1b26; --fg:#c0caf5; --sel:#283457; --c8:#414868; --ac:#7aa2f7; --danger:#f7768e; --success:#9ece6a; --warning:#e0af68; --info:#7aa2f7; --laneL:0.74; --laneC:0.13; --mutedmix:65%; --dimmix:45%; --surface:color-mix(in srgb, var(--fg) 4%, var(--bg)); --raised:var(--sel); --border:var(--c8); --focus:var(--ac); --muted:color-mix(in srgb, var(--fg) var(--mutedmix), var(--bg)); --dim:color-mix(in srgb, var(--fg) var(--dimmix), var(--bg)); --hover:color-mix(in srgb, var(--fg) 6%, var(--bg)); --l0:oklch(var(--laneL) var(--laneC) 20); --l1:oklch(var(--laneL) var(--laneC) 65); --l2:oklch(var(--laneL) var(--laneC) 110); --l3:oklch(var(--laneL) var(--laneC) 155); --l4:oklch(var(--laneL) var(--laneC) 200); --l5:oklch(var(--laneL) var(--laneC) 245); --l6:oklch(var(--laneL) var(--laneC) 290); --l7:oklch(var(--laneL) var(--laneC) 335); --ui:system-ui, -apple-system, 'Segoe UI Variable Text', 'Inter', sans-serif; --mono:'JetBrains Mono', ui-monospace, monospace; background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 13px; line-height: 1.45; min-height: 100vh; padding: 0 0 64px; -webkit-font-smoothing: antialiased;">
+
+  <div style="position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 16px; min-height: 48px; flex-wrap: wrap; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: baseline; gap: 10px;">
+      <span style="font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.06em;">LAYERS</span>
+      <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">05 · History</span>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;">
+      <span style="font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em;">Palette</span>
+      <div ref="{{ themeBar }}" style="display: flex; border: 1px solid var(--border);">
+        <button onClick="{{ setTokyo }}" data-theme="tokyo" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: var(--ac); color: var(--bg); cursor: pointer;">Tokyo Night</button>
+        <button onClick="{{ setGruv }}" data-theme="gruvbox" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Gruvbox</button>
+        <button onClick="{{ setMatte }}" data-theme="matte" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;">Matte Black</button>
+        <button onClick="{{ setLight }}" data-theme="light" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 24px; flex: none; white-space: nowrap; border: 0; background: transparent; color: var(--muted); cursor: pointer;">Claire</button>
+      </div>
+      <button onClick="{{ toggleSel }}" ref="{{ selBtn }}" style="font-family: var(--ui); font-size: 12px; padding: 4px 10px; height: 26px; flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--raised); color: var(--fg); cursor: pointer;">Lane sélectionnée</button>
+    </div>
+  </div>
+
+  <div style="padding: 0 16px;">
+
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 32px 0 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">History — référence 1600 × 1000</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">graphe à 8 lanes générées · lanes 0 à 4 en usage ici</span>
+    </div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;">
+    <div style="width: 1600px; height: 1000px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: center; height: 48px; flex: none; border-bottom: 1px solid var(--border); padding: 0 8px; gap: 8px;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); font-size: 13px; color: var(--muted); flex: none;">◧</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--muted); flex: none;">←</span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 13px; color: var(--dim); flex: none;">→</span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: flex; flex-direction: column; justify-content: center; flex: none;">
+          <span style="font-family: var(--mono); font-size: 13px; font-weight: 500;">layers</span>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">~/src/layers · main ↑8 ↓2</span>
+        </span>
+        <span style="flex: 1;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Fetch<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘F</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Pull<span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">↓2</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; flex: none;">Push<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">↑8</span></span>
+        <span style="width: 1px; height: 20px; background: var(--border); flex: none; margin: 0 4px;"></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border: 1px solid var(--border); color: var(--muted); flex: none;">Rechercher<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">⌘/Ctrl K</span></span>
+      </div>
+
+      <div style="flex: 1; display: flex; min-height: 0;">
+
+        <!-- SIDEBAR -->
+        <div style="width: 260px; flex: none; border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column;">
+          <div style="padding: 8px; flex: none;">
+            <span style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; background: var(--bg); border: 1px solid var(--border); color: var(--dim);">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex: none;"><circle cx="7" cy="7" r="4.25"></circle><path d="M10.2 10.2 L13.5 13.5"></path></svg>
+              <span style="font-size: 12px;">Filtrer</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px;">/</span>
+            </span>
+          </div>
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▾</span><span>Workspace</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px;"><span>Working Copy</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">6</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500;"><span>History</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px;"><span>Stashes</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">3</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px;"><span>Branches Review</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--dim);"><span>Pull Requests</span><span style="flex: 1;"></span><span style="font-size: 10px; border: 1px solid var(--border); padding: 0 4px;">DIFFÉRÉ</span></div>
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; margin-top: 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▾</span><span>Branches</span><span style="flex: 1;"></span><span style="font-family: var(--mono); letter-spacing: 0; color: var(--dim);">14</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--hover);"><span style="font-family: var(--mono); font-size: 12.5px;">main</span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; background: var(--ac); color: var(--bg); flex: none;">HEAD</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">↑8↓2</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px;"><span style="font-size: 9px; color: var(--muted);">▾</span><span style="font-family: var(--mono); font-size: 12.5px; color: var(--muted);">feature/</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">4</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 24px;"><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">stash-preview</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted); flex: none;">↑2</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 24px;"><span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">side-by-side-diff</span><span style="flex: 1;"></span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; color: var(--success); border: 1px solid var(--success); flex: none;">Merged</span></div>
+          <div style="height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px;"><span style="font-size: 9px; color: var(--muted);">▸</span><span style="font-family: var(--mono); font-size: 12.5px; color: var(--muted);">fix/</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">6</span></div>
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; margin-top: 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▸</span><span>Tags</span><span style="flex: 1;"></span><span style="font-family: var(--mono); letter-spacing: 0; color: var(--dim);">12</span></div>
+          <div style="height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;"><span style="font-size: 9px;">▸</span><span>Remotes</span><span style="flex: 1;"></span><span style="font-family: var(--mono); letter-spacing: 0; color: var(--dim);">2</span></div>
+        </div>
+
+        <!-- COLONNE CENTRALE — GRAPHE -->
+        <div style="width: 520px; flex: none; border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0;">
+          <div style="flex: none; height: 28px; display: flex; align-items: center; gap: 0; padding: 0 8px; border-bottom: 1px solid var(--border); background: var(--surface);">
+            <span style="display: inline-flex; border: 1px solid var(--border);">
+              <span style="height: 20px; display: inline-flex; align-items: center; padding: 0 8px; background: var(--ac); color: var(--bg); border-right: 1px solid var(--border); font-size: 11.5px;">All Branches</span>
+              <span style="height: 20px; display: inline-flex; align-items: center; padding: 0 8px; color: var(--muted); border-right: 1px solid var(--border); font-size: 11.5px;">Remotes</span>
+              <span style="height: 20px; display: inline-flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 11.5px;">Tags</span>
+            </span>
+            <span style="flex: 1;"></span>
+            <span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">1 248 commits</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; color: var(--muted); margin-left: 6px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11M4.5 8h7M6.5 12h3"></path></svg></span>
+          </div>
+
+          <div style="flex: 1; min-height: 0; overflow: hidden;">
+            <div style="height: 22px; display: flex; align-items: center; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">September 2026</div>
+
+            <div style="position: relative; height: 616px;">
+              <svg ref="{{ graphSvg }}" width="100" height="616" viewBox="0 0 100 616" style="position: absolute; left: 0; top: 0;" fill="none">
+                <g data-lane="0" stroke="var(--l0)" stroke-width="1.5">
+                  <path d="M16 0 V616"></path>
+                </g>
+                <g data-lane="1" stroke="var(--l1)" stroke-width="1.5">
+                  <path d="M32 110 V82 Q32 66 16 66"></path>
+                  <path d="M32 110 V226 Q32 242 16 242"></path>
+                </g>
+                <g data-lane="2" stroke="var(--l2)" stroke-width="1.5">
+                  <path d="M48 330 V302 Q48 286 16 286"></path>
+                  <path d="M48 330 V446 Q48 462 16 462"></path>
+                </g>
+                <g data-lane="3" stroke="var(--l3)" stroke-width="1.5">
+                  <path d="M64 418 V490 Q64 506 16 506"></path>
+                </g>
+                <g data-lane="4" stroke="var(--l4)" stroke-width="1.5">
+                  <path d="M80 550 V578 Q80 594 16 594"></path>
+                </g>
+                <g data-node="0" fill="var(--l0)" stroke="var(--l0)" stroke-width="1.5">
+                  <circle cx="16" cy="22" r="3"></circle>
+                  <circle cx="16" cy="66" r="3.5" fill="var(--bg)"></circle>
+                  <circle cx="16" cy="198" r="3"></circle>
+                  <circle cx="16" cy="242" r="3"></circle>
+                  <circle cx="16" cy="286" r="3.5" fill="var(--bg)"></circle>
+                  <circle cx="16" cy="462" r="3"></circle>
+                  <circle cx="16" cy="506" r="3"></circle>
+                  <circle cx="16" cy="594" r="3"></circle>
+                </g>
+                <g data-node="1" fill="var(--l1)" stroke="var(--l1)" stroke-width="1.5">
+                  <circle cx="32" cy="110" r="3"></circle>
+                  <circle cx="32" cy="154" r="3"></circle>
+                </g>
+                <g data-node="2" fill="var(--l2)" stroke="var(--l2)" stroke-width="1.5">
+                  <circle cx="48" cy="330" r="3"></circle>
+                  <circle cx="48" cy="374" r="3"></circle>
+                </g>
+                <g data-node="3" fill="var(--l3)" stroke="var(--l3)" stroke-width="1.5">
+                  <circle cx="64" cy="418" r="3"></circle>
+                </g>
+                <g data-node="4" fill="var(--l4)" stroke="var(--l4)" stroke-width="1.5">
+                  <circle cx="80" cy="550" r="3"></circle>
+                </g>
+              </svg>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 500; white-space: nowrap;">Élodie Laurent</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; background: var(--ac); color: var(--bg); flex: none;">HEAD</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--border); flex: none;">main</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-family: var(--mono); font-size: 10.5px; color: var(--warning); border: 1px solid var(--warning); flex: none;">↑ non poussé</span>
+                    <span style="flex: 1;"></span>
+                    <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap;">il y a 2 h</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                    <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">9f3c1a2</span>
+                    <span style="font-size: 12px; flex: none;">✨</span>
+                    <span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">theme: reload Omarchy palette without restart</span>
+                  </span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">hier 18:24</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">4b81de0</span><span style="font-size: 12px; flex: none;">🔀</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Merge branch 'feature/side-by-side-diff'</span></span>
+                </span>
+              </div>
+
+              <div ref="{{ rowB }}" style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--focus);">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">MK</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 500;">Marek Kowal</span>
+                    <span style="display: inline-flex; align-items: center; gap: 3px; height: 16px; padding: 0 4px; font-family: var(--mono); font-size: 10.5px; color: var(--success); border: 1px solid var(--success); flex: none;">GPG ✓</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; background: var(--fg); color: var(--bg); flex: none;">B</span>
+                    <span style="flex: 1;"></span>
+                    <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">7 sept. 11:02</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">c07aa19</span><span style="font-size: 12px; flex: none;">💄</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">diff: side-by-side view with synced gutters</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">MK</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Marek Kowal</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">7 sept. 09:41</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">1de44f8</span><span style="font-size: 12px; flex: none;">💄</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">diff: intra-line word highlight at 24%</span></span>
+                </span>
+              </div>
+
+              <div ref="{{ rowA }}" style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px; background: var(--raised);">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 500;">Élodie Laurent</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; background: var(--fg); color: var(--bg); flex: none;">A</span>
+                    <span style="flex: 1;"></span>
+                    <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">6 sept. 16:55</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">8a2e310</span><span style="font-size: 12px; flex: none;">🍎</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">topbar: reserve 78px for macOS traffic lights</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 500;">Élodie Laurent</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; color: var(--info); border: 1px solid var(--info); flex: none;">origin/main</span>
+                    <span style="flex: 1;"></span>
+                    <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">6 sept. 10:12</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">2f90c4b</span><span style="font-size: 12px; flex: none;">🎨</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">core: derive status tokens in OKLCH when absent</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">SB</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Sofia Bianchi</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">5 sept. 17:30</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">b6c1207</span><span style="font-size: 12px; flex: none;">🔀</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Merge branch 'fix/win-caption-buttons'</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">SB</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Sofia Bianchi</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">5 sept. 14:08</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">7ee0a53</span><span style="font-size: 12px; flex: none;">🪟</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">win: draw caption buttons at 46×48</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">SB</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Sofia Bianchi</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">5 sept. 11:47</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">d3f8b91</span><span style="font-size: 12px; flex: none;">🪟</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">win: declare HTMAXBUTTON for Snap Layouts</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">MK</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 500;">Marek Kowal</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--border); flex: none;">feature/stash-preview</span>
+                    <span style="flex: 1;"></span>
+                    <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">4 sept. 15:20</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">5c2ba7e</span><span style="font-size: 12px; flex: none;">✨</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">stash: preview diff in detail panel</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 500;">Élodie Laurent</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; color: var(--warning); border: 1px solid var(--warning); flex: none;">v0.4.1</span>
+                    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); border: 1px solid var(--border); flex: none;">…3</span>
+                    <span style="flex: 1;"></span>
+                    <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">3 sept. 19:02</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">a10f6d4</span><span style="font-size: 12px; flex: none;">🔖</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">release: 0.4.1</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">3 sept. 12:33</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">e88c025</span><span style="font-size: 12px; flex: none;">🗂️</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">sidebar: group branches containing a slash</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">TN</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Théo Nguyen</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">2 sept. 08:14</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">62b7fa3</span><span style="font-size: 12px; flex: none;">⚗️</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">spike: gpui-kit list virtualization</span></span>
+                </span>
+              </div>
+
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">1 sept. 17:45</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">f4d9081</span><span style="font-size: 12px; flex: none;">📌</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">history: sticky month separators</span></span>
+                </span>
+              </div>
+            </div>
+
+            <div style="height: 22px; display: flex; align-items: center; padding: 0 12px; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">August 2026</div>
+
+            <div style="position: relative; height: 176px;">
+              <svg width="100" height="176" viewBox="0 0 100 176" style="position: absolute; left: 0; top: 0;" fill="none">
+                <g stroke="var(--l0)" stroke-width="1.5"><path d="M16 0 V176"></path></g>
+                <g fill="var(--l0)" stroke="var(--l0)" stroke-width="1.5">
+                  <circle cx="16" cy="22" r="3"></circle><circle cx="16" cy="66" r="3"></circle><circle cx="16" cy="110" r="3"></circle><circle cx="16" cy="154" r="3"></circle>
+                </g>
+              </svg>
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">29 août 14:02</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">30ab5c7</span><span style="font-size: 12px; flex: none;">♻️</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">core: split theme derivation from parsing</span></span>
+                </span>
+              </div>
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">TN</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Théo Nguyen</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">28 août 09:36</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">ba71e39</span><span style="font-size: 12px; flex: none;">🐛</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">statusbar: clear error on successful fetch</span></span>
+                </span>
+              </div>
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">MK</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Marek Kowal</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">27 août 16:19</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">c9204ff</span><span style="font-size: 12px; flex: none;">⌨️</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">keys: vim navigation in every list</span></span>
+                </span>
+              </div>
+              <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 100px;">
+                <span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span>
+                <span style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                  <span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">26 août 10:55</span></span>
+                  <span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">17e6a80</span><span style="font-size: 12px; flex: none;">🎨</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ui: square everything, drop all radii</span></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANNEAU DE DÉTAIL -->
+        <div style="flex: 1; min-width: 480px; display: flex; flex-direction: column; min-height: 0;">
+          <div style="flex: none; height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border);">
+            <span style="font-family: var(--mono); font-size: 13px; font-weight: 500;">c07aa19</span>
+            <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">comparé à 8a2e310</span>
+            <span style="flex: 1;"></span>
+            <span style="display: inline-flex; border: 1px solid var(--border);"><span style="height: 24px; display: inline-flex; align-items: center; padding: 0 10px; background: var(--ac); color: var(--bg); border-right: 1px solid var(--border);">Changeset</span><span style="height: 24px; display: inline-flex; align-items: center; padding: 0 10px; color: var(--muted);">Tree</span></span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--border); color: var(--muted);">⋯</span>
+          </div>
+
+          <div style="flex: none; display: flex; gap: 16px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface);">
+            <div style="flex: 1; display: grid; grid-template-columns: 108px minmax(0,1fr); gap: 3px 12px; align-items: baseline; font-size: 12px;">
+              <span style="text-align: right; color: var(--muted);">Author</span><span>Marek Kowal <span style="font-family: var(--mono); color: var(--muted);">&lt;m.kowal@layers.dev&gt;</span></span>
+              <span style="text-align: right; color: var(--muted);">Author Date</span><span style="font-family: var(--mono);">7 sept. 2026 11:02:14 +0200</span>
+              <span style="text-align: right; color: var(--muted);">Committer</span><span>Marek Kowal</span>
+              <span style="text-align: right; color: var(--muted);">Committer Date</span><span style="font-family: var(--mono);">7 sept. 2026 11:02:14 +0200</span>
+              <span style="text-align: right; color: var(--muted);">Refs</span><span style="display: flex; gap: 4px; flex-wrap: wrap;"><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--border);">feature/side-by-side-diff</span></span>
+              <span style="text-align: right; color: var(--muted);">Commit Hash</span><span style="font-family: var(--mono); display: flex; align-items: center; gap: 8px;">c07aa1993f28e4b6d5a1c0ff7e2b8419ac03d5e1<span style="font-size: 10.5px; color: var(--dim); border: 1px solid var(--border); padding: 0 4px;">copier</span></span>
+              <span style="text-align: right; color: var(--muted);">Parent Hash</span><span style="font-family: var(--mono); color: var(--ac);">1de44f8</span>
+              <span style="text-align: right; color: var(--muted);">Tree Hash</span><span style="font-family: var(--mono); color: var(--muted);">9b7c04e</span>
+            </div>
+            <div style="flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+              <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 12px;">MK</span>
+              <span style="font-size: 11px; color: var(--dim);">▴</span>
+            </div>
+          </div>
+
+          <div style="flex: none; padding: 10px 12px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap;">💄 diff: side-by-side view with synced gutters
+
+Two independent scroll containers driven by one scroll
+origin, so both gutters stay aligned on wrap.
+
+Refs <span style="color: var(--ac);">#412</span> · Closes <span style="color: var(--ac);">#398</span></div>
+
+          <div style="flex: none; height: 26px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 11.5px;">
+            <span style="font-family: var(--mono); color: var(--muted);">Expand All</span>
+            <span style="flex: 1;"></span>
+            <span style="font-family: var(--mono); color: var(--muted);">Showing 17 changed files with <span style="color: var(--success);">1 370 additions</span> and <span style="color: var(--danger);">56 deletions</span></span>
+          </div>
+
+          <div style="flex: 1; min-height: 0; overflow: hidden;">
+            <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border);">
+              <span style="font-size: 9px; color: var(--muted); width: 10px;">▾</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning); flex: none;">M</span>
+              <span style="font-size: 12px; color: var(--warning); width: 76px;">Modified</span>
+              <span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">crates/layers_ui/src/</span>diff_view.rs</span>
+              <span style="flex: 1;"></span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap;">+312 −18</span>
+              <span style="display: flex; width: 80px; height: 6px; flex: none;"><span style="flex: 312; background: var(--success);"></span><span style="flex: 18; background: var(--danger);"></span></span>
+            </div>
+            <div style="padding: 0 12px 8px 34px; font-family: var(--mono); font-size: 12px; line-height: 19px;">
+              <div style="display: flex; align-items: center; height: 20px; background: var(--raised); color: var(--muted); font-size: 11px; padding: 0 8px;">@@ −142,8 +142,26 @@ impl DiffView {</div>
+              <div style="background: var(--add, color-mix(in srgb, var(--success) 12%, var(--bg))); padding: 0 8px;"><span style="color: var(--success);">+</span>  <span style="color: var(--info);">let</span> sync = <span style="color: var(--warning);">ScrollSync</span>::<span style="color: var(--ac);">new</span>(left, right);</div>
+              <div style="background: color-mix(in srgb, var(--success) 12%, var(--bg)); padding: 0 8px;"><span style="color: var(--success);">+</span>  sync.<span style="color: var(--ac);">bind</span>(cx);</div>
+              <div style="background: color-mix(in srgb, var(--danger) 12%, var(--bg)); padding: 0 8px;"><span style="color: var(--danger);">−</span>  left.<span style="color: var(--ac);">scroll_to</span>(right.<span style="color: var(--ac);">offset</span>());</div>
+            </div>
+            <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border);">
+              <span style="font-size: 9px; color: var(--muted); width: 10px;">▸</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--success); border: 1px solid var(--success); flex: none;">A</span>
+              <span style="font-size: 12px; color: var(--success); width: 76px;">Added</span>
+              <span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">crates/layers_ui/src/</span>scroll_sync.rs</span>
+              <span style="flex: 1;"></span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap;">+188 −0</span>
+              <span style="display: flex; width: 80px; height: 6px; flex: none;"><span style="flex: 1; background: var(--success);"></span></span>
+            </div>
+            <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--hover);">
+              <span style="font-size: 9px; color: var(--muted); width: 10px;">▸</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--info); border: 1px solid var(--info); flex: none;">R</span>
+              <span style="font-size: 12px; color: var(--info); width: 76px;">Renamed</span>
+              <span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">crates/layers_ui/src/</span>gutter.rs <span style="color: var(--dim);">←</span> <span style="color: var(--muted);">line_numbers.rs</span></span>
+              <span style="flex: 1;"></span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap;">+41 −12</span>
+              <span style="display: flex; width: 80px; height: 6px; flex: none;"><span style="flex: 41; background: var(--success);"></span><span style="flex: 12; background: var(--danger);"></span></span>
+            </div>
+            <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border);">
+              <span style="font-size: 9px; color: var(--muted); width: 10px;">▸</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--danger); border: 1px solid var(--danger); flex: none;">D</span>
+              <span style="font-size: 12px; color: var(--danger); width: 76px;">Deleted</span>
+              <span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">crates/layers_ui/src/</span>split_legacy.rs</span>
+              <span style="flex: 1;"></span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap;">+0 −26</span>
+              <span style="display: flex; width: 80px; height: 6px; flex: none;"><span style="flex: 1; background: var(--danger);"></span></span>
+            </div>
+            <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border);">
+              <span style="font-size: 9px; color: var(--muted); width: 10px;">▸</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--warning); border: 1px solid var(--warning); flex: none;">M</span>
+              <span style="font-size: 12px; color: var(--warning); width: 76px;">Modified</span>
+              <span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">crates/layers_ui/src/</span>keymap.rs</span>
+              <span style="flex: 1;"></span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap;">+64 −0</span>
+              <span style="display: flex; width: 80px; height: 6px; flex: none;"><span style="flex: 1; background: var(--success);"></span></span>
+            </div>
+            <div style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border);">
+              <span style="font-size: 9px; color: var(--muted); width: 10px;">▸</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--muted); flex: none;">B</span>
+              <span style="font-size: 12px; color: var(--muted); width: 76px;">Binary</span>
+              <span style="font-family: var(--mono); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--muted);">assets/</span>icons.woff2</span>
+              <span style="flex: 1;"></span>
+              <span style="font-family: var(--mono); font-size: 11px; color: var(--dim); white-space: nowrap;">binaire · 42 Ko</span>
+              <span style="display: flex; width: 80px; height: 6px; flex: none;"><span style="flex: 1; background: var(--border);"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex: none; height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 10px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;">
+        <span>⑂ main</span><span style="color: var(--muted);">↑8 ↓2</span>
+        <span style="color: var(--border);">│</span><span style="color: var(--muted);">2 commits sélectionnés — comparaison A ↔ B</span>
+        <span style="flex: 1;"></span><span style="color: var(--dim);">1 248 commits chargés</span>
+      </div>
+    </div>
+    </div>
+
+    <!-- ═══ 8 LANES ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 40px 0 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Les huit lanes générées</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">oklch(L C H) · H = 20 + 45n · L et C fixés relativement au fond</span>
+    </div>
+    <div style="display: flex; gap: 0; border: 1px solid var(--border); max-width: 1600px;">
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l0);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 0 · 20°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l1);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 1 · 65°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l2);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 2 · 110°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l3);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 3 · 155°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l4);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 4 · 200°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l5);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 5 · 245°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l6);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 6 · 290°</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column;"><span style="height: 40px; background: var(--l7);"></span><span style="height: 22px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);">lane 7 · 335°</span></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 20px; max-width: 1600px;">
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">La lane ne lit jamais le thème</div>
+        <div>Change de palette : les huit teintes restent équiréparties et mutuellement distinguables. Seules <span style="font-family: var(--mono);">--laneL</span> et <span style="font-family: var(--mono);">--laneC</span> bougent, en fonction du mode, pour rester lisibles sur le fond.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Sélection d'une lane</div>
+        <div>Bascule « Lane sélectionnée » : la lane du commit sélectionné garde son opacité pleine, les autres tombent à 40 %. Le nœud sélectionné reste net — la position, pas la teinte, porte la lecture.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Nœuds</div>
+        <div>Disque plein 6px pour un commit ordinaire, cercle creux rempli du fond pour un merge. Trait 1.5px, bifurcations en quart de cercle net, jamais de courbe molle.</div>
+      </div>
+      <div style="border: 1px solid var(--border); background: var(--surface); padding: 10px 12px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 6px;">
+        <div style="color: var(--fg); font-weight: 500;">Comparaison A ↔ B</div>
+        <div>Deux commits sélectionnés portent un badge <span style="font-family: var(--mono);">A</span> et <span style="font-family: var(--mono);">B</span> en valeur inversée, pas en couleur. Le panneau de détail titre <span style="font-family: var(--mono);">c07aa19 comparé à 8a2e310</span> et la statusbar le rappelle.</div>
+      </div>
+    </div>
+
+    <!-- ══════ 1280 × 800 ══════ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin: 40px 0 4px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Repli — 1280 × 800</h2>
+      <span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted);">graphe et détail en onglets · gouttière réduite à 60px</span>
+    </div>
+    <div style="font-size: 11.5px; color: var(--dim); margin-bottom: 10px; max-width: 900px;">La gouttière passe de 100px à 60px : les lanes se resserrent à 12px d'écart et les lanes au-delà de la quatrième se replient dans un indicateur <span style="font-family: var(--mono);">+2</span> plutôt que de rogner le message de commit.</div>
+
+    <div style="overflow-x: auto; max-width: 100%; padding-bottom: 2px;">
+    <div style="width: 1280px; height: 800px; border: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; height: 48px; flex: none; border-bottom: 1px solid var(--border); padding: 0 8px; gap: 8px;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted); flex: none;">◧</span>
+        <span style="display: flex; flex-direction: column;"><span style="font-family: var(--mono); font-size: 13px; font-weight: 500;">layers</span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">main ↑8 ↓2</span></span>
+        <span style="flex: 1;"></span>
+        <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--border); flex: none;">Fetch</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500; flex: none;">Push<span style="font-family: var(--mono); font-size: 11px; opacity: 0.75;">↑8</span></span>
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border); color: var(--muted); flex: none;">⋯</span>
+      </div>
+      <div style="flex: 1; display: flex; min-height: 0;">
+        <div style="width: 240px; flex: none; border-right: 1px solid var(--border); background: var(--surface);">
+          <div style="padding: 8px;"><span style="display: flex; align-items: center; height: 26px; padding: 0 8px; background: var(--bg); border: 1px solid var(--border); color: var(--dim); font-size: 12px;">Filtrer</span></div>
+          <div style="height: 22px; display: flex; align-items: center; padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">Workspace</div>
+          <div style="height: 32px; display: flex; align-items: center; padding: 0 10px;">Working Copy</div>
+          <div style="height: 32px; display: flex; align-items: center; padding: 0 10px; background: var(--ac); color: var(--bg); font-weight: 500;">History</div>
+          <div style="height: 32px; display: flex; align-items: center; padding: 0 10px;">Stashes</div>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+          <div style="flex: none; height: 32px; display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: var(--surface);">
+            <span style="display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid var(--border); background: var(--bg); font-weight: 500; box-shadow: inset 0 -1px 0 var(--ac);">Graphe<span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">1</span></span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid var(--border); color: var(--muted);">Commit<span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">c07aa19</span><span style="font-family: var(--mono); font-size: 11px; color: var(--dim);">2</span></span>
+            <span style="flex: 1;"></span>
+            <span style="display: inline-flex; align-items: center; padding: 0 12px; border-left: 1px solid var(--border);"><span style="display: inline-flex; border: 1px solid var(--border);"><span style="height: 22px; display: inline-flex; align-items: center; padding: 0 8px; background: var(--ac); color: var(--bg); font-size: 11.5px; border-right: 1px solid var(--border);">All</span><span style="height: 22px; display: inline-flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 11.5px;">Remotes</span></span></span>
+          </div>
+          <div style="flex: none; height: 22px; display: flex; align-items: center; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;">September 2026</div>
+          <div style="flex: 1; min-height: 0; overflow: hidden; position: relative;">
+            <svg width="60" height="352" viewBox="0 0 60 352" style="position: absolute; left: 0; top: 0;" fill="none">
+              <g stroke="var(--l0)" stroke-width="1.5"><path d="M14 0 V352"></path></g>
+              <g stroke="var(--l1)" stroke-width="1.5"><path d="M26 110 V78 Q26 66 14 66"></path><path d="M26 110 V226 Q26 242 14 242"></path></g>
+              <g fill="var(--l0)" stroke="var(--l0)" stroke-width="1.5"><circle cx="14" cy="22" r="3"></circle><circle cx="14" cy="66" r="3.5" fill="var(--bg)"></circle><circle cx="14" cy="198" r="3"></circle><circle cx="14" cy="242" r="3"></circle><circle cx="14" cy="286" r="3.5" fill="var(--bg)"></circle><circle cx="14" cy="330" r="3"></circle></g>
+              <g fill="var(--l1)" stroke="var(--l1)" stroke-width="1.5"><circle cx="26" cy="110" r="3"></circle><circle cx="26" cy="154" r="3"></circle></g>
+            </svg>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; background: var(--ac); color: var(--bg); flex: none;">HEAD</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">il y a 2 h</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">9f3c1a2</span><span style="font-size: 12px; flex: none;">✨</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">theme: reload Omarchy palette without restart</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">hier 18:24</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">4b81de0</span><span style="font-size: 12px; flex: none;">🔀</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Merge branch 'feature/side-by-side-diff'</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--focus);"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">MK</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Marek Kowal</span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 4px; font-family: var(--mono); font-size: 10.5px; color: var(--success); border: 1px solid var(--success); flex: none;">GPG ✓</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">7 sept.</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">c07aa19</span><span style="font-size: 12px; flex: none;">💄</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">diff: side-by-side view with synced gutters</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">MK</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Marek Kowal</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">7 sept.</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">1de44f8</span><span style="font-size: 12px; flex: none;">💄</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">diff: intra-line word highlight at 24%</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">6 sept.</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">8a2e310</span><span style="font-size: 12px; flex: none;">🍎</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">topbar: reserve 78px for macOS traffic lights</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">EL</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Élodie Laurent</span><span style="display: inline-flex; align-items: center; height: 16px; padding: 0 5px; font-family: var(--mono); font-size: 10.5px; color: var(--info); border: 1px solid var(--info); flex: none;">origin/main</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">6 sept.</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">2f90c4b</span><span style="font-size: 12px; flex: none;">🎨</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">core: derive status tokens in OKLCH when absent</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">SB</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Sofia Bianchi</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">5 sept.</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">b6c1207</span><span style="font-size: 12px; flex: none;">🔀</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Merge branch 'fix/win-caption-buttons'</span></span></span></div>
+            <div style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 60px;"><span style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; flex: none;">SB</span><span style="display: flex; flex-direction: column; min-width: 0; flex: 1;"><span style="display: flex; align-items: center; gap: 6px;"><span style="font-weight: 500;">Sofia Bianchi</span><span style="flex: 1;"></span><span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">5 sept.</span></span><span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><span style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;">7ee0a53</span><span style="font-size: 12px; flex: none;">🪟</span><span style="font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">win: draw caption buttons at 46×48</span></span></span></div>
+          </div>
+          <div style="flex: none; height: 26px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;"><span style="color: var(--muted);">c07aa19 sélectionné</span><span style="flex: 1;"></span><span style="color: var(--dim);">⏎ ouvre l'onglet Commit</span></div>
+        </div>
+      </div>
+      <div style="flex: none; height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 10px; border-top: 1px solid var(--border); background: var(--surface); font-family: var(--mono); font-size: 11.5px;"><span>⑂ main</span><span style="color: var(--muted);">↑8 ↓2</span><span style="flex: 1;"></span><span style="color: var(--dim);">1 248 commits</span></div>
+    </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const THEMES = {
+  tokyo:  { '--bg':'#1a1b26','--fg':'#c0caf5','--sel':'#283457','--c8':'#414868','--ac':'#7aa2f7','--danger':'#f7768e','--success':'#9ece6a','--warning':'#e0af68','--info':'#7aa2f7','--laneL':'0.74','--laneC':'0.13','--mutedmix':'65%','--dimmix':'45%' },
+  gruvbox:{ '--bg':'#282828','--fg':'#ebdbb2','--sel':'#3c3836','--c8':'#928374','--ac':'#d79921','--danger':'#fb4934','--success':'#b8bb26','--warning':'#fabd2f','--info':'#83a598','--laneL':'0.75','--laneC':'0.12','--mutedmix':'65%','--dimmix':'45%' },
+  matte:  { '--bg':'#121212','--fg':'#eaeaea','--sel':'#262626','--c8':'#3a3a3a','--ac':'#9e9e9e','--danger':'oklch(0.68 0.17 25)','--success':'oklch(0.74 0.15 145)','--warning':'oklch(0.80 0.14 85)','--info':'oklch(0.70 0.13 250)','--laneL':'0.76','--laneC':'0.13','--mutedmix':'65%','--dimmix':'45%' },
+  light:  { '--bg':'#faf4ed','--fg':'#575279','--sel':'#f2e9e1','--c8':'#9893a5','--ac':'#286983','--danger':'#b4637a','--success':'#3e8c68','--warning':'#a6772a','--info':'#56949f','--laneL':'0.52','--laneC':'0.14','--mutedmix':'90%','--dimmix':'66%' }
+};
+
+class Component extends DCLogic {
+  state = { theme: 'tokyo', laneSel: true };
+  rootRef = React.createRef();
+  themeBar = React.createRef();
+  graphSvg = React.createRef();
+  selBtn = React.createRef();
+  rowA = React.createRef();
+  rowB = React.createRef();
+
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+
+  apply() {
+    const el = this.rootRef.current; if (!el) return;
+    const t = THEMES[this.state.theme];
+    for (const k in t) el.style.setProperty(k, t[k]);
+    const b = this.themeBar.current;
+    if (b) b.querySelectorAll('button').forEach(btn => {
+      const on = btn.getAttribute('data-theme') === this.state.theme;
+      btn.style.background = on ? 'var(--ac)' : 'transparent';
+      btn.style.color = on ? 'var(--bg)' : 'var(--muted)';
+    });
+    const svg = this.graphSvg.current;
+    if (svg) svg.querySelectorAll('g').forEach(g => {
+      const lane = g.getAttribute('data-lane') || g.getAttribute('data-node');
+      g.style.opacity = (!this.state.laneSel || lane === '1') ? '1' : '0.4';
+    });
+    if (this.selBtn.current) {
+      this.selBtn.current.style.background = this.state.laneSel ? 'var(--raised)' : 'transparent';
+      this.selBtn.current.style.color = this.state.laneSel ? 'var(--fg)' : 'var(--muted)';
+    }
+  }
+
+  renderVals() {
+    const set = o => () => this.setState(o);
+    return {
+      rootRef: this.rootRef, themeBar: this.themeBar, graphSvg: this.graphSvg,
+      selBtn: this.selBtn, rowA: this.rowA, rowB: this.rowB,
+      setTokyo: set({ theme: 'tokyo' }), setGruv: set({ theme: 'gruvbox' }),
+      setMatte: set({ theme: 'matte' }), setLight: set({ theme: 'light' }),
+      toggleSel: () => this.setState(s => ({ laneSel: !s.laneSel }))
+    };
+  }
+}
+</script>
+</body>
+</html>
