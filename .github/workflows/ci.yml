@@ -12,9 +12,10 @@ env:
   # compilation buys nothing and cost 3.7 GB of the cached target directory.
   CARGO_INCREMENTAL: 0
   # Full debug info is most of what remains. Line tables still give a panic
-  # backtrace with file and line, which is all a CI log is read for.
+  # backtrace with file and line, which is all a CI log is read for. Release is
+  # left alone: it carries no debug info by default, so naming it here would
+  # have added cost rather than removed it.
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
-  CARGO_PROFILE_RELEASE_DEBUG: line-tables-only
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,10 +26,10 @@ jobs:
   check:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    # A hung test used to run until the six-hour default killed it. The whole
-    # job takes about four minutes warm and about twenty from an empty cache,
-    # so anything past this is stuck, not slow.
-    timeout-minutes: 30
+    # A hung test used to run until the six-hour default killed it. This job
+    # takes about two minutes warm and about eleven from an empty cache, so
+    # anything past this is stuck, not slow.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +55,7 @@ jobs:
       # run was. One entry per platform stays well inside it.
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.name }}
+          shared-key: ${{ matrix.name }}-dev
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       # GPUI renders through Vulkan/Wayland/X11 on Linux and needs these to
@@ -86,6 +87,49 @@ jobs:
       - name: test
         timeout-minutes: 10
         run: cargo test --workspace -- --test-threads=1
+
+  # Same gate, run beside the checks rather than after them (SPEC §3 rule 8
+  # asks for a green release build, not for it to come last). It is the longest
+  # single step in CI by a wide margin — sixteen minutes of the twenty-seven a
+  # cold Linux run used to take — and it shares nothing with the dev profile, so
+  # sequencing it behind clippy and the tests only added its cost to theirs.
+  # In parallel the cold run is bounded by this job alone.
+  release:
+    name: ${{ matrix.name }} release
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-24.04
+          - name: macos
+            os: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          rustup show active-toolchain
+          cargo --version
+
+      # Its own entry: a release target directory shares no artefact with the
+      # dev one, and mixing them in a single key would cache both under
+      # whichever job saved last.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.name }}-release
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Linux system dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libfontconfig-dev libwayland-dev libxkbcommon-x11-dev \
+            libssl-dev libzstd-dev libvulkan1 libgit2-dev mesa-vulkan-drivers \
+            pkg-config
 
       - name: release build
         run: cargo build --workspace --release
