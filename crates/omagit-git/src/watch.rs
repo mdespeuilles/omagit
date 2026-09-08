@@ -130,8 +130,14 @@ impl Watcher {
     /// can act on once told.
     pub fn start(repo: &Repository) -> Result<(Self, async_channel::Receiver<Changes>)> {
         crate::assert_off_render_thread();
-        let git_dir = repo.git_dir().to_path_buf();
-        let work_dir = repo.work_dir().map(Path::to_path_buf);
+        // Resolved once, so the paths watched are the paths the platform will
+        // report back. macOS is why: `/var` is a symlink to `/private/var` and
+        // FSEvents reports the resolved form, so a watch registered on the
+        // unresolved path delivers events whose prefix does not match — and
+        // every working-copy change is silently dropped. A repository reached
+        // through any symlink has the same problem on any platform.
+        let git_dir = resolved(repo.git_dir());
+        let work_dir = repo.work_dir().map(resolved);
 
         let (raw_tx, raw_rx) = mpsc::channel();
         let mut inner = notify::recommended_watcher(move |event| {
@@ -178,6 +184,15 @@ impl Watcher {
             rx,
         ))
     }
+}
+
+/// A path with its symlinks resolved, or the path itself if it cannot be.
+///
+/// Falling back rather than failing: a repository whose path cannot be resolved
+/// is one that has just been unmounted or deleted, and the watch that follows
+/// will report that far more usefully than an error here.
+fn resolved(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 fn watch_error(error: notify::Error) -> GitError {

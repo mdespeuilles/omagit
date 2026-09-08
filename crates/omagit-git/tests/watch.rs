@@ -221,3 +221,45 @@ fn a_dropped_watcher_stops_the_thread() {
     }
     panic!("the channel is still open after the watcher was dropped");
 }
+
+#[test]
+fn a_repository_reached_through_a_symlink_still_reports_changes() {
+    // A repository opened through a symlink still has to report its changes.
+    //
+    // Read this test for what it is: on Linux it passes with or without the
+    // resolution in `Watcher::start`, because inotify reports paths under the
+    // watch root exactly as that root was spelled. It is macOS that resolves
+    // them — `/var` is a symlink to `/private/var`, FSEvents reports the
+    // resolved form, and a watch registered on the unresolved one then receives
+    // events whose prefix does not match and drops every one of them.
+    //
+    // So this asserts a property worth having and **does not** prove the fix.
+    // The macOS half of the matrix is what answers for that, which is the
+    // second time in this project it has caught something a green Linux run
+    // called fine (`docs/ARCHITECTURE.md` §5, tenth entry).
+    let fixture = TestRepo::new();
+    fixture.commit_file("src/main.rs", "fn main() {}\n", "first");
+
+    let link = fixture
+        .path()
+        .parent()
+        .expect("a parent")
+        .join("linked-repo");
+    let _ = std::fs::remove_file(&link);
+    std::os::unix::fs::symlink(fixture.path(), &link).expect("a symlink");
+
+    let repo = omagit_git::Repository::open(&link).expect("a repository through the link");
+    let (_watcher, changes) = Watcher::start(&repo).expect("a watcher");
+    std::thread::sleep(Duration::from_millis(300));
+    settle(&changes);
+
+    fixture.write("src/main.rs", "fn main() { println!() }\n");
+
+    let changes = next(&changes, "an edit under a symlinked repository");
+    assert!(
+        changes.working_copy,
+        "the watch and the events have to agree on how the path is spelled"
+    );
+
+    let _ = std::fs::remove_file(&link);
+}
