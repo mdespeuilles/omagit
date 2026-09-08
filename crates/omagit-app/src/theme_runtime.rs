@@ -262,23 +262,14 @@ mod tests {
     use core::prelude::v1::test;
     use std::time::Instant;
 
-    const ONE: &str = r##"
-        background = "#1a1b26"
-        foreground = "#c0caf5"
-        accent     = "#7aa2f7"
-        selection  = "#283457"
-        color8     = "#414868"
-        mode       = "dark"
-    "##;
-
-    const TWO: &str = r##"
-        background = "#282828"
-        foreground = "#ebdbb2"
-        accent     = "#d79921"
-        selection  = "#3c3836"
-        color8     = "#928374"
-        mode       = "dark"
-    "##;
+    /// Two real palettes, not two written from the description of the format.
+    ///
+    /// The hand-written pair these replace used `color8`, which no Omarchy theme
+    /// has — the mistake that made M1's Omarchy support inert for two
+    /// milestones (`docs/ARCHITECTURE.md` §2.9). A watcher test that seeds an
+    /// unparseable palette tests nothing, and this one would not have noticed.
+    const ONE: &str = include_str!("../../../tests/fixtures/omarchy/tokyo-night.colors.toml");
+    const TWO: &str = include_str!("../../../tests/fixtures/omarchy/matte-black.colors.toml");
 
     fn write_theme(dir: &Path, name: &str, colors: &str) {
         std::fs::create_dir_all(dir.join("theme")).expect("create");

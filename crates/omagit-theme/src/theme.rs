@@ -252,7 +252,10 @@ mod tests {
             t.surface_raised, theme.inputs.selection,
             "raised is selection"
         );
-        assert_eq!(t.border, theme.inputs.bright_black, "border is color8");
+        assert_eq!(
+            t.border, theme.inputs.bright_black,
+            "border is the palette's mid grey"
+        );
         // Tokyo Night's own foreground and accent are already legible, so
         // correction leaves them alone and the tokens are the raw inputs.
         assert_eq!(t.text, theme.inputs.foreground);

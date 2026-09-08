@@ -162,7 +162,7 @@ mod tests {
         foreground = "#e0e6ec"
         accent     = "#6fb2ff"
         selection  = "#22303c"
-        color8     = "#40505c"
+        muted      = "#40505c"
         mode       = "dark"
     "##;
 

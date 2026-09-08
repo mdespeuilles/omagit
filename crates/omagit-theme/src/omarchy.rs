@@ -8,10 +8,31 @@
 //! * **Legacy layouts are not supported.** `~/.config/omarchy/current` is not
 //!   consulted. SPEC §6.1 is explicit: no partial support, no guessing. If the
 //!   Quattro state is absent or invalid, the source is not offered at all.
-//! * **All six guaranteed keys are required.** DESIGN-TOKENS §2.1 lists
-//!   `background`, `foreground`, `accent`, `selection`, `color8` and `mode`; if
-//!   any is missing or malformed the *whole* palette is rejected. A partial
-//!   blend of two sources produces unreadable combinations, so there is none.
+//! * **All six guaranteed keys are required.** `background`, `foreground`,
+//!   `accent`, `selection`, `muted` and `mode`; if any is missing or malformed
+//!   the *whole* palette is rejected. A partial blend of two sources produces
+//!   unreadable combinations, so there is none.
+//!
+//! ## The key is `muted`, not `color8`
+//!
+//! SPEC §6.2 and DESIGN-TOKENS §2.1 both name the fifth guaranteed key
+//! `color8`. **No Omarchy theme has ever had one.** All 23 themes installed on
+//! the machine this was found on spell it `muted`, and the values line up
+//! exactly with what the canonical token means: Omarchy's `tokyo-night` has
+//! `muted = "#414868"`, and `embedded::TOKYO_NIGHT` carries
+//! `bright_black: 0x414868`.
+//!
+//! So the reader takes `muted`, and `color8` is not accepted as an alias: a
+//! fallback for a spelling that exists in no file is code with no caller
+//! (SPEC §2).
+//!
+//! This mattered for a whole milestone. M1 was written and verified on macOS,
+//! where the state directory never exists, against fixtures written from the
+//! prose above — and a fixture written from a document can only ever confirm
+//! the document. Every real Omarchy palette was rejected, and the source that
+//! SPEC §6.1 makes the *default* on Linux silently fell back to an embedded
+//! theme. `tests/fixtures/omarchy/` now holds real files, and
+//! `tests/omarchy_palettes.rs` reads them.
 
 use std::path::{Path, PathBuf};
 
@@ -23,6 +44,13 @@ use crate::tokens::Mode;
 const NAME_FILE: &str = "theme.name";
 /// `theme/colors.toml`, relative to the current-theme directory.
 const COLORS_FILE: &str = "theme/colors.toml";
+
+/// The key carrying what DESIGN-TOKENS calls `input.bright_black`.
+///
+/// Named here rather than inlined because the documents call it something else
+/// — see the module comment — and a reader who greps for `color8` should land
+/// on the explanation.
+const BRIGHT_BLACK_KEY: &str = "muted";
 
 /// The Quattro state directory, given a home directory.
 pub fn state_dir(home: &Path) -> PathBuf {
@@ -138,7 +166,7 @@ pub fn parse(name: &str, contents: &str) -> Result<Theme, ParseError> {
             foreground: color("foreground")?,
             accent: color("accent")?,
             selection: color("selection")?,
-            bright_black: color("color8")?,
+            bright_black: color(BRIGHT_BLACK_KEY)?,
             mode,
         },
         status: NamedStatus {
@@ -213,7 +241,7 @@ mod tests {
         foreground = "#c0caf5"
         accent     = "#7aa2f7"
         selection  = "#283457"
-        color8     = "#414868"
+        muted      = "#414868"
         mode       = "dark"
         red        = "#f7768e"
         green      = "#9ece6a"
@@ -227,7 +255,7 @@ mod tests {
         foreground = "#c0caf5"
         accent     = "#7aa2f7"
         selection  = "#283457"
-        color8     = "#414868"
+        muted      = "#414868"
         mode       = "dark"
     "##;
 
@@ -276,7 +304,7 @@ mod tests {
                    foreground = "#c0caf5"
                    accent     = "#7aa2f7"
                    selection  = "#283457"
-                   color8     = "#414868"
+                   muted      = "#414868"
                    mode       = "dark""##,
             ),
             (
@@ -285,7 +313,7 @@ mod tests {
                    foreground = "#c0caf5"
                    accent     = "#7aa2f7"
                    selection  = "#283457"
-                   color8     = "#414868"
+                   muted      = "#414868"
                    mode       = "dark""##,
             ),
             (
@@ -294,7 +322,7 @@ mod tests {
                    foreground = "#c0caf5"
                    accent     = "#7aa2f7"
                    selection  = "#283457"
-                   color8     = "#414868"
+                   muted      = "#414868"
                    mode       = "sepia""##,
             ),
         ];

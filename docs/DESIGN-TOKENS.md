@@ -27,11 +27,22 @@ composant n'utilise d'autre nom.
 | `input.foreground` | `foreground` | `--fg` |
 | `input.accent` | `accent` | `--ac` |
 | `input.selection` | `selection` | `--sel` |
-| `input.bright_black` | `color8` | `--c8` |
+| `input.bright_black` | `muted` * | `--c8` |
 | `input.mode` | `mode` | — |
 
 Si l'une manque ou est invalide, **la palette entière tombe en repli** sur un thème embarqué.
 Jamais de mélange partiel entre deux sources.
+
+\* **Corrigé au jalon M3, contre les fichiers réels.** Ce document et `SPEC.md`
+§6.2 nommaient cette clé `color8`. **Aucun thème Omarchy n'en a jamais eu** :
+les 23 thèmes installés sur une machine Omarchy l'écrivent `muted`, et les
+valeurs correspondent exactement — le `tokyo-night` d'Omarchy a
+`muted = "#414868"`, et le Tokyo Night embarqué de `omagit-theme` porte
+`bright_black: 0x414868`. Tant que le lecteur exigeait `color8`, **toute**
+palette Omarchy était rejetée et la source que §6.1 rend prioritaire sur Linux
+retombait silencieusement sur un thème embarqué. Le nom canonique
+(`input.bright_black`) ne change pas ; seule la clé lue change. `SPEC.md` §6.2
+n'a pas été modifié — c'est le brief — mais il est faux sur ce point.
 
 ### 2.2 Optionnelles — lues si présentes
 

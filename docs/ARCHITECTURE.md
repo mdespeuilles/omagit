@@ -173,7 +173,36 @@ and report differently on inotify and FSEvents, and the tracker makes that
 irrelevant. A read failure is deliberately not a change, so a `colors.toml`
 caught mid-save does not bounce the app to the fallback theme and back.
 
-### 2.9 The history walk is ours, and it is resumable
+### 2.9 The Omarchy key is `muted`, and the documents said `color8`
+
+Found at M3 by running the app on an actual Omarchy machine, which is the first
+time anyone had. SPEC §6.2 and DESIGN-TOKENS §2.1 both name the fifth guaranteed
+key `color8`; **no Omarchy theme has ever had one**. All 23 themes installed
+spell it `muted`, and the values are the same thing under a different name:
+Omarchy's `tokyo-night` has `muted = "#414868"`, and `embedded::TOKYO_NIGHT`
+carries `bright_black: 0x414868`.
+
+The consequence was total rather than partial, because §2.1's own rule made it
+so: a missing guaranteed key rejects the *whole* palette. So every Omarchy
+palette was rejected, and the source SPEC §6.1 makes the default on Linux fell
+back to an embedded theme on every launch. The app worked, looked deliberate,
+and ignored the system theme.
+
+**How it survived a milestone whose subject was themes.** M1 was written and
+verified on macOS, where the state directory never exists, so the reader was
+only ever exercised against fixtures — and the fixtures were written from the
+prose above. A fixture written from a document can only ever confirm the
+document. `tests/fixtures/omarchy/` now holds three real `colors.toml` files
+copied verbatim from `/usr/share/omarchy/themes/`, and
+`omagit-theme/tests/omarchy_palettes.rs` reads them; one of its assertions is
+the equality with the embedded palette above, which is a fact rather than an
+opinion.
+
+`color8` is deliberately **not** accepted as an alias. A fallback for a spelling
+that exists in no file is code with no caller (SPEC §2), and keeping it would
+preserve the illusion that the documents were right.
+
+### 2.10 The history walk is ours, and it is resumable
 
 `gix` has a revision walk, and it is a good one, but it borrows the repository
 for the lifetime of the iterator — so a walk cannot outlive the background job
@@ -196,7 +225,7 @@ histories on two runs.
 M6's lane computation reads this same order, which is the only way a graph is
 guaranteed to line up with the rows beside it.
 
-### 2.10 Paths are bytes, and nothing here normalises them
+### 2.11 Paths are bytes, and nothing here normalises them
 
 Git paths are byte strings; a file committed under a Latin-1 name is a valid Git
 path no `String` can hold. `omagit_git::RepoPath` carries bytes end to end and
@@ -212,7 +241,7 @@ holds. Normalising again is how a name stops matching its own entry, so
 `Readme.md` and `README.md` are two distinct Git paths, and reconciling them on
 a case-insensitive volume is `core.ignorecase`'s job.
 
-### 2.11 A diff is computed per file, and refined only where it helps
+### 2.12 A diff is computed per file, and refined only where it helps
 
 Three levels — which files, which lines, which words — each the input of the
 next, and all computed on demand: a commit touching 900 files must render its
@@ -234,7 +263,7 @@ reported as oversized instead of diffed, and a NUL byte in the first 8 000 makes
 it binary — Git's own test, kept identical so omagit and the command line never
 disagree about which files they refuse to show.
 
-### 2.12 State lives in a store, view state lives in the view
+### 2.13 State lives in a store, view state lives in the view
 
 SPEC §10 draws the line and M3 is where it first has to hold. `Store` owns the
 persisted library and an `AsyncState<Summary>` per repository; the screen owns
@@ -259,7 +288,7 @@ already loading, and an error state would report their own action back to them.
 The filesystem watcher of SPEC §10 is not here yet: nothing holds a repository
 open long enough to need invalidating. It arrives at M4 (see risk 8).
 
-### 2.13 The repository list is set aside, never overwritten
+### 2.14 The repository list is set aside, never overwritten
 
 `Settings` falls back to defaults when its file is malformed, which is right for
 preferences — losing a theme choice costs nothing. The library is different: it
@@ -273,7 +302,7 @@ branch, the ahead/behind and the status counts are read from the repository
 every time, because a cached branch name is wrong the moment someone checks out
 another one in a terminal.
 
-### 2.14 The vendored design system is not linted
+### 2.15 The vendored design system is not linted
 
 `vendor/gpui-omarchy/src/` is byte-identical to the published crate, and stays
 that way: it is what lets `scripts/sync-vendor.sh` tell an upstream change from
@@ -398,7 +427,7 @@ Re-read at every milestone (SPEC §15).
 | 1 | **The UI thread blocks.** The most likely failure mode. | **First real exercise, and it holds.** Every public entry point in `omagit-git` opens with `assert_off_render_thread`; the store runs every read through `cx.background_spawn` and lands it with `this.update`. A status, a reference read and a ninety-day walk per repository, on every launch, and the guard has not fired. It stays only as good as the next entry point somebody adds: a review item, permanently. |
 | 2 | **The `gix` / CLI split lands wrong.** | **Answered.** `gix` covers every M2 read, with the measurements in `docs/notes/gitoxide-capabilities.md`; nothing fell back, and the trait is deferred to M5 rather than built empty (§2.6). The rule is unchanged for the milestones that follow: when `gix` does not cover a case, move it to the CLI and write down why — never work around it. |
 | 3 | **`gpui-omarchy` is incomplete.** | Confirmed: no diff view, no graph, no palette, no file tree, and a theme vocabulary that does not match ours. Mitigated by vendoring and by owning the tokens — M1 replaced its theme handling entirely rather than extending it. Its `virtual_list`, `resizable` and `tree` look reusable — to be confirmed against 100 000 rows at M6. |
-| 4 | **The commit graph.** The hardest algorithm here. | Not started; its input exists and is pinned down: the walk of §2.9 is total, reproducible and matched against `git log`. Lanes stay in `omagit-git/graph.rs` at M6, computing topology only, never colour, and never coupled to rendering. |
+| 4 | **The commit graph.** The hardest algorithm here. | Not started; its input exists and is pinned down: the walk of §2.10 is total, reproducible and matched against `git log`. Lanes stay in `omagit-git/graph.rs` at M6, computing topology only, never colour, and never coupled to rendering. |
 | 5 | **Data loss.** | Still no mutating Git operation. M3 added the first thing omagit *writes*, though — the repository list — and it is handled as data rather than as a cache: a malformed file is set aside, not overwritten (§2.13), and "Retirer de la liste" removes an entry while touching nothing on disk. `cli::Invocation` remains loggable exactly as it will run, before it runs. |
 | 6 | **macOS distribution cost.** | Unchanged and recurring: Apple developer account, signing, notarisation, a macOS CI runner. Budget it now, not at M10. |
 
@@ -437,6 +466,19 @@ keyboard":
 Neither is visible in a screenshot, and neither would have been caught by
 reading the code. Dragging a row between groups is still verified only by hand,
 and so is the folder picker.
+
+A twelfth, from M3, and it is the ninth and tenth risks collecting: **M1's
+Omarchy support never worked on Omarchy.** The reader required a key
+(`color8`) that no Omarchy theme has, so every palette was rejected and the
+source SPEC §6.1 makes the default on Linux fell back to an embedded theme —
+silently, on every launch, for two milestones. It was written on macOS, where
+there is no Omarchy at all, and tested against fixtures transcribed from the
+prose that was wrong (§2.9).
+
+The lesson is not "test on Linux", which the risks already said. It is narrower
+and worth writing down: **a fixture written from a document tests the document.**
+Where omagit reads a format somebody else owns, the fixture has to be a file
+that somebody else wrote. `tests/fixtures/omarchy/` is the first of those.
 
 A tenth, from M2, and the same lesson one layer down: **the macOS half of the
 read path is only ever exercised by CI.** Two behaviours differ there and
