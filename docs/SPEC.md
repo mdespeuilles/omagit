@@ -85,13 +85,27 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 | Git (lecture) | `gix` (gitoxide) | rapide, pur Rust, pas de dépendance C |
 | Git (écriture / réseau) | binaire `git` en sous-processus | choix délibéré, voir §8 |
 | Surveillance FS | `notify` + debounce maison | |
-| Coloration syntaxique | `tree-sitter` + grammaires | GPUI l'embarque déjà |
+| Coloration syntaxique | `tree-sitter` + grammaires | grammaires embarquées par omagit — voir l'amendement §4 |
 | Diff | `imara-diff` ou `gix-diff` | Myers + raffinement mot à mot |
 | Couleur | `palette` ou équivalent, avec support OKLCH | indispensable pour §6 |
 | Async | l'executor de GPUI (`background_spawn`) | **pas** de runtime Tokio global |
 | Erreurs | `thiserror` dans les crates, `anyhow` dans le binaire | |
 | Logs | `tracing` + `tracing-subscriber`, fichier tournant | |
 | Config | `serde` + TOML | emplacement par OS, voir §9 |
+
+> **Amendement, jalon M4 (2026-09-08) — « GPUI l'embarque déjà » est faux ici.**
+>
+> La note de la ligne « Coloration syntaxique » disait que GPUI embarque
+> tree-sitter. `gpui-kit` le propose bien, mais **derrière `gpui-component`**,
+> que ce workspace n'active pas : `gpui-omarchy` en dépend avec
+> `default-features = false`, et l'activer tirerait une seconde bibliothèque de
+> composants concurrente de celle qu'on a vendorée (§5). La coloration a donc
+> ses propres grammaires : `tree-sitter` plus une grammaire par langage
+> réellement affiché — Rust, TOML, JSON, Markdown — et rien de plus, chacune
+> étant une compilation C. Un fichier sans grammaire s'affiche en clair, ce qui
+> reste lisible : la hiérarchie ne repose jamais sur la teinte (DESIGN §1).
+>
+> Détail dans `docs/ARCHITECTURE.md` §2.18 et `docs/notes/gpui-kit-capabilities.md`.
 
 ## 5. Vendorer `gpui-omarchy` dès M0
 

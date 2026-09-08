@@ -16,11 +16,14 @@ use gpui_kit::{
     Window, WindowBounds, WindowOptions, div, px, size,
 };
 
+use omagit_git::Repository;
 use omagit_theme::DensityMode;
 use omagit_ui::{ActiveFonts, ActivePalette, Fonts, Palette, hsla};
 
+use crate::actions::{ShowRepositories, ShowWorkingCopy};
 use crate::platform::{self, Platform, TOPBAR_HEIGHT_COMFORTABLE, TOPBAR_HEIGHT_COMPACT};
-use crate::screens::RepositoriesScreen;
+use crate::repo_store::RepoStore;
+use crate::screens::{RepositoriesScreen, WorkingCopyScreen};
 use crate::store::Store;
 
 /// The reference window of the mock-ups is 1600×1000; below 1100px of usable
@@ -28,11 +31,26 @@ use crate::store::Store;
 const DEFAULT_SIZE: (f32, f32) = (1600.0, 1000.0);
 const MIN_SIZE: (f32, f32) = (900.0, 600.0);
 
+/// Which screen is showing.
+///
+/// An enum rather than a stack: the three screens of SPEC §1 are peers, not a
+/// navigation history, and `Esc` goes *up a level* (DESIGN §5) rather than back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Screen {
+    Repositories,
+    WorkingCopy,
+}
+
 pub struct Shell {
     density: DensityMode,
     platform: &'static dyn Platform,
     store: Entity<Store>,
     repositories: Entity<RepositoriesScreen>,
+    screen: Screen,
+    /// Built when a repository is opened, and kept afterwards: it owns the
+    /// filesystem watcher, so keeping it means coming back to a screen that is
+    /// already up to date rather than one that has to re-read.
+    working_copy: Option<(std::path::PathBuf, Entity<WorkingCopyScreen>)>,
     /// Held for its lifetime: dropping it stops the window following the
     /// system's light/dark preference.
     _appearance: Subscription,
@@ -55,6 +73,8 @@ impl Shell {
             platform: platform::current(),
             store,
             repositories,
+            screen: Screen::Repositories,
+            working_copy: None,
             _appearance: appearance,
             _store_changed: store_changed,
         }
@@ -164,13 +184,70 @@ impl Shell {
     }
 }
 
+impl Shell {
+    /// Show the repository the Repositories screen just marked as open.
+    ///
+    /// Opening it is Git work, so it happens on the background executor and the
+    /// screen appears when the repository is actually open — not before, and
+    /// not by blocking a frame on it.
+    fn open_working_copy(&mut self, _: &ShowWorkingCopy, _: &mut Window, cx: &mut Context<Self>) {
+        let Some(path) = self.store.read(cx).open_repository().map(ToOwned::to_owned) else {
+            return;
+        };
+        // Already open: switch to it rather than rebuilding, which would drop a
+        // watcher only to start the same one again.
+        if matches!(&self.working_copy, Some((open, _)) if *open == path) {
+            self.screen = Screen::WorkingCopy;
+            cx.notify();
+            return;
+        }
+
+        cx.spawn(async move |shell, cx| {
+            let opened = {
+                let path = path.clone();
+                cx.background_spawn(async move { Repository::open(&path) })
+                    .await
+            };
+            shell
+                .update(cx, |shell, cx| match opened {
+                    Ok(repo) => {
+                        // Replacing the previous pair drops the old store, and
+                        // with it the old watcher.
+                        let store = cx.new(|cx| RepoStore::new(repo, path.clone(), cx));
+                        let screen = cx.new(|cx| WorkingCopyScreen::new(store, cx));
+                        shell.working_copy = Some((path, screen));
+                        shell.screen = Screen::WorkingCopy;
+                        cx.notify();
+                    }
+                    Err(error) => {
+                        // The Repositories screen already draws this repository
+                        // as missing; there is nothing to add but a log line.
+                        tracing::warn!(%error, "could not open the repository");
+                    }
+                })
+                .ok();
+        })
+        .detach();
+    }
+}
+
 impl Render for Shell {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = cx.palette().clone();
         let fonts = cx.fonts().clone();
         let t = palette.tokens;
 
+        let body = match (self.screen, &self.working_copy) {
+            (Screen::WorkingCopy, Some((_, screen))) => screen.clone().into_any_element(),
+            _ => self.repositories.clone().into_any_element(),
+        };
+
         div()
+            .on_action(cx.listener(Self::open_working_copy))
+            .on_action(cx.listener(|shell, _: &ShowRepositories, _, cx| {
+                shell.screen = Screen::Repositories;
+                cx.notify();
+            }))
             .flex()
             .flex_col()
             .size_full()
@@ -179,13 +256,7 @@ impl Render for Shell {
             .font_family(fonts.ui.clone())
             .text_size(px(13.0))
             .child(self.topbar(&palette, &fonts, cx))
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .min_h_0()
-                    .child(self.repositories.clone()),
-            )
+            .child(div().flex().flex_1().min_h_0().child(body))
     }
 }
 

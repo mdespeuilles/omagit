@@ -98,6 +98,15 @@ pub enum DiffContent {
         hunks: Vec<Hunk>,
         added: usize,
         removed: usize,
+        /// Both sides in full, as they were compared.
+        ///
+        /// Kept rather than dropped once the hunks are built, because two
+        /// things the viewer has to do cannot be done from hunks alone:
+        /// syntax highlighting needs the whole file — a parser handed a
+        /// fragment of one produces nonsense — and unfolding the context
+        /// between two hunks needs the lines that were left out. Bounded by
+        /// [`DiffOptions::max_bytes`], and only ever for the file on screen.
+        sides: Box<Sides>,
     },
     /// One side contains a NUL byte in its first 8 000 — Git's own test, kept
     /// identical so omagit and the command line never disagree about what is
@@ -113,6 +122,31 @@ pub enum DiffContent {
     },
     /// Nothing to show: a mode change, or two identical sides.
     Empty,
+}
+
+/// The two sides of a text diff, in full.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Sides {
+    pub old: Vec<u8>,
+    pub new: Vec<u8>,
+}
+
+impl Sides {
+    /// One side's lines, without their terminators — what a viewer draws when
+    /// it unfolds context, and what a highlighter indexes into.
+    ///
+    /// Line *n* here is the line the `@@` header calls *n + 1*, so a caller can
+    /// index straight into it with a diff line number minus one.
+    pub fn lines(text: &[u8]) -> Vec<&[u8]> {
+        if text.is_empty() {
+            return Vec::new();
+        }
+        // A trailing newline terminates the last line rather than starting an
+        // empty one; a file without a final newline keeps its last line either
+        // way.
+        let body = text.strip_suffix(b"\n").unwrap_or(text);
+        body.split(|byte| *byte == b'\n').collect()
+    }
 }
 
 /// A run of lines, with its context.
@@ -798,6 +832,10 @@ fn text_diff(old: &[u8], new: &[u8], options: DiffOptions) -> DiffContent {
         hunks,
         added,
         removed,
+        sides: Box::new(Sides {
+            old: old.to_vec(),
+            new: new.to_vec(),
+        }),
     }
 }
 
@@ -1083,6 +1121,29 @@ mod tests {
             .map(|range| String::from_utf8_lossy(&line[range]).into_owned())
             .collect();
         assert_eq!(split, vec!["café"], "a UTF-8 letter is not two tokens");
+    }
+
+    #[test]
+    fn splits_a_side_into_the_lines_the_headers_number() {
+        let lines = |text: &str| {
+            Sides::lines(text.as_bytes())
+                .into_iter()
+                .map(|line| String::from_utf8_lossy(line).into_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(lines("a\nb\nc\n"), vec!["a", "b", "c"]);
+        assert_eq!(
+            lines("a\nb\nc"),
+            vec!["a", "b", "c"],
+            "a file with no final newline still ends on its last line"
+        );
+        assert_eq!(
+            lines("a\n\nb\n"),
+            vec!["a", "", "b"],
+            "a blank line in the middle is a line"
+        );
+        assert_eq!(lines(""), Vec::<String>::new());
+        assert_eq!(lines("\n"), vec![""], "a file that is one empty line");
     }
 
     #[test]

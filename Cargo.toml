@@ -55,6 +55,21 @@ async-channel = "2"
 tempfile = "3"
 clap = { version = "4", features = ["derive"] }
 
+# Syntax highlighting for the diff viewer (SPEC §4). SPEC's own note says
+# "GPUI l'embarque déjà" — it does not, for this workspace: `gpui-kit` routes
+# tree-sitter through `gpui-component`, which is off here because turning it on
+# would pull in a second, competing component library (see
+# docs/notes/gpui-kit-capabilities.md). So the grammars are omagit's own.
+#
+# One grammar per language actually rendered, and no more: each is a C compile
+# and an unhighlighted file is a legible file (DESIGN §1 — hierarchy never rests
+# on hue), so an absent grammar costs far less than a speculative one.
+tree-sitter = "0.27"
+tree-sitter-rust = "0.24"
+tree-sitter-toml-ng = "0.7"
+tree-sitter-json = "0.24"
+tree-sitter-md = "0.5"
+
 # Local time, for an interface that says "aujourd'hui" and "il y a 2 h".
 # Already in the tree under `gix`, so it costs no build time — see
 # `omagit-app/src/time.rs` for why the alternative was worse.

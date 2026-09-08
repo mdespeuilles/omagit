@@ -439,13 +439,16 @@ impl RepositoriesScreen {
             // back to the list. Opening a repository from inside a text field
             // would be the screen acting on a keystroke meant for the field.
             Stop::Filter | Stop::Description => self.go_to(Stop::List, window, cx),
-            Stop::List | Stop::Open => self.open_selected(cx),
+            Stop::List | Stop::Open => self.open_selected(window, cx),
         }
     }
 
-    fn open_selected(&mut self, cx: &mut Context<Self>) {
+    fn open_selected(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(at) = self.selected else { return };
         self.store.update(cx, |store, cx| store.mark_opened(at, cx));
+        // The shell owns which screen is showing, so this asks rather than
+        // switches — the same way the topbar asks for "add a repository".
+        window.dispatch_action(Box::new(ShowWorkingCopy), cx);
         cx.notify();
     }
 
@@ -1226,7 +1229,9 @@ impl RepositoriesScreen {
                                     self.focused(Stop::Open, false),
                                 )
                                 .id("open")
-                                .on_click(cx.listener(|screen, _, _, cx| screen.open_selected(cx)))
+                                .on_click(cx.listener(|screen, _, window, cx| {
+                                    screen.open_selected(window, cx)
+                                }))
                                 .child(shortcut(
                                     "⏎",
                                     palette,

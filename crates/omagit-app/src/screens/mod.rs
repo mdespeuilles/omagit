@@ -9,5 +9,7 @@
 //! and the topbar routes between them.
 
 pub mod repositories;
+pub mod working_copy;
 
 pub use repositories::RepositoriesScreen;
+pub use working_copy::WorkingCopyScreen;

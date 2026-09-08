@@ -91,13 +91,19 @@ Other sources: `omarchy` (Linux, follows the live Quattro palette),
 
 ## Current state
 
-**M3 — the Repositories screen.** The first screen: a sidebar of repositories in
+**M4 — the Working Copy, in read.** Open a repository and read it: the files
+that changed, split into what is staged and what is not, and the diff of any of
+them — unified or side by side, with the changed words picked out inside a line,
+syntax colouring in the five roles the design allows, and a filesystem watcher
+that refreshes the screen when the repository moves underneath. Nothing writes
+yet; staging and committing are M5.
+
+Before it, **M3's Repositories screen**: a sidebar of repositories in
 collapsible, drag-reorderable groups, and a card reading out where each one is,
 what its working copy looks like, who would sign a commit there, and ninety days
-of activity. Navigable end to end from the keyboard — six tab stops, `1`/`2`/`3`
-zone jumps, `j`/`k`, `/` to filter (`docs/KEYMAP.md`).
+of activity. Navigable end to end from the keyboard (`docs/KEYMAP.md`).
 
-Under it, **M2's Git core**: `omagit-git` opens repositories, reads the working
+Under both, **M2's Git core**: `omagit-git` opens repositories, reads the working
 copy, the references and a paged history, and computes diffs down to the changed
 words inside a line, with no UI dependency at all. `omagit-git-cli` drives every
 bit of it from a terminal.

@@ -10,11 +10,15 @@
 //! owns state and routing (SPEC §7); what lives here is what more than one of
 //! them will draw.
 
+pub mod diff_view;
 pub mod fonts;
 pub mod icons;
 pub mod primitives;
+pub mod syntax;
 pub mod theme_bridge;
 
+pub use diff_view::DiffView;
 pub use fonts::{ActiveFonts, Fonts};
 pub use icons::Icon;
+pub use syntax::{Highlighter, Role};
 pub use theme_bridge::{ActivePalette, Palette, apply, hsla};

@@ -81,6 +81,7 @@ fn shows_the_lines_a_commit_changed() {
         hunks,
         added,
         removed,
+        ..
     } = &file.content
     else {
         panic!("expected text");
