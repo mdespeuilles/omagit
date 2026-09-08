@@ -72,6 +72,33 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
    de branche, discard : confirmation explicite et journalisation.
 8. **Un jalon = une PR**, avec `cargo fmt --check`, `cargo clippy -- -D warnings` et
    `cargo test` verts **sur Linux et macOS** avant de proposer la suite.
+
+> **Amendement, après M4 (2026-09-08) — la vérification est locale, pas en CI.**
+>
+> Cette règle a été lue comme « GitHub Actions rejoue tout, sur les deux
+> plateformes, à chaque push ». Sur un dépôt **privé** développé par **une seule
+> personne**, ça ne protège de rien : il n'y a pas de contributeur dont il
+> faudrait vérifier le travail, et un push qui casse la compilation n'est
+> découvert que par celui qui l'a écrit — qui le savait déjà. Le coût, lui, est
+> réel : macOS est facturé ×10, et le seul run de la PR #1 a consommé environ
+> 113 minutes.
+>
+> Le workflow est donc **supprimé** (`.github/workflows/ci.yml`, dernier état au
+> commit `08193f5`, à restaurer tel quel le jour où il servira). Ce qui reste :
+> `scripts/check.sh`, lancé quand on le décide.
+>
+> Ce que ça coûte, écrit noir sur blanc plutôt que passé sous silence : plus
+> personne ne compile l'autre plateforme. `scripts/check.sh` ne compile que la
+> moitié de `omagit-app/src/platform/` correspondant à la machine hôte, et la
+> moitié macOS de `status` (repli de casse APFS, noms décomposés) n'est plus
+> exercée nulle part. Ces deux angles morts ont déjà produit deux bugs réels
+> (`docs/ARCHITECTURE.md` §5). Le projet se développant sur les deux machines,
+> ils seront vus au prochain passage sur l'autre — plus tard, et c'est le
+> marché accepté ici.
+>
+> **À rétablir si un second développeur rejoint le projet** : la règle redevient
+> alors ce qu'elle dit, parce qu'il y a enfin du travail à vérifier qui n'est
+> pas le sien.
 9. **Écris les tests avec le code.** Chaque commande Git implémentée arrive avec au moins un
    test d'intégration sur un dépôt temporaire.
 

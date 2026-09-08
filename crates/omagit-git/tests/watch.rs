@@ -234,9 +234,11 @@ fn a_repository_reached_through_a_symlink_still_reports_changes() {
     // events whose prefix does not match and drops every one of them.
     //
     // So this asserts a property worth having and **does not** prove the fix.
-    // The macOS half of the matrix is what answers for that, which is the
-    // second time in this project it has caught something a green Linux run
-    // called fine (`docs/ARCHITECTURE.md` §5, tenth entry).
+    // What proves it is running this file on a Mac — which, since CI was
+    // removed, happens when somebody does it, not automatically. The fix
+    // itself was confirmed once, on the last macOS run there was: five of
+    // these tests failed with "no notification within 5s" before it and
+    // passed after (`docs/ARCHITECTURE.md` §5, tenth entry).
     let fixture = TestRepo::new();
     fixture.commit_file("src/main.rs", "fn main() {}\n", "first");
 

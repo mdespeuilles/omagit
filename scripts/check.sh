@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-# The gate a milestone has to pass before it becomes a PR (SPEC §3 rule 8).
-# CI runs exactly this, on Linux and on macOS.
+# The gate a milestone has to pass (SPEC §3 rule 8). Since the amendment to that
+# rule this is the *only* gate: there is no CI, so nothing runs unless you run
+# it here.
 #
-# It only ever compiles *this* host's half of `omagit-app/src/platform/`, so a
-# break in the other one is invisible here and shows up in CI. That is what the
-# two-platform matrix is for; do not read a green run on one machine as a green
-# milestone. CI additionally runs `cargo deny` and the vendor drift check.
+# It compiles only *this* host's half of `omagit-app/src/platform/`, and the
+# macOS-only behaviours in `status` — APFS case folding, decomposed names — are
+# exercised only when this runs on a Mac. A green run says the milestone is
+# green on this machine and nothing about the other one; run it on both before
+# calling a milestone done.
+#
+# `scripts/sync-vendor.sh` is the other check worth running before a milestone,
+# separately: it needs the network, which this script deliberately does not.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -25,13 +30,13 @@ echo "── release build ─────────────────�
 cargo build --workspace --release
 
 echo "── deny ───────────────────────────────────────────"
-# Optional locally, mandatory in CI. Its `[graph] targets` cover Linux as well
+# Its `[graph] targets` cover Linux as well
 # as macOS, so a licence or advisory problem that only appears in the Linux
 # dependency tree is caught here too — unlike the compile steps above.
 if command -v cargo-deny >/dev/null 2>&1; then
   cargo deny check bans licenses sources advisories
 else
-  echo "cargo-deny not installed (cargo install cargo-deny) — CI will run it"
+  echo "cargo-deny not installed (cargo install cargo-deny) — licences unchecked"
 fi
 
-echo "all green on $(uname -s) — the other platform is CI's answer to give"
+echo "all green on $(uname -s) — the other platform is only ever answered for by running this there"
