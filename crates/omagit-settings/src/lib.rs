@@ -1,12 +1,24 @@
-//! Persisted preferences, in TOML.
+//! What omagit remembers between sessions, in TOML.
 //!
-//! Stores which theme source to use and at what density. The source, not the
-//! resolved palette: a stored palette would go stale the moment the system
-//! theme changed. The keymap and the persisted layout arrive with M9.
+//! Two files, deliberately:
+//!
+//! * [`Settings`] — which theme source to use and at what density. The
+//!   *source*, not the resolved palette: a stored palette would go stale the
+//!   moment the system theme changed.
+//! * [`Library`] — the repositories the user has added, and the groups they
+//!   arranged them in.
+//!
+//! They are written at completely different rates, and a corrupted write to one
+//! must not take the other with it. The keymap and the persisted layout arrive
+//! with M9.
 
 use std::path::{Path, PathBuf};
 
 use omagit_theme::{DensityMode, ThemeSource};
+
+pub mod library;
+
+pub use library::{Entry, Group, Library, Location};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]

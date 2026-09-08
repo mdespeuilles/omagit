@@ -147,6 +147,32 @@ boards.
 One more, from the boards' own copy: the mock-ups list `'Segoe UI Variable
 Text'` in the UI stack. Windows is out of scope, so it is dropped in code.
 
+### Four more, found on board 06 while building M3
+
+Same rule, one level up: where **this document** states something and a board
+contradicts it, this document wins — it is the authority on interface states
+(SPEC preamble).
+
+1. **A selected row takes `surface_raised`, not `accent`.** §1 states the rule
+   and gives the reason — "Selection stays legible because it changes *surface*
+   and carries a ring, not because its hue differs" — and board 06 paints the
+   selected repository row in `accent` with `bg` text. The rule wins. It matters
+   most on Matte Black, where §1 warns that `accent` and `border` come close: a
+   selection that reads as a hue has nothing left to say there. Following the
+   rule also keeps the row's status colour, which the accent fill overwrote.
+2. **A repository row always uses the repository glyph.** The board's own copy
+   says "Le dépôt est un rectangle à reliure, le groupe un dossier", and then
+   draws the rows under *Travail* with the folder. The copy wins: shape is
+   carrying meaning here, so it cannot mean two things.
+3. **Rows are indented under their group header, uniformly.** The board indents
+   the rows of two groups out of three. Indentation is structure, and §1 puts
+   structure on value, borders and position — so it applies everywhere or
+   nowhere. Everywhere.
+4. **The 0.08em tracking on 11px uppercase labels is dropped.** The renderer has
+   no letter-spacing. Faking it by inserting spaces between characters would
+   break selection and copy, which is a worse trade than a label set slightly
+   tighter than the mock-up.
+
 ## 7. Not yet designed
 
 Called out by the boards themselves, so they are not mistaken for oversights:

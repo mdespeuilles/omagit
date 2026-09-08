@@ -72,7 +72,13 @@ and omagit's own components never read it.
    `~/.config/omarchy/current`. SPEC §6.1 explicitly does **not** support legacy
    layouts, which is one reason omagit reads Omarchy itself at M1 rather than
    delegating.
-3. **Its guaranteed-key set is smaller than ours.** It requires only
+3. **Its guaranteed-key set is smaller than ours — and it reads the right key.**
+   Worth recording after M3: `gpui-omarchy` reads real Omarchy files and works,
+   because it never expected a `color8`. omagit's own reader did, from SPEC
+   §6.2, and therefore rejected every palette until M3 (see
+   `docs/ARCHITECTURE.md` §2.9). Owning the reading was still right for the
+   reasons below; getting the format from the documents rather than from the
+   files was not. It requires only
    `background`, `foreground` and `accent`, and infers `mode` from luminance
    when absent. DESIGN-TOKENS §2.1 guarantees six keys and falls the whole
    palette back if any is missing. Different contracts — another reason to own

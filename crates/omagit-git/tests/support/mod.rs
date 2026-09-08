@@ -177,6 +177,29 @@ impl TestRepo {
         self.commit_staged(message)
     }
 
+    /// Commit with a timestamp `days` days before now.
+    ///
+    /// The fixed epoch above keeps ordering reproducible, which is all most
+    /// tests need. Anything that reads commit dates *relative to the present* —
+    /// the activity sparkline — needs real ones instead.
+    pub fn commit_days_ago(
+        &self,
+        days: i64,
+        path: &str,
+        contents: &str,
+        message: &str,
+    ) -> ObjectId {
+        let saved = self.clock.get();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("a clock set after 1970")
+            .as_secs() as i64;
+        self.clock.set(now - days * 86_400);
+        let id = self.commit_file(path, contents, message);
+        self.clock.set(saved);
+        id
+    }
+
     pub fn head(&self) -> ObjectId {
         self.rev_parse("HEAD")
     }

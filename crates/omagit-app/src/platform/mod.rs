@@ -40,6 +40,18 @@ impl PrimaryModifier {
             PrimaryModifier::Command => "⌘",
         }
     }
+
+    /// The whole binding, as the interface writes it: `⌘O`, `Ctrl O`.
+    ///
+    /// The space is not cosmetic. `⌘` is a glyph and reads as one token against
+    /// the letter beside it; `Ctrl` is a word, and `CtrlO` reads as a typo.
+    /// DESIGN §2 spells both forms out.
+    pub fn shortcut(self, key: &str) -> String {
+        match self {
+            PrimaryModifier::Control => format!("Ctrl {key}"),
+            PrimaryModifier::Command => format!("⌘{key}"),
+        }
+    }
 }
 
 /// The platform-dependent facts the app needs to open its first window.

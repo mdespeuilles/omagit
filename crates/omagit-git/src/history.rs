@@ -94,6 +94,140 @@ pub struct Time {
     pub offset_seconds: i32,
 }
 
+impl Time {
+    /// The instant broken into calendar parts, as the author's own clock showed
+    /// them.
+    ///
+    /// Decomposition, not formatting: no month names, no ordering convention,
+    /// no locale. Those belong to whoever displays it — and there are two of
+    /// them, the debug CLI and the app, which want very different strings from
+    /// the same six numbers.
+    pub fn civil(&self) -> Civil {
+        let local = self.seconds + i64::from(self.offset_seconds);
+        let days = local.div_euclid(86_400);
+        let seconds = local.rem_euclid(86_400);
+        let (year, month, day) = civil_from_days(days);
+        Civil {
+            year,
+            month,
+            day,
+            hour: (seconds / 3600) as u32,
+            minute: ((seconds % 3600) / 60) as u32,
+            second: (seconds % 60) as u32,
+        }
+    }
+}
+
+/// A timestamp's calendar parts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Civil {
+    pub year: i64,
+    /// 1–12.
+    pub month: u32,
+    /// 1–31.
+    pub day: u32,
+    pub hour: u32,
+    pub minute: u32,
+    pub second: u32,
+}
+
+/// Days since the epoch to a civil date — Howard Hinnant's `civil_from_days`,
+/// exact for every year a Git commit can carry, and with no dependency behind
+/// it.
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let days = days + 719_468;
+    let era = days.div_euclid(146_097);
+    let day_of_era = days.rem_euclid(146_097);
+    let year_of_era =
+        (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let shifted_month = (5 * day_of_year + 2) / 153;
+    let day = (day_of_year - (153 * shifted_month + 2) / 5 + 1) as u32;
+    let month = if shifted_month < 10 {
+        shifted_month + 3
+    } else {
+        shifted_month - 9
+    } as u32;
+    (year + i64::from(month <= 2), month, day)
+}
+
+#[cfg(test)]
+mod time_tests {
+    use super::*;
+
+    fn civil(seconds: i64, offset_seconds: i32) -> Civil {
+        Time {
+            seconds,
+            offset_seconds,
+        }
+        .civil()
+    }
+
+    #[test]
+    fn decomposes_in_the_authors_own_offset() {
+        // 2026-09-08T13:19:33Z, written by someone two hours east of UTC.
+        assert_eq!(
+            civil(1_788_873_573, 7200),
+            Civil {
+                year: 2026,
+                month: 9,
+                day: 8,
+                hour: 15,
+                minute: 19,
+                second: 33
+            }
+        );
+        assert_eq!(
+            civil(0, 0),
+            Civil {
+                year: 1970,
+                month: 1,
+                day: 1,
+                hour: 0,
+                minute: 0,
+                second: 0
+            }
+        );
+    }
+
+    #[test]
+    fn a_negative_offset_can_cross_back_over_midnight() {
+        // 2024-02-29T00:00:00Z seen from five hours west is the leap day's eve.
+        assert_eq!(
+            civil(1_709_164_800, -18_000),
+            Civil {
+                year: 2024,
+                month: 2,
+                day: 28,
+                hour: 19,
+                minute: 0,
+                second: 0
+            }
+        );
+    }
+
+    #[test]
+    fn handles_a_leap_day_and_a_century_that_is_not_one() {
+        // 2024 is a leap year, 1900 was not — the two cases the algorithm is
+        // chosen for.
+        assert_eq!(civil(1_709_208_000, 0).day, 29, "2024-02-29 exists");
+        assert_eq!(civil(1_709_208_000, 0).month, 2);
+        // 1900-03-01T00:00:00Z
+        assert_eq!(
+            civil(-2_203_891_200, 0),
+            Civil {
+                year: 1900,
+                month: 3,
+                day: 1,
+                hour: 0,
+                minute: 0,
+                second: 0
+            }
+        );
+    }
+}
+
 /// Where a walk starts.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Tips {

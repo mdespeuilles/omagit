@@ -55,6 +55,11 @@ async-channel = "2"
 tempfile = "3"
 clap = { version = "4", features = ["derive"] }
 
+# Local time, for an interface that says "aujourd'hui" and "il y a 2 h".
+# Already in the tree under `gix`, so it costs no build time — see
+# `omagit-app/src/time.rs` for why the alternative was worse.
+jiff = "0.2"
+
 # Note for whoever bumps gpui-kit: upstream gpui-omarchy carries a
 # `[profile.release.package.gpui-pre-macros] debug-assertions = true` workaround
 # for gpui-pre-macros 0.3.1, and Cargo ignores [profile] in workspace members, so

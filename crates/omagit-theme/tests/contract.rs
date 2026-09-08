@@ -96,7 +96,7 @@ fn text_stays_legible_on_the_diff_surfaces() {
 
 /// A border that has genuinely vanished into its surface.
 ///
-/// Not WCAG 1.4.11's 3:1: `border` comes straight from the palette's `color8`,
+/// Not WCAG 1.4.11's 3:1: `border` comes straight from the palette's mid grey,
 /// and DESIGN.md §1 says outright that two tokens may collapse — "on Matte
 /// Black, accent and border come close", and selection stays readable because
 /// it changes surface and carries a ring. Matte Black measures 1.51:1 here, by

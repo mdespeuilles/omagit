@@ -494,44 +494,25 @@ fn revision(repo: &Repository, revision: Option<&str>) -> Result<ObjectId> {
 
 /// A commit time as the author's own clock showed it.
 ///
-/// Written out here rather than pulled from a date crate: the CLI needs one
-/// format, and `omagit-git` deliberately hands back seconds and an offset
-/// because formatting belongs to whoever displays it — with a locale, in the
-/// app's case, and without one here.
-fn format_time(time: omagit_git::history::Time) -> String {
-    let local = time.seconds + i64::from(time.offset_seconds);
-    let days = local.div_euclid(86_400);
-    let seconds = local.rem_euclid(86_400);
-    let (year, month, day) = civil_from_days(days);
-    let (hours, minutes) = (seconds / 3600, (seconds % 3600) / 60);
+/// The calendar decomposition is `omagit-git`'s — it owns the timestamps — and
+/// the shape of the string is this front end's. The app formats the same six
+/// numbers very differently ("il y a 2 h"), which is exactly why the crate
+/// hands back numbers.
+fn format_time(time: omagit_git::Time) -> String {
+    let at = time.civil();
     let sign = if time.offset_seconds < 0 { '-' } else { '+' };
     let offset = time.offset_seconds.abs();
     format!(
-        "{year:04}-{month:02}-{day:02} {hours:02}:{minutes:02}:{:02} {sign}{:02}{:02}",
-        seconds % 60,
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02} {sign}{:02}{:02}",
+        at.year,
+        at.month,
+        at.day,
+        at.hour,
+        at.minute,
+        at.second,
         offset / 3600,
         (offset % 3600) / 60
     )
-}
-
-/// Days since the epoch to a civil date — Howard Hinnant's `civil_from_days`,
-/// which is exact for every year a Git commit can carry.
-fn civil_from_days(days: i64) -> (i64, u32, u32) {
-    let days = days + 719_468;
-    let era = days.div_euclid(146_097);
-    let day_of_era = days.rem_euclid(146_097);
-    let year_of_era =
-        (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-    let year = year_of_era + era * 400;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let shifted_month = (5 * day_of_year + 2) / 153;
-    let day = (day_of_year - (153 * shifted_month + 2) / 5 + 1) as u32;
-    let month = if shifted_month < 10 {
-        shifted_month + 3
-    } else {
-        shifted_month - 9
-    } as u32;
-    (year + i64::from(month <= 2), month, day)
 }
 
 fn short(id: &ObjectId) -> String {
@@ -556,28 +537,26 @@ fn report(what: &str, elapsed: Duration, enabled: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use omagit_git::history::Time;
+    use omagit_git::Time;
 
     #[test]
-    fn formats_a_commit_time_in_the_authors_own_offset() {
-        // 2026-09-08T13:19:33Z, written by someone two hours east of UTC.
-        let time = Time {
-            seconds: 1_788_873_573,
-            offset_seconds: 7200,
-        };
-        assert_eq!(format_time(time), "2026-09-08 15:19:33 +0200");
-
-        let utc = Time {
-            seconds: 0,
-            offset_seconds: 0,
-        };
-        assert_eq!(format_time(utc), "1970-01-01 00:00:00 +0000");
-
-        // A leap day, and a negative offset that crosses back over midnight.
-        let leap = Time {
-            seconds: 1_709_164_800,
-            offset_seconds: -18_000,
-        };
-        assert_eq!(format_time(leap), "2024-02-28 19:00:00 -0500");
+    fn prints_a_commit_time_the_way_git_log_does() {
+        // The decomposition is tested in `omagit-git`; this pins the shape of
+        // the line, which is what a person diffs against `git log`.
+        assert_eq!(
+            format_time(Time {
+                seconds: 1_788_873_573,
+                offset_seconds: 7200,
+            }),
+            "2026-09-08 15:19:33 +0200"
+        );
+        assert_eq!(
+            format_time(Time {
+                seconds: 1_709_164_800,
+                offset_seconds: -18_000,
+            }),
+            "2024-02-28 19:00:00 -0500",
+            "a negative offset is printed as one"
+        );
     }
 }

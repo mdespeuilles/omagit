@@ -59,15 +59,54 @@ resolves to `gpui_base::init`. omagit matches that feature set; turning
 - `BackgroundExecutor::spawn` requires `Future: Send`; `ForegroundExecutor::spawn`
   does not. Blocking work belongs in the former, app access in the latter.
 
+## Confirmed for M3
+
+- **`background_spawn` is the right home for Git work**, and the type system
+  says so: it requires `Future: Send`, which is exactly why `omagit_git::Repository`
+  is a handle over `gix`'s thread-safe half rather than a live view. The pattern
+  the store uses — `cx.spawn` for the foreground half, `cx.background_spawn`
+  inside it for the blocking read, `this.update` to land the result — runs a
+  status, a reference read and a ninety-day history walk per repository without
+  the window dropping a frame. The render-thread guard has not fired once.
+- **Wayland decorations under Hyprland work as M0 assumed.** The app runs on
+  Hyprland with `WindowDecorations::Client` and draws its own topbar; the
+  compositor tiles it without a titlebar of its own. *(Closes the M0 follow-up.)*
+  Worth knowing: Hyprland tiles the window by default, so the 1600×1000 of the
+  mock-ups is only what a floating window gets — the layout has to hold at
+  whatever width the compositor hands it, which is what the 1100px collapse of
+  DESIGN §4 is for.
+- **`Window::focus_next`/`focus_prev` and `tab_index`/`tab_stop` exist**, and are
+  deliberately *not* used. DESIGN §5 wants six stops in a fixed order, two of
+  which hold a pair of controls reached with `Tab`, and wrapping that never
+  leaves for the window decoration. That is a specific behaviour rather than the
+  generic one, so the screen holds its own focus state.
+- **`test-support` works, and it is worth the dev-dependency.** `TestAppContext::build(TestDispatcher::new(seed), name)` plus `VisualTestContext::from_window` gives a real widget tree and `simulate_keystrokes`, with no window and no GPU. The `#[gpui::test]` attribute is *not* usable through the facade — its expansion names `gpui::` paths, the same reason `gpui_kit::actions!` exists — so the context is built by hand, which is three lines. It found two bugs in M3 on the first run; see `docs/ARCHITECTURE.md` risk 11.
+- **Key-binding contexts take predicates**: `"Repositories && !Input"` is what
+  keeps a single-character binding from firing while someone is typing.
+  `Input` is the context `gpui-base`'s editor puts on itself.
+- **There is no letter-spacing.** `TextStyleRefinement` has no tracking, which
+  is why the 0.08em on board 06's uppercase labels is dropped rather than faked
+  (DESIGN §6).
+- **`svg().data()` takes raw bytes**, so icons can be `include_bytes!`d with no
+  asset source at all. An `svg` with no text colour paints nothing — not an
+  error, a blank square — so every icon sets one.
+- **`gpui_kit::base::input::InputState`** is the text editor: `new(window, cx)`,
+  `placeholder`, `value`, `set_value`, `focus`, and an `InputEvent` stream of
+  `Change` / `PressEnter` / `Focus` / `Blur`. It is used directly rather than
+  through `gpui_omarchy::input`, whose frame has its own fixed padding and
+  border that board 06's 26px filter box and in-place description field do not
+  match.
+- **`prompt_for_paths`, `reveal_path` and `write_to_clipboard`** all exist on
+  `App` and cover the folder picker, "Révéler dans le gestionnaire" and the
+  remote-URL copy without a platform `cfg`.
+
 ## Still to verify, and when
 
 | Question | Milestone |
 |---|---|
 | `virtual_list` at 100 000 rows, 120 fps (SPEC §12) | M6 |
-| Test support (`features = ["test-support"]`) for interaction tests | M4 |
-| Behaviour of `background_spawn` under the executor for Git work | M2 |
 | tree-sitter integration for diff syntax highlighting | M4 |
-| Wayland/X11 decorations in practice under Hyprland | M0 follow-up on Linux |
+| Simulating a *drag* on the test platform | M4 |
 
 ## Note
 

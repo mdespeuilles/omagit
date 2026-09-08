@@ -51,10 +51,25 @@ from upstream.
 | `docs/DESIGN-TOKENS.md` | token names and derivation formulas |
 | `docs/DESIGN.md` | visual usage and interface states (mock-ups in `docs/design/`) |
 | `docs/ARCHITECTURE.md` | the decisions taken, and the open risks |
+| `docs/KEYMAP.md` | every binding, and the rules behind them |
 | `docs/notes/` | what each dependency was verified to actually do |
 
 Where the first three disagree, `DESIGN-TOKENS.md` wins on tokens, `DESIGN.md`
 on appearance, `SPEC.md` on the rest.
+
+## Where omagit keeps things
+
+Two files in the config directory — `~/Library/Application Support/omagit` on
+macOS, `$XDG_CONFIG_HOME/omagit` on Linux:
+
+| File | Holds |
+|---|---|
+| `settings.toml` | the theme source and the density |
+| `repositories.toml` | the repositories you added, and the groups you filed them in |
+
+They are separate because they change at completely different rates, and a bad
+write to one must not take the other with it. A `repositories.toml` that will not
+parse is renamed aside rather than replaced: it is a list you arranged by hand.
 
 ## Choosing a theme
 
@@ -76,10 +91,16 @@ Other sources: `omarchy` (Linux, follows the live Quattro palette),
 
 ## Current state
 
-**M2 — the Git core, reads.** `omagit-git` opens repositories, reads the working
+**M3 — the Repositories screen.** The first screen: a sidebar of repositories in
+collapsible, drag-reorderable groups, and a card reading out where each one is,
+what its working copy looks like, who would sign a commit there, and ninety days
+of activity. Navigable end to end from the keyboard — six tab stops, `1`/`2`/`3`
+zone jumps, `j`/`k`, `/` to filter (`docs/KEYMAP.md`).
+
+Under it, **M2's Git core**: `omagit-git` opens repositories, reads the working
 copy, the references and a paged history, and computes diffs down to the changed
-words inside a line — with no UI dependency, and no screen to show it on yet.
-`omagit-git-cli` is how it gets driven in the meantime.
+words inside a line, with no UI dependency at all. `omagit-git-cli` drives every
+bit of it from a terminal.
 
 The `gix` / `git` split of SPEC §8 was measured rather than assumed before being
 fixed: `gix` covers every read, the numbers and the six answers are in
@@ -87,4 +108,4 @@ fixed: `gix` covers every read, the numbers and the six answers are in
 when writes give it a second implementation.
 
 `docs/ARCHITECTURE.md` §4 lists exactly what is built and what is deliberately
-not.
+not — including, on this screen, what is drawn but waiting for its milestone.

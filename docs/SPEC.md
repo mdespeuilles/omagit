@@ -140,7 +140,7 @@ comptent autant que le mapping Omarchy.
 **Garanties, les seules obligatoires :**
 
 ```
-background   foreground   accent   selection   color8   mode ("dark" | "light")
+background   foreground   accent   selection   muted   mode ("dark" | "light")
 ```
 
 **Optionnelles, lues si présentes :** `red`, `green`, `yellow`, `blue`.
@@ -148,6 +148,27 @@ background   foreground   accent   selection   color8   mode ("dark" | "light")
 Toute autre clé est ignorée. Si une entrée garantie manque ou est invalide, **la palette entière
 tombe en repli sur le thème embarqué** — jamais de mélange partiel entre deux sources, qui
 produirait des combinaisons illisibles.
+
+> **Amendement, jalon M3 (2026-09-08) — la cinquième clé est `muted`, pas `color8`.**
+>
+> Cette liste disait `color8`. **Aucun thème Omarchy n'en a jamais eu** : les 23 thèmes
+> installés sur une machine Omarchy écrivent `muted`, et c'est la même donnée sous un autre
+> nom — le `tokyo-night` d'Omarchy a `muted = "#414868"`, et le Tokyo Night embarqué de
+> `omagit-theme` porte `bright_black: 0x414868`.
+>
+> Combinée à la règle du paragraphe ci-dessus, l'erreur était totale plutôt que partielle :
+> une clé garantie manquante rejette la palette entière, donc **toutes** les palettes Omarchy
+> étaient rejetées et la source que §6.1 rend prioritaire sur Linux retombait silencieusement
+> sur un thème embarqué, à chaque lancement, depuis M1.
+>
+> Elle a survécu au jalon dont le sujet était le thème parce que M1 a été écrit et vérifié sur
+> macOS, où le répertoire d'état n'existe pas : le lecteur n'a jamais vu qu'une fixture, et la
+> fixture avait été transcrite depuis ce paragraphe. **Une fixture écrite d'après un document
+> teste le document.** Les fixtures sont désormais des fichiers réels, copiés tels quels dans
+> `tests/fixtures/omarchy/`.
+>
+> `color8` n'est pas accepté en alias : un repli pour une orthographe qui n'existe dans aucun
+> fichier est du code sans appelant (§2). Détail dans `docs/ARCHITECTURE.md` §2.9.
 
 ### 6.3 Les tokens
 
