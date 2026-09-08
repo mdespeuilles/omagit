@@ -1,46 +1,17 @@
 //! Persisted preferences, in TOML.
 //!
-//! M0 stores what the first window needs: which theme to apply and at what
-//! density. The keymap and the persisted layout arrive with M9.
+//! Stores which theme source to use and at what density. The source, not the
+//! resolved palette: a stored palette would go stale the moment the system
+//! theme changed. The keymap and the persisted layout arrive with M9.
 
 use std::path::{Path, PathBuf};
 
-use omagit_theme::{DensityMode, Mode};
-
-/// Which of the four theme sources to use (SPEC §6.1), in priority order.
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "source", rename_all = "kebab-case")]
-pub enum ThemeChoice {
-    /// An explicit user override. Disables all tracking and persists.
-    Named { name: String },
-    /// Follow the platform: Omarchy Quattro on Linux, the system appearance on
-    /// macOS. Wired up at M1; at M0 it resolves to the embedded default.
-    #[default]
-    FollowSystem,
-    /// An embedded theme pinned by mode.
-    Embedded { mode: ModeSetting },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ModeSetting {
-    Dark,
-    Light,
-}
-
-impl From<ModeSetting> for Mode {
-    fn from(value: ModeSetting) -> Self {
-        match value {
-            ModeSetting::Dark => Mode::Dark,
-            ModeSetting::Light => Mode::Light,
-        }
-    }
-}
+use omagit_theme::{DensityMode, ThemeSource};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Settings {
-    pub theme: ThemeChoice,
+    pub theme: ThemeSource,
     pub density: DensityMode,
 }
 
@@ -107,13 +78,16 @@ mod tests {
         let settings = Settings::load(dir.path());
         assert_eq!(settings, Settings::default());
         assert_eq!(settings.density, DensityMode::Compact);
+        // Nothing chosen yet, so the source is resolved from what the machine
+        // offers rather than pinned to a theme.
+        assert_eq!(settings.theme, ThemeSource::Automatic);
     }
 
     #[test]
     fn round_trips_through_disk() {
         let dir = tempfile::tempdir().expect("tempdir");
         let settings = Settings {
-            theme: ThemeChoice::Named {
+            theme: ThemeSource::UserOverride {
                 name: "Gruvbox".into(),
             },
             density: DensityMode::Comfortable,

@@ -63,6 +63,18 @@ impl Platform for Linux {
     fn credential_helper(&self) -> &'static str {
         "libsecret"
     }
+
+    fn omarchy_state_dir(&self) -> Option<PathBuf> {
+        omagit_theme::omarchy::state_dir_from_env()
+    }
+
+    fn reports_system_appearance(&self) -> bool {
+        // Desktop portals do expose a colour-scheme preference, but omagit does
+        // not read it: on Linux the Omarchy palette is the system theme, and a
+        // second, competing notion of light/dark would only be able to disagree
+        // with it. Falls through to the embedded default when Omarchy is absent.
+        false
+    }
 }
 
 #[cfg(test)]

@@ -58,6 +58,16 @@ impl Platform for MacOs {
     fn credential_helper(&self) -> &'static str {
         "osxkeychain"
     }
+
+    fn omarchy_state_dir(&self) -> Option<PathBuf> {
+        // There is no Omarchy on macOS. Embedded themes are the default
+        // experience here, not a degraded fallback (SPEC §6.1).
+        None
+    }
+
+    fn reports_system_appearance(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

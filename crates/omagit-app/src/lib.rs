@@ -2,4 +2,5 @@
 
 pub mod logging;
 pub mod platform;
+pub mod theme_runtime;
 pub mod window;

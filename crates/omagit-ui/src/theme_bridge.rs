@@ -17,7 +17,7 @@ use gpui_kit::base::ThemeAppearance;
 use gpui_kit::{App, Global, Hsla, SharedString, rgb};
 use gpui_omarchy::Theme as OmarchyTheme;
 
-use omagit_theme::{Density, DensityMode, Mode, Rgb, Theme, Tokens};
+use omagit_theme::{Density, DensityMode, Mode, Rgb, Theme, Tokens, lanes};
 
 use crate::fonts::{ActiveFonts, Fonts};
 
@@ -28,6 +28,18 @@ pub struct Palette {
     pub mode: Mode,
     pub tokens: Tokens,
     pub density: Density,
+    /// The commit-graph lanes, generated for this theme's lightness and chroma.
+    /// Precomputed here because they never change while a theme is applied, and
+    /// because a component that derived its own would be reading the theme —
+    /// which DESIGN-TOKENS §6 forbids.
+    pub lanes: Vec<Rgb>,
+}
+
+impl Palette {
+    /// The colour of lane `index`, cycling past the eighth.
+    pub fn lane(&self, index: usize) -> Rgb {
+        self.lanes[index % self.lanes.len()]
+    }
 }
 
 impl Global for Palette {}
@@ -74,6 +86,11 @@ pub fn apply(theme: &Theme, density: DensityMode, cx: &mut App) {
         mode: theme.mode(),
         tokens,
         density: density.metrics(),
+        lanes: lanes::lane_colors(
+            lanes::LANE_COUNT,
+            theme.tuning.lane_lightness,
+            theme.tuning.lane_chroma,
+        ),
     });
     cx.refresh_windows();
 }

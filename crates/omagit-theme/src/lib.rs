@@ -4,20 +4,30 @@
 //! (SPEC §6). It owns the token vocabulary; `omagit-ui` owns its projection into
 //! the renderer.
 //!
-//! ## Milestone status
+//! The pieces, in the order DESIGN-TOKENS.md introduces them:
 //!
-//! M0 ships the token vocabulary, the sRGB `mix` derivation of §4.1/§5, the
-//! density and typography scales, and two embedded themes. The rest of §6 —
-//! the four theme sources, OKLCH status derivation, contrast correction, the
-//! lane generator, live Omarchy tracking, macOS appearance tracking and the
-//! full catalogue — is M1.
+//! * [`color`] — the sRGB type and `mix`, whose argument order is load-bearing.
+//! * [`oklch`] — perceptual derivation and the mandatory contrast correction.
+//! * [`theme`] — inputs, per-theme tuning, and the derivation into tokens.
+//! * [`tokens`] — the canonical vocabulary, plus density and typography.
+//! * [`lanes`] — commit-graph lanes, generated and never read from a palette.
+//! * [`embedded`] — the catalogue: six dark themes, two light.
+//! * [`omarchy`] — reading and tracking an Omarchy Quattro palette.
+//! * [`source`] — the four sources of §6.1, resolved in priority order.
 
 pub mod color;
 pub mod embedded;
+pub mod lanes;
+pub mod oklch;
+pub mod omarchy;
+pub mod source;
 pub mod theme;
 pub mod tokens;
 
 pub use color::{Percent, Rgb, mix};
 pub use embedded::catalogue;
-pub use theme::{Inputs, StatusColors, Theme, Tuning};
+pub use lanes::{LANE_COUNT, lane_colors};
+pub use oklch::{Oklch, contrast_ratio};
+pub use source::{Resolved, Sources, ThemeSource};
+pub use theme::{Inputs, NamedStatus, Theme, Tuning};
 pub use tokens::{Density, DensityMode, Mode, Tint, Tokens, font};

@@ -153,3 +153,28 @@ Called out by the boards themselves, so they are not mistaken for oversights:
 side-by-side diff, drag line-selection in the gutter, visible whitespace,
 binary / image / rename / oversized-file diffs, the Preferences screen, and the
 `?` shortcut sheet.
+
+## 8. Contract points resolved during implementation
+
+Recorded here because they changed how the tokens are computed, and the next
+person to read §4.3 will otherwise wonder why the code does not match it.
+
+**The correction target is `surface`, not `bg`.** DESIGN-TOKENS §4.3 says
+`bg`. Text is also drawn on `surface`, which is 4% closer to the foreground and
+therefore always the harder background; correcting against `bg` alone leaves the
+`surface` pairs at 4.1–4.4:1 on Gruvbox, Nord, Everforest and both light themes,
+which §10 test 1 rejects. Targeting `surface` satisfies both and is never weaker.
+
+**`text_dim` is held to 3:1, not 4.5:1.** It is the disabled/placeholder token
+(board 01), and WCAG 1.4.3 exempts inactive components. Measured on the
+delivered palettes it sits at ~3.1:1 by construction — the per-mode coefficients
+of §2.3 are what carry `text_muted` over 4.5:1, which is exactly the mechanism
+board 01 describes. Forcing `text_dim` to the same floor would push it past
+`text_muted` and invert the hierarchy, so it gets the non-text floor plus an
+ordering invariant that keeps it below `text_muted` on every theme.
+
+**"Minimal at 5 keys" means five colours plus `mode`.** §10 test 2 says a
+palette "minimal at 5 keys" must produce a valid result, while §2.1 guarantees
+six entries. The six are five colours and `mode`, so the minimal valid file is
+those six; the fallback test covers it, and a file missing `mode` falls back
+whole like any other incomplete palette.

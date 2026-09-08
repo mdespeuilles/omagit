@@ -1,13 +1,14 @@
 //! Inputs, tuning coefficients, and the derivation into [`Tokens`].
 
 use crate::color::{Percent, Rgb, mix};
+use crate::oklch::{MIN_CONTRAST, Oklch, contrast_ratio, ensure_contrast};
 use crate::tokens::{Mode, Tint, Tokens};
 
-/// The palette entries a theme source provides.
+/// The palette entries a theme source must provide.
 ///
-/// The six here are the guaranteed ones (DESIGN-TOKENS §2.1): if any is missing
-/// or invalid, the *whole* palette falls back to an embedded theme — never a
-/// partial blend of two sources.
+/// These six are the guaranteed ones (DESIGN-TOKENS §2.1): if any is missing or
+/// invalid, the **whole** palette falls back to an embedded theme — never a
+/// partial blend of two sources, which would produce unreadable combinations.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Inputs {
     pub background: Rgb,
@@ -18,17 +19,69 @@ pub struct Inputs {
     pub mode: Mode,
 }
 
-/// The named status colours.
+/// The optional named status colours (DESIGN-TOKENS §2.2). Absent ones are
+/// derived in OKLCH from their hue alone.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NamedStatus {
+    pub red: Option<Rgb>,
+    pub green: Option<Rgb>,
+    pub yellow: Option<Rgb>,
+    pub blue: Option<Rgb>,
+}
+
+impl NamedStatus {
+    /// A theme that names all four.
+    pub const fn all(red: Rgb, green: Rgb, yellow: Rgb, blue: Rgb) -> Self {
+        Self {
+            red: Some(red),
+            green: Some(green),
+            yellow: Some(yellow),
+            blue: Some(blue),
+        }
+    }
+}
+
+/// The hues status colours fall back to when a theme does not name them
+/// (DESIGN-TOKENS §4.2). Lightness and chroma come from [`StatusFallback`].
+pub mod hue {
+    pub const DANGER: f32 = 25.0;
+    pub const SUCCESS: f32 = 145.0;
+    pub const WARNING: f32 = 85.0;
+    pub const INFO: f32 = 250.0;
+}
+
+/// Lightness and chroma for derived status colours, per mode.
 ///
-/// M0 ships only embedded themes, which all name their four. Reading them from
-/// an Omarchy palette — where they are optional and fall back to OKLCH
-/// derivation (DESIGN-TOKENS §4.2) — arrives with the rest of §6 at M1.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct StatusColors {
-    pub red: Rgb,
-    pub green: Rgb,
-    pub yellow: Rgb,
-    pub blue: Rgb,
+/// The dark values are Matte Black's, which DESIGN-TOKENS §4.2 gives exactly
+/// because that theme names none of the four and so exercises this path end to
+/// end.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct StatusFallback {
+    danger: (f32, f32),
+    success: (f32, f32),
+    warning: (f32, f32),
+    info: (f32, f32),
+}
+
+impl StatusFallback {
+    const fn for_mode(mode: Mode) -> Self {
+        match mode {
+            Mode::Dark => Self {
+                danger: (0.68, 0.17),
+                success: (0.74, 0.15),
+                warning: (0.80, 0.14),
+                info: (0.70, 0.13),
+            },
+            // Light backgrounds need darker, slightly less saturated status
+            // colours to stay legible: L ≈ 0.52, C ≈ 0.14 (DESIGN-TOKENS §4.2).
+            Mode::Light => Self {
+                danger: (0.52, 0.14),
+                success: (0.52, 0.14),
+                warning: (0.52, 0.14),
+                info: (0.52, 0.14),
+            },
+        }
+    }
 }
 
 /// Per-theme tuning. These are **fields of the theme, not constants of the
@@ -47,8 +100,8 @@ pub struct Tuning {
 }
 
 impl Tuning {
-    /// Defaults applied to a palette that carries no tuning of its own — an
-    /// Omarchy theme, for instance (DESIGN-TOKENS §2.3).
+    /// Defaults applied to a palette that carries no tuning of its own — every
+    /// theme read from Omarchy, for instance (DESIGN-TOKENS §2.3).
     pub const fn defaults_for(mode: Mode) -> Self {
         match mode {
             Mode::Dark => Self {
@@ -65,14 +118,33 @@ impl Tuning {
             },
         }
     }
+
+    pub const fn with_lanes(mut self, lightness: f32, chroma: f32) -> Self {
+        self.lane_lightness = lightness;
+        self.lane_chroma = chroma;
+        self
+    }
 }
 
-/// A resolved theme: a name, its inputs, its status colours and its tuning.
+/// The floor `text_dim` is held to.
+///
+/// Not 4.5:1, and the reason matters. `text_dim` is the disabled/placeholder
+/// token (DESIGN.md §3, board 01), and WCAG 1.4.3 exempts inactive components.
+/// Measured on the delivered themes it sits near 3.1:1 by construction — the
+/// per-mode coefficients of §2.3 are what keep `text_muted` over 4.5:1, and
+/// forcing `text_dim` to the same floor would push it *past* `text_muted`,
+/// inverting the very hierarchy the two tokens exist to express. So it gets the
+/// non-text floor of WCAG 1.4.11, plus the ordering invariant enforced in
+/// [`Theme::tokens`].
+pub const DIM_MIN_CONTRAST: f32 = 3.0;
+
+/// A resolved theme: a name, its inputs, its named status colours and its
+/// tuning.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     pub name: String,
     pub inputs: Inputs,
-    pub status: StatusColors,
+    pub status: NamedStatus,
     pub tuning: Tuning,
 }
 
@@ -81,11 +153,7 @@ impl Theme {
         self.inputs.mode
     }
 
-    /// Derive the full token set, following DESIGN-TOKENS §4.1, §4.2 and §5.
-    ///
-    /// Contrast correction (§4.3) is not applied here yet — it lands with the
-    /// rest of §6 at M1, together with the six tests that hold it to ≥ 4.5:1.
-    /// The two embedded themes shipped at M0 already clear that bar.
+    /// Derive the full token set: DESIGN-TOKENS §4.1, §4.2, §4.3 and §5.
     pub fn tokens(&self) -> Tokens {
         let Inputs {
             background: bg,
@@ -93,29 +161,64 @@ impl Theme {
             accent,
             selection,
             bright_black,
-            ..
+            mode,
         } = self.inputs;
 
-        let danger = self.status.red;
-        let success = self.status.green;
+        let fallback = StatusFallback::for_mode(mode);
+        let surface = mix(fg, bg, Percent::new(4.0));
+
+        // §4.3: correction applies to colours *read* from the theme as much as
+        // to derived ones. Nothing guarantees an Omarchy palette provides a
+        // `green` legible on its own background.
+        //
+        // §4.3 words the target as `bg`, but text is drawn on `surface` too —
+        // panels, lists, the whole content area — and `surface` is 4% closer to
+        // the foreground, so it is always the harder of the two. Correcting
+        // against `bg` alone leaves the `surface` pairs at ~4.1–4.4:1, which
+        // §10 test 1 rejects. Targeting `surface` satisfies both, so that is
+        // the target; it is a strictly stronger guarantee, never a weaker one.
+        let legible = |color: Rgb| ensure_contrast(color, surface, MIN_CONTRAST);
+        let status = |named: Option<Rgb>, (lightness, chroma): (f32, f32), hue: f32| {
+            legible(named.unwrap_or_else(|| Oklch::new(lightness, chroma, hue).to_rgb()))
+        };
+
+        let danger = status(self.status.red, fallback.danger, hue::DANGER);
+        let success = status(self.status.green, fallback.success, hue::SUCCESS);
+
+        let text = legible(fg);
+        let text_muted = legible(mix(fg, bg, self.tuning.muted_mix));
+        let text_dim = {
+            let dim = ensure_contrast(mix(fg, bg, self.tuning.dim_mix), surface, DIM_MIN_CONTRAST);
+            // A hostile palette could push the corrected dim past muted. Rather
+            // than render "disabled" as the more prominent of the two, collapse
+            // them: losing the distinction is honest, inverting it is a bug.
+            if contrast_ratio(dim, surface) > contrast_ratio(text_muted, surface) {
+                text_muted
+            } else {
+                dim
+            }
+        };
 
         Tokens {
             bg,
-            surface: mix(fg, bg, Percent::new(4.0)),
+            surface,
             surface_raised: selection,
             surface_hover: mix(fg, bg, Percent::new(6.0)),
             border: bright_black,
-            border_focus: accent,
-            text: fg,
-            text_muted: mix(fg, bg, self.tuning.muted_mix),
-            text_dim: mix(fg, bg, self.tuning.dim_mix),
-            accent,
+            border_focus: legible(accent),
+            text,
+            text_muted,
+            text_dim,
+            accent: legible(accent),
 
             danger,
             success,
-            warning: self.status.yellow,
-            info: self.status.blue,
+            warning: status(self.status.yellow, fallback.warning, hue::WARNING),
+            info: status(self.status.blue, fallback.info, hue::INFO),
 
+            // Diff surfaces derive from the *corrected* status colours, so a
+            // theme with an illegible green does not get an illegible addition
+            // background either.
             diff_added: self.tint(success, Tint::Subtle),
             diff_added_word: self.tint(success, Tint::Strong),
             diff_deleted: self.tint(danger, Tint::Subtle),
@@ -145,12 +248,14 @@ mod tests {
         let t = theme.tokens();
 
         assert_eq!(t.bg, theme.inputs.background, "bg is the raw background");
-        assert_eq!(t.text, theme.inputs.foreground);
         assert_eq!(
             t.surface_raised, theme.inputs.selection,
             "raised is selection"
         );
         assert_eq!(t.border, theme.inputs.bright_black, "border is color8");
+        // Tokyo Night's own foreground and accent are already legible, so
+        // correction leaves them alone and the tokens are the raw inputs.
+        assert_eq!(t.text, theme.inputs.foreground);
         assert_eq!(t.border_focus, theme.inputs.accent);
     }
 
@@ -194,6 +299,39 @@ mod tests {
             assert!(
                 distance(t.diff_deleted_word, t.bg) > distance(t.diff_deleted, t.bg),
                 "{}: same on the deletion side",
+                theme.name
+            );
+        }
+    }
+
+    #[test]
+    fn a_theme_naming_no_status_colour_derives_all_four() {
+        // Matte Black is the theme that exercises the OKLCH fallback path in
+        // full (DESIGN-TOKENS §4.2).
+        let theme = embedded::matte_black();
+        assert_eq!(theme.status, NamedStatus::default(), "it names none");
+
+        let t = theme.tokens();
+        let hue_of = |c: Rgb| Oklch::from(c).hue;
+        for (name, token, expected) in [
+            ("danger", t.danger, hue::DANGER),
+            ("success", t.success, hue::SUCCESS),
+            ("warning", t.warning, hue::WARNING),
+            ("info", t.info, hue::INFO),
+        ] {
+            let drift = (hue_of(token) - expected).abs();
+            assert!(drift < 10.0, "{name} landed {drift}° from hue {expected}");
+        }
+    }
+
+    #[test]
+    fn text_dim_never_outshines_text_muted() {
+        // The ordering invariant, checked on every embedded theme.
+        for theme in embedded::catalogue() {
+            let t = theme.tokens();
+            assert!(
+                contrast_ratio(t.text_dim, t.bg) <= contrast_ratio(t.text_muted, t.bg),
+                "{}: dim reads stronger than muted",
                 theme.name
             );
         }

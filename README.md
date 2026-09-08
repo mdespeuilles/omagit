@@ -36,8 +36,28 @@ CI runs on Linux and macOS. A milestone is one PR, and it lands green on both
 Where the first three disagree, `DESIGN-TOKENS.md` wins on tokens, `DESIGN.md`
 on appearance, `SPEC.md` on the rest.
 
+## Choosing a theme
+
+There is no preferences screen yet (M9). Until then, `settings.toml` in the
+config directory — `~/Library/Application Support/omagit` on macOS,
+`$XDG_CONFIG_HOME/omagit` on Linux:
+
+```toml
+density = "compact"        # or "comfortable"
+
+[theme]
+source = "user-override"   # an explicit theme; disables all tracking
+name = "Gruvbox"
+```
+
+Other sources: `omarchy` (Linux, follows the live Quattro palette),
+`system-appearance` (follows light/dark), `embedded` with `mode = "dark"` or
+`"light"`, and `automatic` — the default, which picks the best available.
+
 ## Current state
 
-**M0 — skeleton.** The workspace builds, the window opens and applies a theme on
-both platforms, CI is green on both. `docs/ARCHITECTURE.md` §4 lists exactly
-what M0 ships and what it deliberately does not.
+**M1 — theme.** `DESIGN-TOKENS.md` is implemented in full: the four sources,
+OKLCH derivation with contrast correction, generated graph lanes, eight embedded
+themes, live Omarchy tracking and macOS appearance tracking, held by the six
+tests of §10. `docs/ARCHITECTURE.md` §4 lists exactly what is built and what is
+deliberately not.

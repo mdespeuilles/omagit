@@ -5,9 +5,9 @@ use gpui_kit::App;
 use gpui_kit::prelude::*;
 
 use omagit_app::platform;
+use omagit_app::theme_runtime;
 use omagit_app::window::{Shell, options};
-use omagit_settings::{Settings, ThemeChoice};
-use omagit_theme::{Mode, embedded};
+use omagit_settings::Settings;
 
 fn main() {
     let platform = platform::current();
@@ -28,8 +28,8 @@ fn main() {
         omagit_git::mark_render_thread();
 
         // `gpui_omarchy::init` also starts its own once-a-second Omarchy poll.
-        // `omagit_ui::apply` below stops it: omagit owns theme sourcing, and on
-        // macOS there is no Omarchy state to poll at all.
+        // Applying a theme below stops it: omagit owns theme sourcing (SPEC
+        // §6.1), and on macOS there is no Omarchy state to poll at all.
         gpui_omarchy::init(cx);
 
         // Resolve the two typography stacks against the families this machine
@@ -43,12 +43,14 @@ fn main() {
                 Settings::default()
             }
         };
+        let density = settings.density;
 
-        let theme = resolve_theme(&settings.theme);
-        tracing::info!(theme = %theme.name, density = ?settings.density, "applying theme");
-        omagit_ui::apply(&theme, settings.density, cx);
+        // Resolves the four sources of SPEC §6.1 in priority order, applies the
+        // winner, and starts following it when it is a live one.
+        let tracking = theme_runtime::install(platform, settings, cx);
+        tracing::info!(tracking = tracking.label(), "theme tracking");
 
-        if let Err(error) = open_main_window(settings.density, cx) {
+        if let Err(error) = open_main_window(density, cx) {
             tracing::error!(%error, "could not open the main window");
             cx.quit();
         }
@@ -58,26 +60,12 @@ fn main() {
 fn open_main_window(density: omagit_theme::DensityMode, cx: &mut App) -> Result<()> {
     let platform = platform::current();
     let options = options(platform, cx);
-    cx.open_window(options, |_, cx| cx.new(|_| Shell::new(density)))
-        .context("open_window failed")?;
+    cx.open_window(options, |window, cx| {
+        // Following the system appearance is a per-window subscription: the
+        // window is what the platform reports light/dark through.
+        let appearance = theme_runtime::follow_window_appearance(window);
+        cx.new(|_| Shell::new(density, appearance))
+    })
+    .context("open_window failed")?;
     Ok(())
-}
-
-/// Resolve the configured choice into a theme.
-///
-/// M0 knows only the embedded catalogue. The other three sources of SPEC §6.1 —
-/// the user override, Omarchy Quattro, and the macOS system appearance — arrive
-/// at M1, which is why `FollowSystem` lands on the embedded default here.
-fn resolve_theme(choice: &ThemeChoice) -> omagit_theme::Theme {
-    match choice {
-        ThemeChoice::Named { name } => embedded::catalogue()
-            .into_iter()
-            .find(|theme| theme.name.eq_ignore_ascii_case(name))
-            .unwrap_or_else(|| {
-                tracing::warn!(%name, "unknown theme, falling back to the embedded default");
-                embedded::default_for(Mode::Dark)
-            }),
-        ThemeChoice::Embedded { mode } => embedded::default_for((*mode).into()),
-        ThemeChoice::FollowSystem => embedded::default_for(Mode::Dark),
-    }
 }

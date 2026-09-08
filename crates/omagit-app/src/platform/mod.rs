@@ -69,6 +69,15 @@ pub trait Platform: Send + Sync + 'static {
     /// start-up so a missing helper is visible rather than a silent auth
     /// failure later.
     fn credential_helper(&self) -> &'static str;
+
+    /// The Omarchy Quattro `current` directory, when the platform has one.
+    ///
+    /// `None` on macOS: there is no Omarchy there, so the source is not offered
+    /// rather than offered and permanently failing (SPEC §6.1).
+    fn omarchy_state_dir(&self) -> Option<PathBuf>;
+
+    /// Whether the platform reports a light/dark preference worth following.
+    fn reports_system_appearance(&self) -> bool;
 }
 
 /// The platform this build runs on.

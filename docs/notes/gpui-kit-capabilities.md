@@ -40,6 +40,25 @@ resolves to `gpui_base::init`. omagit matches that feature set; turning
   `tokens.colors` and `tokens.typography`, which is how the theme bridge lands
   the palette.
 
+## Confirmed for M1
+
+- `Window::observe_window_appearance` returns a `Subscription` and fires on the
+  real macOS light/dark switch — verified by toggling the system setting with
+  the app running. `WindowAppearance` has four variants; the vibrant pair maps
+  to the same modes as the plain pair.
+- `App::window_appearance()` reports the appearance before any window exists,
+  which is what lets the theme resolve at start-up rather than after first
+  paint.
+- **`AsyncApp` is not `Send`** — it holds `Weak<AppCell>` over an `Rc`. Anything
+  that needs to reach the app from another thread has to hand its result to a
+  foreground task through a `Send` channel. This is the constraint that shapes
+  the Omarchy watcher.
+- `AsyncApp::update` returns `R`, not `Result<R>`, and panics if the app is
+  already gone. Safe from a task the app owns, since dropping the task is what
+  ends it.
+- `BackgroundExecutor::spawn` requires `Future: Send`; `ForegroundExecutor::spawn`
+  does not. Blocking work belongs in the former, app access in the latter.
+
 ## Still to verify, and when
 
 | Question | Milestone |

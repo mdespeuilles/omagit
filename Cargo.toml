@@ -36,6 +36,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 palette = "0.7"
+notify = "8"
+async-channel = "2"
 tempfile = "3"
 
 # Note for whoever bumps gpui-kit: upstream gpui-omarchy carries a
