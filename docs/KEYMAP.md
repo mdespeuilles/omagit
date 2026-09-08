@@ -34,6 +34,21 @@ in a text field that wants the key.
 | `⏎` | Activate the focused control — open the selected repository | |
 | `Esc` | Up one level: clear the filter, then return to the sidebar | |
 
+## Working Copy (M4)
+
+Bound in the `WorkingCopy` context. The movement keys are deliberately the same
+letters as on Repositories: DESIGN §5 wants one vocabulary across the screens,
+not one per screen.
+
+| Key | Action | Note |
+|---|---|---|
+| `↓` `j` / `↑` `k` | Next / previous file | Crosses from Staged into Unstaged; stops at the ends |
+| `Primary`+`D` | Unified ↔ side by side | |
+| `Primary`+`R` | Re-read the working copy | The watcher does this on its own; this is for when you want to be sure |
+| `Esc` | Back to Repositories | |
+
+Staging, committing and discarding are M5, and so are their bindings.
+
 ## The rules behind them
 
 **One zone is one tab stop.** Repositories has six, in this order: *Ajouter un

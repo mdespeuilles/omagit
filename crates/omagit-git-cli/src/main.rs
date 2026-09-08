@@ -368,6 +368,9 @@ fn print_diff(diff: &Diff) {
                 hunks,
                 added,
                 removed,
+                // The full sides are for the app's viewer — syntax highlighting
+                // and unfolding context. A terminal shows the hunks.
+                ..
             } => {
                 for hunk in hunks {
                     println!("{}", hunk.header());

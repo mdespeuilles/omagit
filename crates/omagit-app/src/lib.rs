@@ -4,6 +4,7 @@ pub mod actions;
 pub mod async_state;
 pub mod logging;
 pub mod platform;
+pub mod repo_store;
 pub mod screens;
 pub mod store;
 pub mod theme_runtime;

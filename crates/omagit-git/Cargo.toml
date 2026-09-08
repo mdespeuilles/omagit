@@ -13,6 +13,12 @@ gix = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
+# The repository watcher (SPEC §10). `notify` is the watcher itself;
+# `async-channel` is how its thread hands results to whoever is waiting —
+# neither is a UI dependency, so rule 5 still holds.
+notify = { workspace = true }
+async-channel = { workspace = true }
+
 # SPEC §8 rule 3: a cancelled subprocess is signalled on its process *group*,
 # which `std` cannot express. Unix-only, and the project is Unix-only (SPEC §2).
 [target.'cfg(unix)'.dependencies]
@@ -20,3 +26,4 @@ libc = "0.2"
 
 [dev-dependencies]
 tempfile = { workspace = true }
+async-channel = { workspace = true }

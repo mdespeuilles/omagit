@@ -7,7 +7,16 @@ license.workspace = true
 publish = false
 
 [dependencies]
+omagit-git = { workspace = true }
 omagit-theme = { workspace = true }
 gpui-kit = { workspace = true, features = ["assets"] }
 gpui-omarchy = { workspace = true }
 tracing = { workspace = true }
+
+# Syntax highlighting for the diff viewer. See the workspace manifest for why
+# the grammars are omagit's own rather than the renderer's.
+tree-sitter = { workspace = true }
+tree-sitter-rust = { workspace = true }
+tree-sitter-toml-ng = { workspace = true }
+tree-sitter-json = { workspace = true }
+tree-sitter-md = { workspace = true }

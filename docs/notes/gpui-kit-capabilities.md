@@ -81,6 +81,21 @@ resolves to `gpui_base::init`. omagit matches that feature set; turning
   leaves for the window decoration. That is a specific behaviour rather than the
   generic one, so the screen holds its own focus state.
 - **`test-support` works, and it is worth the dev-dependency.** `TestAppContext::build(TestDispatcher::new(seed), name)` plus `VisualTestContext::from_window` gives a real widget tree and `simulate_keystrokes`, with no window and no GPU. The `#[gpui::test]` attribute is *not* usable through the facade — its expansion names `gpui::` paths, the same reason `gpui_kit::actions!` exists — so the context is built by hand, which is three lines. It found two bugs in M3 on the first run; see `docs/ARCHITECTURE.md` risk 11.
+- **There is no tree-sitter here, and SPEC §4 said there would be.** `gpui-kit`
+  has a `tree-sitter` feature, but it routes through `gpui-component`, which is
+  off in this workspace and has to stay off — turning it on pulls a second
+  component library competing with the vendored `gpui-omarchy`. So the grammars
+  are omagit's own, one per language actually rendered. SPEC §4 is amended in
+  place; see `docs/ARCHITECTURE.md` §2.18.
+- **`v_virtual_list` is the virtualisation SPEC §12 asks for**, and its render
+  closure is handed the visible range — which is exactly what the syntax query
+  needs, so "highlight only what is on screen" falls out of the API rather than
+  being bolted on. Used by the diff viewer since M4; still unproven at 100 000
+  rows, which is M6's question.
+- **`StyledText::with_highlights` takes byte ranges and a `HighlightStyle`**,
+  with both a colour and a background colour. One text element per line carries
+  the syntax colouring *and* the intra-line refinement, rather than a span
+  element per run.
 - **Key-binding contexts take predicates**: `"Repositories && !Input"` is what
   keeps a single-character binding from firing while someone is typing.
   `Input` is the context `gpui-base`'s editor puts on itself.
@@ -105,8 +120,7 @@ resolves to `gpui_base::init`. omagit matches that feature set; turning
 | Question | Milestone |
 |---|---|
 | `virtual_list` at 100 000 rows, 120 fps (SPEC §12) | M6 |
-| tree-sitter integration for diff syntax highlighting | M4 |
-| Simulating a *drag* on the test platform | M4 |
+| Simulating a *drag* on the test platform | M5 |
 
 ## Note
 

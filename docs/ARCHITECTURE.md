@@ -3,7 +3,7 @@
 Maintained as the project goes (SPEC §7). It records the decisions that are
 expensive to reverse and the risks that have to be re-read at each milestone.
 
-**Status: M3 — the Repositories screen.** What exists is listed under "What is
+**Status: M4 — the Working Copy, in read.** What exists is listed under "What is
 built"; everything else here is the shape later milestones fill in, not code
 that is present.
 
@@ -302,7 +302,87 @@ branch, the ahead/behind and the status counts are read from the repository
 every time, because a cached branch name is wrong the moment someone checks out
 another one in a terminal.
 
-### 2.15 The vendored design system is not linted
+### 2.15 The watcher reports *what* changed, and is told to stop
+
+SPEC §10 asks for a filesystem watcher that debounces at 150 ms, ignores
+`.git/index.lock`, and invalidates in a targeted way. `omagit_git::watch` does
+all three, and the third is the one that matters: a `git push` in a terminal
+writes under `.git/refs/` and nothing else, so it must not cost a working-copy
+scan — and a `cargo build` writing into `target/` must cost nothing at all.
+Exclusion is asked of the repository rather than pattern-matched, so it is the
+same answer `git status` gives, nested `.gitignore` files included.
+
+Two things it got wrong first, both worth keeping written down:
+
+**Shutdown cannot be inferred from the event channel closing.** Dropping the
+`notify` watcher does not reliably drop the handler that holds the sender, so
+the receive never returns and the join waits forever — a hang, not a slow
+shutdown. Shutdown is now an explicit flag the loop reads on each wakeup.
+
+**A watcher test has to start from silence.** `git commit` leaves `gc --auto`
+running behind it, which touches `.git` a second later; the first tests were
+asserting about the previous command. They settle the repository before acting.
+
+The limitation to know: the watch is recursive, so the platform still spends a
+descriptor per directory — on Linux, one inotify watch each, against
+`fs.inotify.max_user_watches`. Walking the tree and watching only what Git cares
+about would fix it. `Watcher::start` *reports* that failure rather than
+swallowing it, and the screen says live updates are off, because a client that
+has quietly stopped noticing changes is indistinguishable from a broken one.
+
+### 2.16 Four things layer on one diff line, in one order
+
+DESIGN §4 specifies the diff viewer unusually precisely, and the composition is
+the design: the line background at 12%, the intra-line refinement at 24% over
+it, the syntax colour under both, and the sign and gutter carrying the meaning
+when none of them do. The last is not decoration — DESIGN §1's greyscale check
+has to pass, so `+`, `−` and the two number columns are load-bearing.
+
+**Unified and side-by-side are one renderer, not two.** The hunks are flattened
+into rows and the mode only changes how the rows are built, which is what keeps
+a fix to the refinement or the gutter from landing in one view and not the
+other.
+
+**Tabs are expanded here, with their offsets.** Leaving them to the text system
+loses the gutter alignment that a diff is read by; expanding them without moving
+the spans would colour the wrong characters on every indented line. So
+`expand_tabs` returns the text *and* a map, and every span is translated
+through it.
+
+The rows are virtualised and the syntax query runs over the visible range only
+(SPEC §12), so scrolling a 40 000-line diff costs what scrolling a short one
+does.
+
+### 2.17 A diff carries its two sides
+
+`DiffContent::Text` keeps the whole of both files, not just the hunks. Two
+things need it and neither can be done from hunks alone: a syntax parser handed
+the twelve lines of a hunk produces nonsense, because a fragment is not a
+program; and unfolding the context between two hunks needs the lines that were
+left out. It is bounded by `DiffOptions::max_bytes` and only ever held for the
+file on screen.
+
+### 2.18 Syntax highlighting has five colours and its own grammars
+
+DESIGN §4 allows exactly five: keywords `info`, types `warning`, functions
+`accent`, strings `success`, comments `text_dim`. There is no syntax palette and
+nothing may introduce one — a diff that invents six colours stops obeying the
+theme, and on Matte Black it stops being readable. So the mapping from a
+grammar's capture names is coarse on purpose: `function.method`,
+`function.macro` and `function` are all *functions*.
+
+The grammars are omagit's own, and SPEC §4 said they would not have to be: its
+note reads "GPUI l'embarque déjà". `gpui-kit` does offer tree-sitter — behind
+`gpui-component`, which this workspace does not enable, because doing so pulls
+in a second component library competing with the vendored one. The SPEC is
+amended in place; the practical consequence is that each language is a C
+compile, so there is one grammar per language actually rendered — Rust, TOML,
+JSON, Markdown — and adding more is a deliberate act rather than a default.
+
+A file with no grammar is drawn plain, and that is a supported outcome rather
+than a gap: DESIGN §1's first rule is that hierarchy never rests on hue.
+
+### 2.19 The vendored design system is not linted
 
 `vendor/gpui-omarchy/src/` is byte-identical to the published crate, and stays
 that way: it is what lets `scripts/sync-vendor.sh` tell an upstream change from
@@ -407,11 +487,34 @@ the keyboard:
   rather than six per row.
 
 Deliberately **not** built: cloning (M7, with the network and the progress
-overlay board 06 shows), the command palette (M9), and opening a repository into
-a screen — there is nowhere to go until M4, so "Ouvrir" records it as open and
-the topbar names it. The topbar draws *Cloner…* and *Rechercher* in board 01's
+overlay board 06 shows) and the command palette (M9). The topbar draws *Cloner…* and *Rechercher* in board 01's
 disabled state rather than hiding them: board 02 fixes the topbar's content, and
 an action that will exist reads better as not-yet than as absent.
+
+**M4 — the Working Copy, in read.** The second screen, and the diff viewer
+board 03 calls "la pièce maîtresse":
+
+- A file list split into what is staged and what is not, with `git status`'s own
+  letters, conflicts marked, and untracked files as ordinary rows.
+- The diff viewer: unified **and** side-by-side from one row model, virtualised,
+  with the four layers of §2.16 — 12% line, 24% words, syntax, sign and gutter —
+  and the binary, oversized, submodule and mode-only cases drawn as themselves.
+- Syntax highlighting in the five roles DESIGN §4 allows, over the visible range
+  only, for Rust, TOML, JSON and Markdown (§2.18).
+- A filesystem watcher that says *what* changed, so the screen refreshes itself
+  when the repository moves underneath and costs nothing when a build does
+  (§2.15).
+- `RepoStore`: the `Entity<RepoStore>` of SPEC §10 with all its parts — status,
+  summary and a per-file diff, each an `AsyncState` with a generation, each read
+  on the background executor.
+- Routing between the two screens, so "Ouvrir" now opens something.
+
+Deliberately **not** built, because M5 is the write half: staging by file, hunk
+or line, the commit-message editor, discard, and the checkboxes board 03 draws
+on every row. The space above the file list is left for them rather than filled
+with controls that would do nothing — an inert checkbox is a promise the screen
+cannot keep. The sidebar's branch tree is M7's and the stash list is M8's; both
+say which milestone they are waiting for instead of being drawn empty.
 
 Also deliberately not built: the `GitBackend` trait, which has no second
 implementation until M5 (§2.6); the commit-graph lanes, which are M6's and need
@@ -422,11 +525,11 @@ invalidate until a screen reads a repository (M4); and the preferences UI (M9).
 
 Re-read at every milestone (SPEC §15).
 
-| # | Risk | State at M3 |
+| # | Risk | State at M4 |
 |---|---|---|
 | 1 | **The UI thread blocks.** The most likely failure mode. | **First real exercise, and it holds.** Every public entry point in `omagit-git` opens with `assert_off_render_thread`; the store runs every read through `cx.background_spawn` and lands it with `this.update`. A status, a reference read and a ninety-day walk per repository, on every launch, and the guard has not fired. It stays only as good as the next entry point somebody adds: a review item, permanently. |
 | 2 | **The `gix` / CLI split lands wrong.** | **Answered.** `gix` covers every M2 read, with the measurements in `docs/notes/gitoxide-capabilities.md`; nothing fell back, and the trait is deferred to M5 rather than built empty (§2.6). The rule is unchanged for the milestones that follow: when `gix` does not cover a case, move it to the CLI and write down why — never work around it. |
-| 3 | **`gpui-omarchy` is incomplete.** | Confirmed: no diff view, no graph, no palette, no file tree, and a theme vocabulary that does not match ours. Mitigated by vendoring and by owning the tokens — M1 replaced its theme handling entirely rather than extending it. Its `virtual_list`, `resizable` and `tree` look reusable — to be confirmed against 100 000 rows at M6. |
+| 3 | **`gpui-omarchy` is incomplete.** | Confirmed, and now measured against real use: M4 wrote the diff viewer from scratch, as expected, but `virtual_list` underneath it works and is what makes a 40 000-line diff cost what a short one does. Still to confirm at 100 000 rows (M6). The theme vocabulary mismatch stands, and M1's replacement of it stands with it. |
 | 4 | **The commit graph.** The hardest algorithm here. | Not started; its input exists and is pinned down: the walk of §2.10 is total, reproducible and matched against `git log`. Lanes stay in `omagit-git/graph.rs` at M6, computing topology only, never colour, and never coupled to rendering. |
 | 5 | **Data loss.** | Still no mutating Git operation. M3 added the first thing omagit *writes*, though — the repository list — and it is handled as data rather than as a cache: a malformed file is set aside, not overwritten (§2.13), and "Retirer de la liste" removes an entry while touching nothing on disk. `cli::Invocation` remains loggable exactly as it will run, before it runs. |
 | 6 | **macOS distribution cost.** | Unchanged and recurring: Apple developer account, signing, notarisation, a macOS CI runner. Budget it now, not at M10. |
@@ -449,6 +552,14 @@ unused import in `platform/linux.rs` that macOS never compiles. The script and
 the README now say so; the two-platform matrix is the only thing that answers
 for the other half, and a green local run is not a green milestone.
 
+A thirteenth, from M4: **a recursive watch spends a descriptor per directory.**
+On a repository with a `node_modules` or a deep `target`, that is thousands of
+inotify watches against `fs.inotify.max_user_watches`, and the fix — walking the
+tree and watching only what Git cares about — is real work that has not been
+done. What *has* been done is making the failure visible: the watcher reports it
+and the statusbar says live updates are off, rather than the screen quietly
+going stale (§2.15).
+
 An eleventh, from M3, and it earned its place by paying for itself immediately:
 **the mouse has no interaction tests.** The keyboard now does —
 `crates/omagit-app/tests/keyboard.rs` drives real keystrokes through the real
@@ -464,8 +575,11 @@ keyboard":
    bindings are now scoped `Repositories && !Input`.
 
 Neither is visible in a screenshot, and neither would have been caught by
-reading the code. Dragging a row between groups is still verified only by hand,
-and so is the folder picker.
+reading the code. M4 extended the same treatment to the Working Copy
+(`tests/working_copy.rs`, against a real repository), and the Working Copy
+screen was written with the focus bug already in mind — which is what a recorded
+risk is for. Dragging a row between groups is still verified only by hand, and so
+are the folder picker and the diff's mode switch.
 
 A twelfth, from M3, and it is the ninth and tenth risks collecting: **M1's
 Omarchy support never worked on Omarchy.** The reader required a key

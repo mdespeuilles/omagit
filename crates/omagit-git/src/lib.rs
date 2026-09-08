@@ -15,6 +15,7 @@
 //! * [`diff`] — hunks, lines, and intra-line refinement.
 //! * [`paths`] — Git paths as bytes, and the one place they meet the filesystem.
 //! * [`cli`] — running the `git` binary, under the rules of SPEC §8.
+//! * [`watch`] — noticing that the repository changed underneath us.
 //! * [`cancel`] — the token everything long-running polls.
 //! * [`thread_guard`] — the assertion that none of this runs on the render
 //!   thread.
@@ -40,6 +41,7 @@ pub mod repo;
 pub mod status;
 pub mod summary;
 pub mod thread_guard;
+pub mod watch;
 
 pub use cancel::Cancel;
 pub use diff::{Diff, DiffOptions, FileDiff, Hunk, Line, LineKind, Refinement};
@@ -51,6 +53,7 @@ pub use repo::{Head, Operation, Repository};
 pub use status::{Conflict, StageChange, Status, StatusEntry, StatusOptions, WorktreeChange};
 pub use summary::{Activity, Counts, Identity, Summary};
 pub use thread_guard::{assert_off_render_thread, mark_render_thread, on_render_thread};
+pub use watch::{Changes, Watcher};
 
 /// A Git object hash.
 ///

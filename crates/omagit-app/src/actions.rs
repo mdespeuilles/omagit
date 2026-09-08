@@ -46,12 +46,20 @@ actions!(
         NewGroup,
         /// Re-read every repository.
         RefreshAll,
+        /// Open the Working Copy of the selected repository, and come back.
+        ShowWorkingCopy,
+        ShowRepositories,
+        /// Unified ↔ side-by-side.
+        ToggleDiffMode,
     ]
 );
 
 /// The key context the bindings below are scoped to. A binding with no context
 /// would fire on every screen.
 pub const CONTEXT: &str = "Repositories";
+
+/// The Working Copy screen's own context.
+pub const CONTEXT_WORKING_COPY: &str = "WorkingCopy";
 
 /// The same screen, but only while no text field has the caret.
 ///
@@ -61,6 +69,7 @@ pub const CONTEXT: &str = "Repositories";
 /// itself. Without this, `/` then `j` filters for nothing and moves the
 /// selection — which is exactly what `tests/keyboard.rs` caught.
 const OUTSIDE_TEXT: &str = "Repositories && !Input";
+const WORKING_COPY_OUTSIDE_TEXT: &str = "WorkingCopy && !Input";
 
 /// Install the default keymap.
 ///
@@ -97,5 +106,15 @@ pub fn bind(cx: &mut App) {
         KeyBinding::new("enter", Confirm, Some(CONTEXT)),
         KeyBinding::new("escape", Cancel, Some(CONTEXT)),
         KeyBinding::new("secondary-g", NewGroup, Some(CONTEXT)),
+        // Working Copy. The movement keys are deliberately the same letters as
+        // on Repositories: DESIGN §5 wants one vocabulary across the screens,
+        // not one per screen.
+        KeyBinding::new("down", SelectNext, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("up", SelectPrevious, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("j", SelectNext, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("k", SelectPrevious, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("secondary-r", RefreshAll, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("secondary-d", ToggleDiffMode, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("escape", ShowRepositories, Some(CONTEXT_WORKING_COPY)),
     ]);
 }
