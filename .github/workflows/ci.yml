@@ -8,6 +8,13 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  # CI compiles each commit once and throws the tree away, so incremental
+  # compilation buys nothing and cost 3.7 GB of the cached target directory.
+  CARGO_INCREMENTAL: 0
+  # Full debug info is most of what remains. Line tables still give a panic
+  # backtrace with file and line, which is all a CI log is read for.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_PROFILE_RELEASE_DEBUG: line-tables-only
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,6 +25,10 @@ jobs:
   check:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    # A hung test used to run until the six-hour default killed it. The whole
+    # job takes about four minutes warm and about twenty from an empty cache,
+    # so anything past this is stuck, not slow.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -36,9 +47,15 @@ jobs:
           rustup show active-toolchain
           cargo --version
 
+      # Saved only from `main`, and restored everywhere. GitHub gives a
+      # repository 10 GB of cache and evicts the oldest entry past it; one
+      # ~2 GB entry per branch per platform reached that limit within three
+      # pull requests, so every run started cold — which is what a 28-minute
+      # run was. One entry per platform stays well inside it.
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.name }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       # GPUI renders through Vulkan/Wayland/X11 on Linux and needs these to
       # link. Kept in one place so a link failure reads as a missing package
@@ -60,8 +77,15 @@ jobs:
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # Single-threaded: three of the four Working Copy tests, which drive
+      # GPUI's test platform against a real repository, hung indefinitely on
+      # one Linux run. Twelve local runs at the same parallelism never did, so
+      # the cause is not understood and this is a mitigation, not a fix
+      # (`docs/ARCHITECTURE.md` risk 7). It costs nothing: the four tests take
+      # two seconds either way.
       - name: test
-        run: cargo test --workspace
+        timeout-minutes: 10
+        run: cargo test --workspace -- --test-threads=1
 
       - name: release build
         run: cargo build --workspace --release
@@ -70,6 +94,7 @@ jobs:
   deny:
     name: cargo-deny
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
@@ -81,6 +106,7 @@ jobs:
   vendor:
     name: vendor drift
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - run: scripts/sync-vendor.sh
