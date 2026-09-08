@@ -602,3 +602,13 @@ and both are load-bearing for `status`. Two tests carry them
 `an_accented_name_matches_its_index_entry`), and a third is compiled out on
 macOS entirely because APFS rejects names that are not valid UTF-8. A green
 Linux run says nothing about any of them.
+
+**It fired on the first run that mattered**, and not on any of those three: two
+tests compared a work tree against `canonicalize(fixture)`, which holds on Linux
+and cannot on macOS, where `/var` is a symlink to `/private/var` and a temporary
+directory therefore has two true names. The product was never exposed — the
+three places that canonicalise each do it once and use the result throughout —
+but the assertion was wrong on both platforms and only *observably* wrong on
+one. The fix is on the M2 branch, and the general form of it is worth keeping:
+**assert the property you need, not the incidental one.** Two paths naming the
+same directory is what the app requires; string equality was never it.
