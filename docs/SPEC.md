@@ -73,19 +73,25 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 8. **Un jalon = une PR**, avec `cargo fmt --check`, `cargo clippy -- -D warnings` et
    `cargo test` verts **sur Linux et macOS** avant de proposer la suite.
 
-> **Amendement, après M4 (2026-09-08) — la vérification est locale, pas en CI.**
+> **Amendement, après M4 (2026-09-08) — ni CI, ni PR, tant que le projet est
+> jeune et développé par une seule personne.**
 >
-> Cette règle a été lue comme « GitHub Actions rejoue tout, sur les deux
-> plateformes, à chaque push ». Sur un dépôt **privé** développé par **une seule
-> personne**, ça ne protège de rien : il n'y a pas de contributeur dont il
-> faudrait vérifier le travail, et un push qui casse la compilation n'est
-> découvert que par celui qui l'a écrit — qui le savait déjà. Le coût, lui, est
-> réel : macOS est facturé ×10, et le seul run de la PR #1 a consommé environ
-> 113 minutes.
+> La règle disait « un jalon = une PR », vérifiée par GitHub Actions sur les
+> deux plateformes à chaque push. Les deux moitiés supposent un lecteur qui
+> n'existe pas : sur un dépôt **privé** développé par **une seule personne**, une
+> PR n'est relue par personne, et un gate ne vérifie le travail de personne
+> d'autre. Un push qui casse la compilation est découvert par celui qui l'a
+> écrit, qui le savait déjà. Le coût, lui, était réel : macOS est facturé ×10, et
+> le seul run de la PR #1 a consommé environ 113 minutes.
 >
-> Le workflow est donc **supprimé** (`.github/workflows/ci.yml`, dernier état au
-> commit `08193f5`, à restaurer tel quel le jour où il servira). Ce qui reste :
-> `scripts/check.sh`, lancé quand on le décide.
+> Donc, jusqu'à nouvel ordre :
+>
+> - **Pas de CI.** Le workflow est supprimé (`.github/workflows/ci.yml`, dernier
+>   état au commit `08193f5`, à restaurer tel quel le jour où il servira).
+> - **Pas de PR.** On commite et on pousse sur `main`. Un jalon reste une unité
+>   de travail cohérente, et son commit de tête le dit ; il n'a simplement plus
+>   d'enveloppe de revue autour.
+> - **Ce qui reste** : `scripts/check.sh`, lancé quand on le décide.
 >
 > Ce que ça coûte, écrit noir sur blanc plutôt que passé sous silence : plus
 > personne ne compile l'autre plateforme. `scripts/check.sh` ne compile que la
@@ -96,9 +102,9 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 > ils seront vus au prochain passage sur l'autre — plus tard, et c'est le
 > marché accepté ici.
 >
-> **À rétablir si un second développeur rejoint le projet** : la règle redevient
-> alors ce qu'elle dit, parce qu'il y a enfin du travail à vérifier qui n'est
-> pas le sien.
+> **À rétablir si un second développeur rejoint le projet, ou quand le projet
+> sera à un stade avancé** : la règle redevient alors ce qu'elle dit, parce
+> qu'il y a enfin du travail à relire et à vérifier qui n'est pas le sien.
 9. **Écris les tests avec le code.** Chaque commande Git implémentée arrive avec au moins un
    test d'intégration sur un dépôt temporaire.
 
@@ -143,7 +149,7 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 commit d'origine noté dans `vendor/README.md`, le référencer par `path`, et créer
 `scripts/sync-vendor.sh` qui diffe l'upstream et signale les évolutions.
 
-Rationale à consigner dans la PR : on ne veut pas qu'un upstream de 7 étoiles bloque un projet
+Rationale à consigner dans le message de commit : on ne veut pas qu'un upstream de 7 étoiles bloque un projet
 de plusieurs mois. On contribue les correctifs génériques en amont, on garde les divergences
 produit en local.
 
@@ -460,7 +466,8 @@ uniquement, graphe recalculé en différentiel.
 
 ## 14. Jalons
 
-Un jalon à la fois, chacun terminé par une PR validée.
+Un jalon à la fois, chacun terminé par `scripts/check.sh` vert et poussé sur `main`
+(§3 règle 8 et son amendement : pas de PR à ce stade).
 
 - **M0 — Squelette.** Workspace, vendoring de `gpui-omarchy`, fenêtre décorée qui démarre et
   applique un thème sur Linux et macOS, CI verte sur les deux, `docs/ARCHITECTURE.md` initial
