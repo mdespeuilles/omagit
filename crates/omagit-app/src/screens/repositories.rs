@@ -23,8 +23,9 @@ use std::path::PathBuf;
 use gpui_kit::base::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, App, ClipboardItem, Context, Entity, ExternalPaths, FocusHandle, Focusable,
-    FontWeight, IntoElement, PathPromptOptions, SharedString, Subscription, Window, div, px,
+    AnyElement, App, ClickEvent, ClipboardItem, Context, Entity, ExternalPaths, FocusHandle,
+    Focusable, FontWeight, IntoElement, PathPromptOptions, SharedString, Subscription, Window, div,
+    px,
 };
 
 use omagit_git::{Counts, Head, Summary};
@@ -912,10 +913,21 @@ impl RepositoriesScreen {
                 element.border_t_2().border_color(hsla(t.accent))
             })
             .text_color(hsla(t.text))
-            .on_click(cx.listener(move |screen, _, window, cx| {
+            .on_click(cx.listener(move |screen, event: &ClickEvent, window, cx| {
                 screen.selected = Some(at);
                 screen.description_of = None;
                 screen.go_to(Stop::List, window, cx);
+                // A second click opens it, the way every list-and-detail does.
+                // DESIGN §5 gives the keyboard path (⏎) and board 06 the button
+                // in the card; the pointer had no gesture of its own, so a row
+                // could be clicked all day without anything happening.
+                //
+                // The first click stays a selection on purpose: the card is a
+                // surface meant to be read — location, last commit, identity,
+                // remotes — without committing to switching to it.
+                if event.click_count() >= 2 {
+                    screen.open_selected(window, cx);
+                }
             }))
             .on_drag(DraggedRow(at), {
                 let name = SharedString::from(entry.name.clone());
