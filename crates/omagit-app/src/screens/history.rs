@@ -102,6 +102,11 @@ impl HistoryScreen {
     /// Only within what has been read: a parent further back than the walk has
     /// gone has no row to scroll to yet, and loading pages until it appears
     /// could be ninety thousand commits. It says so rather than doing that.
+    /// The store this screen reads, so the shell can draw the chrome around it.
+    pub fn store(&self) -> &Entity<RepoStore> {
+        &self.store
+    }
+
     pub fn go_to(&mut self, id: ObjectId, cx: &mut Context<Self>) {
         let found = self
             .store

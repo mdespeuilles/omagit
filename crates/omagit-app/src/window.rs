@@ -23,7 +23,7 @@ use omagit_ui::{ActiveFonts, ActivePalette, Fonts, Palette, hsla};
 use crate::actions::{ShowHistory, ShowRepositories, ShowWorkingCopy};
 use crate::platform::{self, Platform, TOPBAR_HEIGHT_COMFORTABLE, TOPBAR_HEIGHT_COMPACT};
 use crate::repo_store::RepoStore;
-use crate::screens::{HistoryScreen, RepositoriesScreen, WorkingCopyScreen};
+use crate::screens::{HistoryScreen, RepositoriesScreen, WorkingCopyScreen, chrome};
 use crate::store::Store;
 
 /// The reference window of the mock-ups is 1600×1000; below 1100px of usable
@@ -318,10 +318,43 @@ impl Render for Shell {
         let fonts = cx.fonts().clone();
         let t = palette.tokens;
 
+        // The chrome boards 03 and 05 draw around both repository screens: the
+        // sidebar that says where you are and how to leave, and the statusbar
+        // that reports the repository. It belonged to the Working Copy, so
+        // opening History left a window with no way out of it but `Esc`.
+        let open_store = match (self.screen, &self.working_copy, &self.history) {
+            (Screen::WorkingCopy, Some((_, screen)), _) => {
+                Some((screen.read(cx).store().clone(), chrome::Active::WorkingCopy))
+            }
+            (Screen::History, _, Some((_, screen))) => {
+                Some((screen.read(cx).store().clone(), chrome::Active::History))
+            }
+            _ => None,
+        };
+
         let body = match (self.screen, &self.working_copy, &self.history) {
             (Screen::WorkingCopy, Some((_, screen)), _) => screen.clone().into_any_element(),
             (Screen::History, _, Some((_, screen))) => screen.clone().into_any_element(),
             _ => self.repositories.clone().into_any_element(),
+        };
+
+        let body = match &open_store {
+            Some((store, active)) => div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_h_0()
+                .child(
+                    div()
+                        .flex()
+                        .flex_1()
+                        .min_h_0()
+                        .child(chrome::sidebar(store, *active, &palette, &fonts, cx))
+                        .child(body),
+                )
+                .child(chrome::statusbar(store, &palette, &fonts, cx))
+                .into_any_element(),
+            None => body,
         };
 
         div()

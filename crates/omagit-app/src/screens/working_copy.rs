@@ -28,24 +28,23 @@ use gpui_kit::{
 use omagit_git::ops::CommitOptions;
 use omagit_git::patch::Selection;
 use omagit_git::status::short_code;
-use omagit_git::{FileDiff, Head, RepoPath, Status, StatusEntry};
+use omagit_git::{FileDiff, RepoPath, Status, StatusEntry};
 use omagit_theme::Rgb;
 use omagit_ui::diff_view::{DiffView, Mode};
-use omagit_ui::primitives::{Pip, chip, pip};
-use omagit_ui::{ActiveFonts, ActivePalette, Fonts, Icon, Palette, hsla};
+use omagit_ui::primitives::chip;
+use omagit_ui::{ActiveFonts, ActivePalette, Fonts, Palette, hsla};
 
 use crate::actions::*;
 use crate::git_runtime::ActiveGit;
 use crate::repo_store::{RepoStore, Side};
-use crate::time;
 use crate::writes::{Target, Write};
 
 /// Board 03: the sidebar is 260px, the file column 320px, the diff takes the
 /// rest and refuses to go under 420.
-const SIDEBAR_WIDTH: f32 = 260.0;
+pub(crate) const SIDEBAR_WIDTH: f32 = 260.0;
 const FILES_WIDTH: f32 = 320.0;
 const DIFF_MIN_WIDTH: f32 = 420.0;
-const ROW_HEIGHT: f32 = 24.0;
+pub(crate) const ROW_HEIGHT: f32 = 24.0;
 
 /// One row of the file column.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -427,7 +426,7 @@ impl WorkingCopyScreen {
 }
 
 /// Does this entry have something to show on `side`?
-fn has(entry: &StatusEntry, side: Side) -> bool {
+pub(crate) fn has(entry: &StatusEntry, side: Side) -> bool {
     match side {
         Side::Staged => entry.staged.is_some(),
         // Ignored files are listed by the status but have nothing to diff, so
@@ -559,7 +558,6 @@ impl Render for WorkingCopyScreen {
             .text_color(hsla(t.text))
             .font_family(fonts.ui.clone())
             .text_size(px(13.0))
-            .child(self.sidebar(&palette, &fonts, cx))
             .child(
                 div()
                     .flex()
@@ -580,8 +578,7 @@ impl Render for WorkingCopyScreen {
                     .min_w(px(DIFF_MIN_WIDTH))
                     .min_h_0()
                     .child(self.diff.clone())
-                    .children(self.journal_panel(&palette, &fonts, cx))
-                    .child(self.statusbar(&palette, &fonts, cx)),
+                    .children(self.journal_panel(&palette, &fonts, cx)),
             )
             .children(self.confirmation(&palette, &fonts, cx))
     }
@@ -829,131 +826,6 @@ impl WorkingCopyScreen {
         )
     }
 
-    fn sidebar(
-        &self,
-        palette: &Palette,
-        fonts: &Fonts,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let t = palette.tokens;
-        let store = self.store.read(cx);
-        let name = store
-            .path()
-            .file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let location = time::tildify(store.path());
-        let summary = store.summary().value();
-        let head = summary
-            .map(|summary| summary.head.label())
-            .unwrap_or_else(|| "…".into());
-        let changed = self
-            .store
-            .read(cx)
-            .status()
-            .value()
-            .map(|status| status.entries.len())
-            .unwrap_or(0);
-
-        div()
-            .flex()
-            .flex_col()
-            .w(px(SIDEBAR_WIDTH))
-            .flex_none()
-            .min_h_0()
-            .bg(hsla(t.surface))
-            .border_r_1()
-            .border_color(hsla(t.border))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(2.0))
-                    .flex_none()
-                    .p(px(10.0))
-                    .border_b_1()
-                    .border_color(hsla(t.border))
-                    .child(
-                        div()
-                            .text_size(px(13.0))
-                            .font_weight(FontWeight::MEDIUM)
-                            .truncate()
-                            .child(SharedString::from(name)),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(6.0))
-                            .font_family(fonts.mono.clone())
-                            .text_size(px(11.0))
-                            .text_color(hsla(t.text_muted))
-                            .child(div().truncate().child(SharedString::from(location)))
-                            .child("·")
-                            .child(SharedString::from(head)),
-                    ),
-            )
-            // Where you can go from here. Only one of these is a screen yet, and
-            // the others say which milestone they are waiting for rather than
-            // pretending to be disabled for some other reason.
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .flex_none()
-                    .py(px(6.0))
-                    .child(nav_header("Workspace", palette))
-                    .child(nav_row(
-                        "Working Copy",
-                        Some(changed.to_string()),
-                        true,
-                        None,
-                        palette,
-                        fonts,
-                    ))
-                    .child(
-                        div()
-                            .id("nav-history")
-                            .cursor_pointer()
-                            .on_click(|_, window, cx| {
-                                window.dispatch_action(Box::new(ShowHistory), cx);
-                            })
-                            .child(nav_row("History", None, false, None, palette, fonts)),
-                    )
-                    .child(nav_row("Stashes", None, false, Some("M8"), palette, fonts))
-                    .child(nav_row("Branches", None, false, Some("M7"), palette, fonts)),
-            )
-            .child(div().flex_1())
-            .child(
-                div()
-                    .id("back-to-repositories")
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .flex_none()
-                    .h(px(26.0))
-                    .px(px(10.0))
-                    .border_t_1()
-                    .border_color(hsla(t.border))
-                    .text_size(px(12.0))
-                    .text_color(hsla(t.text_muted))
-                    .hover(|style| style.bg(hsla(t.surface_hover)))
-                    .on_click(|_, window, cx| {
-                        window.dispatch_action(Box::new(ShowRepositories), cx);
-                    })
-                    .child(Icon::ChevronRight.render(px(12.0), hsla(t.text_dim)))
-                    .child("Tous les dépôts")
-                    .child(div().flex_1())
-                    .child(
-                        div()
-                            .font_family(fonts.mono.clone())
-                            .text_size(px(11.0))
-                            .text_color(hsla(t.text_dim))
-                            .child("Esc"),
-                    ),
-            )
-    }
-
     fn files_column(
         &self,
         palette: &Palette,
@@ -1113,112 +985,9 @@ impl WorkingCopyScreen {
                 element.child(chip("conflit", t.danger, t.danger))
             })
     }
-
-    fn statusbar(
-        &self,
-        palette: &Palette,
-        fonts: &Fonts,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let t = palette.tokens;
-        let store = self.store.read(cx);
-        let status = store.status().value();
-        let staged = status
-            .map(|status| {
-                status
-                    .entries
-                    .iter()
-                    .filter(|e| has(e, Side::Staged))
-                    .count()
-            })
-            .unwrap_or(0);
-        let unstaged = status
-            .map(|status| {
-                status
-                    .entries
-                    .iter()
-                    .filter(|e| has(e, Side::Unstaged))
-                    .count()
-            })
-            .unwrap_or(0);
-        let conflicts = status.map(|status| status.conflicts().count()).unwrap_or(0);
-        let summary = store.summary().value();
-
-        div()
-            .flex()
-            .items_center()
-            .gap(px(14.0))
-            .flex_none()
-            .h(px(24.0))
-            .px(px(12.0))
-            .border_t_1()
-            .border_color(hsla(t.border))
-            .bg(hsla(t.surface))
-            .font_family(fonts.mono.clone())
-            .text_size(px(11.5))
-            .children(summary.map(|summary| {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(6.0))
-                    .text_color(hsla(t.text_muted))
-                    .child(pip(
-                        if matches!(summary.head, Head::Detached { .. }) {
-                            Pip::Hollow
-                        } else {
-                            Pip::Filled
-                        },
-                        t.text_muted,
-                        6.0,
-                    ))
-                    .child(SharedString::from(summary.head.label()))
-                    .children(
-                        summary
-                            .tracking
-                            .as_ref()
-                            .filter(|t| !t.gone)
-                            .map(|tracking| {
-                                SharedString::from(format!(
-                                    "↑{} ↓{}",
-                                    tracking.ahead, tracking.behind
-                                ))
-                            }),
-                    )
-            }))
-            .child(
-                div()
-                    .text_color(hsla(t.text_muted))
-                    .child(SharedString::from(format!(
-                        "{staged} indexé{} · {unstaged} non indexé{}",
-                        plural(staged),
-                        plural(unstaged)
-                    ))),
-            )
-            .child(div().flex_1())
-            .when(conflicts > 0, |element| {
-                element.child(
-                    div()
-                        .text_color(hsla(t.danger))
-                        .child(SharedString::from(format!(
-                            "! {conflicts} conflit{} non résolu{}",
-                            plural(conflicts),
-                            plural(conflicts)
-                        ))),
-                )
-            })
-            // Live updates are the screen's promise; if they are off, it says
-            // so rather than looking stale.
-            .children(store.watch_error().map(|error| {
-                div()
-                    .text_color(hsla(t.warning))
-                    .child(SharedString::from(format!(
-                        "mises à jour live indisponibles — {error}"
-                    )))
-            }))
-    }
 }
 
-fn nav_header(label: &'static str, palette: &Palette) -> impl IntoElement {
+pub(crate) fn nav_header(label: &'static str, palette: &Palette) -> impl IntoElement {
     div()
         .flex()
         .items_center()
@@ -1229,7 +998,7 @@ fn nav_header(label: &'static str, palette: &Palette) -> impl IntoElement {
         .child(SharedString::from(label.to_uppercase()))
 }
 
-fn nav_row(
+pub(crate) fn nav_row(
     label: &'static str,
     count: Option<String>,
     active: bool,
@@ -1295,7 +1064,7 @@ fn section_row(side: Side, count: usize, palette: &Palette, fonts: &Fonts) -> im
 }
 
 /// The colour of a `git status --short` letter.
-fn letter_color(letter: char, palette: &Palette) -> Rgb {
+pub(crate) fn letter_color(letter: char, palette: &Palette) -> Rgb {
     let t = palette.tokens;
     match letter {
         'A' => t.success,
@@ -1308,11 +1077,11 @@ fn letter_color(letter: char, palette: &Palette) -> Rgb {
     }
 }
 
-fn hint(text: &'static str, palette: &Palette) -> impl IntoElement {
+pub(crate) fn hint(text: &'static str, palette: &Palette) -> impl IntoElement {
     hint_owned(text.to_owned(), palette, palette.tokens.text_dim)
 }
 
-fn hint_owned(text: String, palette: &Palette, color: Rgb) -> impl IntoElement {
+pub(crate) fn hint_owned(text: String, palette: &Palette, color: Rgb) -> impl IntoElement {
     let _ = palette;
     div()
         .p(px(10.0))
@@ -1386,7 +1155,7 @@ fn flag(label: &'static str, on: bool, palette: &Palette, fonts: &Fonts) -> gpui
         .child(SharedString::from(label))
 }
 
-fn plural(count: usize) -> &'static str {
+pub(crate) fn plural(count: usize) -> &'static str {
     if count > 1 { "s" } else { "" }
 }
 
