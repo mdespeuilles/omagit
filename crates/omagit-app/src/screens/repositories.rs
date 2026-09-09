@@ -405,15 +405,50 @@ impl RepositoriesScreen {
     ///
     /// A folder that is not one is reported rather than silently ignored: the
     /// user meant something by dropping it.
+    ///
+    /// Deciding *whether* a folder is a repository is Git work — it stats the
+    /// tree and opens the object database — so it happens on the background
+    /// executor and comes back as a message (SPEC §3 rule 2). Both callers
+    /// reach this from the render thread: the file picker's continuation and
+    /// the drop handler.
     fn add_paths(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
+        // Taken now, not when the check comes back: it is the group that was
+        // selected when the user dropped, which is what they meant.
         let group = self.selected.map(|at| at.group);
+        cx.spawn(async move |screen, cx| {
+            let checked = cx
+                .background_spawn(async move {
+                    paths
+                        .into_iter()
+                        .map(|path| {
+                            let outcome = omagit_git::Repository::open(&path).map(|_| ());
+                            (path, outcome)
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .await;
+            screen
+                .update(cx, |screen, cx| screen.apply_added(checked, group, cx))
+                .ok();
+        })
+        .detach();
+    }
+
+    /// Record the folders that turned out to be repositories, and report the
+    /// ones that did not. Back on the render thread, holding no Git work.
+    fn apply_added(
+        &mut self,
+        checked: Vec<(PathBuf, omagit_git::Result<()>)>,
+        group: Option<usize>,
+        cx: &mut Context<Self>,
+    ) {
         let mut added = None;
-        for path in paths {
-            match omagit_git::Repository::open(&path) {
-                Ok(_) => {
+        for (path, outcome) in checked {
+            match outcome {
+                Ok(()) => {
                     added = Some(
                         self.store
-                            .update(cx, |store, cx| store.add(path.clone(), group, cx)),
+                            .update(cx, |store, cx| store.add(path, group, cx)),
                     );
                 }
                 Err(error) => {
