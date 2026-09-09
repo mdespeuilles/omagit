@@ -436,8 +436,23 @@ fn conflict_from(summary: gix::status::plumbing::index_as_worktree::Conflict) ->
 /// Two columns: staged, then unstaged. Deliberately the same alphabet as Git's,
 /// so a bug report can be compared against a terminal without translation.
 pub fn short_code(entry: &StatusEntry) -> String {
-    if entry.conflict.is_some() {
-        return "UU".into();
+    // Git spells each kind of conflict differently, and the pair is the whole
+    // of what it says: `DU` is "deleted by us", `UA` "added by them". Every one
+    // of them read as `UU` here, which is *both modified* — the one kind that
+    // has a version on each side, and so the one whose two answers are both a
+    // file. A tooltip saying that over a delete/modify is worse than saying
+    // nothing (§2.36 is about exactly that asymmetry).
+    if let Some(conflict) = entry.conflict {
+        return match conflict {
+            Conflict::BothModified => "UU",
+            Conflict::BothAdded => "AA",
+            Conflict::BothDeleted => "DD",
+            Conflict::AddedByUs => "AU",
+            Conflict::AddedByThem => "UA",
+            Conflict::DeletedByUs => "DU",
+            Conflict::DeletedByThem => "UD",
+        }
+        .into();
     }
     let staged = match &entry.staged {
         Some(StageChange::Added) => 'A',
@@ -479,6 +494,25 @@ mod tests {
             is_submodule: false,
             is_directory: false,
         }
+    }
+
+    #[test]
+    fn every_kind_of_conflict_keeps_gits_own_two_letters() {
+        // `git status --short`'s table, which is not seven ways of writing
+        // "unmerged": the pair says which side has a version, and that is the
+        // difference between "keep ours" restoring a file and removing one.
+        let of = |kind: Conflict| {
+            let mut row = entry(Some(StageChange::Modified), Some(WorktreeChange::Modified));
+            row.conflict = Some(kind);
+            short_code(&row)
+        };
+        assert_eq!(of(Conflict::BothModified), "UU");
+        assert_eq!(of(Conflict::BothAdded), "AA");
+        assert_eq!(of(Conflict::BothDeleted), "DD");
+        assert_eq!(of(Conflict::AddedByUs), "AU");
+        assert_eq!(of(Conflict::AddedByThem), "UA");
+        assert_eq!(of(Conflict::DeletedByUs), "DU");
+        assert_eq!(of(Conflict::DeletedByThem), "UD");
     }
 
     #[test]

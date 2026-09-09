@@ -262,6 +262,39 @@ fn reports_a_conflict_and_which_side_did_what() {
     assert_eq!(status.conflicts().count(), 1);
 }
 
+/// The letters, against `git status --short`'s own — for a conflict that is not
+/// "both modified".
+///
+/// Found by driving the fixture repository by hand: omagit said `UU` over a
+/// file deleted on one side and changed on the other, which is the one kind of
+/// conflict where *both* answers are a file. Git says `DU`, and the difference
+/// is whether "keep ours" restores something or removes it.
+#[test]
+fn a_delete_against_a_modification_keeps_gits_two_letters() {
+    let fixture = TestRepo::new();
+    fixture.commit_file("gone.txt", "base\n", "base");
+    fixture.branch("other");
+    fixture.commit_file("gone.txt", "theirs\n", "they changed it");
+    fixture.checkout("main");
+    fixture.remove("gone.txt");
+    fixture.add_all();
+    fixture.commit_staged("we deleted it");
+    assert!(
+        !fixture.git_allow_failure(&["merge", "other"]),
+        "delete against modify conflicts"
+    );
+
+    let status = status(&fixture);
+    let conflicted = entry(&status, "gone.txt");
+    assert_eq!(conflicted.conflict, Some(Conflict::DeletedByUs));
+    assert_eq!(short_code(conflicted), "DU");
+    assert!(
+        fixture.git(&["status", "--short"]).starts_with("DU"),
+        "and that is what git prints: {}",
+        fixture.git(&["status", "--short"])
+    );
+}
+
 #[test]
 fn a_type_change_is_not_a_modification() {
     let fixture = TestRepo::new();

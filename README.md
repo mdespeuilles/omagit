@@ -21,6 +21,26 @@ build (`cargo build --release`) embeds the front end and needs no server.
 the same log as the backend's, so a start-up failure is one file to read rather
 than a devtools console to open.
 
+## A repository to try it on
+
+```sh
+scripts/fixture.sh              # --conflict leaves it stopped in the middle of one
+```
+
+Builds a throw-away repository under `$TMPDIR` with everything a screen needs to
+have something to draw: a history with a merge in it, five branches — one merged,
+one nobody has touched since the spring — two tags, a divergence from a "remote"
+that is a bare repository on the disk beside it, two stashes, a working copy
+holding six kinds of change at once, and a merge that conflicts in three files.
+
+It makes **two** repositories, and the reason is `git`'s: a merge refuses to
+start when anything at all is staged, so the one that shows a half-filled index
+cannot be the one that conflicts on demand. `atelier` is the working copy;
+`atelier-collegue` has a clean tree and the same branches.
+
+Rebuilt from scratch on every run, and it only ever deletes a directory it wrote
+itself.
+
 ## Before opening a PR
 
 ```sh
