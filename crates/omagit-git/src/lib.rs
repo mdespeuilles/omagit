@@ -12,6 +12,7 @@
 //! * [`status`] — the working copy: staged, unstaged, untracked, conflicted.
 //! * [`summary`] — the whole of one repository at a glance, in one read.
 //! * [`history`] — a resumable walk over commits.
+//! * [`graph`] — which lane each commit sits in, and what connects to it.
 //! * [`diff`] — hunks, lines, and intra-line refinement.
 //! * [`paths`] — Git paths as bytes, and the one place they meet the filesystem.
 //! * [`cli`] — running the `git` binary, under the rules of SPEC §8.
@@ -34,6 +35,7 @@ pub mod cancel;
 pub mod cli;
 pub mod diff;
 pub mod error;
+pub mod graph;
 pub mod history;
 pub mod journal;
 pub mod ops;
@@ -49,6 +51,7 @@ pub mod watch;
 pub use cancel::Cancel;
 pub use diff::{Diff, DiffOptions, FileDiff, Hunk, Line, LineKind, Refinement};
 pub use error::{GitError, Result};
+pub use graph::{Graph, Row as GraphRow};
 pub use history::{Civil, Commit, HistoryQuery, Signature, Time, Walk};
 pub use paths::RepoPath;
 pub use refs::{Branch, Refs, Remote, Tag, Tracking};
