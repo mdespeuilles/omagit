@@ -417,9 +417,19 @@ rewriting it or adding a process boundary.
 GPUI's interaction test harness, which drove the real widget tree and caught
 four real bugs in one session. Nothing on the web side is as direct.
 
-**What is still unknown.** Tauri uses the system webview, so WebKitGTK on Linux
-— the design target, and the weakest of the three. That is what M6b's spike
-exists to answer, on Linux, before anything is ported.
+**What was unknown, and is not any more.** Tauri uses the system webview, so
+WebKitGTK on Linux — the design target, and the weakest of the three. M6b's
+spike existed to answer that before anything was ported, and the answer arrived
+the other way round: the port went ahead on macOS, and the whole of it — M3
+through M8, the virtualised diff, the graph's gutter, the conflict dialog — was
+then run on Linux under WebKitGTK on 2026-09-09. It holds. Nothing about the
+webview has had to be worked around, and no measurement has been given up on.
+
+That is one report from one machine, not a benchmark: the numbers SPEC §12 asks
+for are still owed, and `selectFile` logs the IPC time of every diff it reads
+precisely so that they can be collected there rather than guessed at here. What
+the run settles is the question the decision was taken *without* an answer to —
+whether the weakest of the three engines could carry this interface at all.
 
 **Why the list of what survives is short.** SPEC §3 rules 5 and 6 — the Git core
 knows nothing about the UI, no `cfg(target_os)` in the UI layer — were held from
@@ -1374,15 +1384,62 @@ window:
   the card of board 06, adding through the platform's folder picker, and
   removing an entry without touching the disk.
 
-The port is complete. What is left on these screens is named in §2.27 and
-§2.25 — board 06's reordering, groups and cloning; and Git's history
-simplification, which is what a path-filtered view would need to keep its
-gutter. The Linux measurement §2.20 calls unknown is
-still unknown — it needs one run of `scripts/dev.sh` there.
+The port is complete. What is left on those screens is named in §2.27 and
+§2.25 — board 06's reordering and groups, and Git's history simplification,
+which is what a path-filtered view would need to keep its gutter.
+
+**M7 — branches and the network** (§2.32 to §2.34; the clone slice has no
+section of its own — its reasoning is in commit `2e26d71`, and that gap is the
+last of M7's). The sidebar's branch tree,
+grouped on the first `/`, with tags and remote-tracking branches under it and a
+"Merged" mark read from `git` rather than guessed. Switching (`git switch`, not
+`checkout`, which guesses between a branch and a path), creating, deleting with
+the two different questions that deserves. Fetch, pull, and push with
+`--force-with-lease` and never a bare `--force`, each behind a cancellable
+progress overlay fed by `git`'s own stderr, one operation at a time per window.
+Merge and rebase, and `abort` as the way out of one that stopped. Cloning, with
+a reachability probe run *before* the clone rather than four minutes into it.
+Authentication is `git`'s own, through the platform's credential helper, and
+nothing here ever waits for a person: `GIT_TERMINAL_PROMPT=0` and
+`GIT_EDITOR=true` are set for every invocation, so a command that decided to ask
+fails instead of hanging on a terminal that is not there.
+
+**M8 — stashes and conflicts** (§2.35 to §2.37). The shelf: a screen of its own,
+reading `refs/stash`'s reflog, with the preview of what one holds — including
+the files an `--include-untracked` stash keeps in a third parent, which a
+commit diff never looks at. Push, apply, pop and drop, each addressed by commit
+because the index in `stash@{0}` moves the moment one is dropped.
+
+Conflicts: the two sides named by their branch rather than by the pronouns,
+which are only honest during a merge; whole-file resolution that knows a
+"keep ours" over a file we deleted means `git rm` and not `git checkout`; board
+07's dialog for the rest, answering conflict by conflict with Ours / Theirs /
+Both over the markers `git` wrote, rebuilt byte for byte so line endings survive;
+the file opened in the configured editor, or in the desktop's opener when that
+editor lives in a terminal. And both ways out of a stopped operation, side by
+side in the status bar: `continue` once the conflicts are settled, `abort` at
+any time.
+
+**Verified on screen, not only in tests** (§2.38, §2.39). `scripts/fixture.sh`
+builds a repository with the shape all of this needs — a history with a merge in
+it, five branches, a divergence from a local "remote", two stashes, a working
+copy holding seven states at once, and a merge that conflicts in three files —
+and driving it by hand on both platforms found five defects the suites could not
+see: invisible row actions taking their width, a status bar that wrapped a
+sentence inside 22 pixels, every error crossing with its command in front of it,
+a conflicted file with no diff at all, and two buttons on that diff that could
+only ever fail.
 
 ## 5. Risks
 
 Re-read at every milestone (SPEC §15).
+
+> **The table below is stamped M4 and has not been re-read since.** Three of its
+> rows are answered elsewhere in this document — risk 3 by §2.20's amendment,
+> risk 4 by M6's graph, risk 7 by the CI decision recorded in CLAUDE.md — and
+> the rest are owed a pass. Left stamped rather than quietly refreshed: a risk
+> table that says M4 and means it is more use than one that looks current and is
+> not.
 
 | # | Risk | State at M4 |
 |---|---|---|
