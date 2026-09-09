@@ -25,6 +25,7 @@
 //! what keeps the two from drifting — a fix to the refinement or the gutter
 //! lands in both by construction.
 
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -132,6 +133,16 @@ pub struct DiffView {
     new_syntax: Option<Highlighter>,
     facts: Option<Facts>,
     scroll: VirtualListScrollHandle,
+    /// The changed lines the user has picked out, as `(hunk, line)` — the same
+    /// coordinates `omagit_git::patch::Selection` speaks in, so what is on
+    /// screen and what is staged cannot drift apart.
+    ///
+    /// Context lines are never in here: selecting one would mean nothing, since
+    /// a patch describes them either way.
+    selection: BTreeSet<(usize, usize)>,
+    /// The row the keyboard is on. A row index rather than a line, because
+    /// headers and folds are rows too and the cursor walks over them.
+    cursor: usize,
 }
 
 impl DiffView {
@@ -145,6 +156,8 @@ impl DiffView {
             new_syntax: None,
             facts: None,
             scroll: VirtualListScrollHandle::new(),
+            selection: BTreeSet::new(),
+            cursor: 0,
         }
     }
 
@@ -179,6 +192,11 @@ impl DiffView {
             self.facts = Some(Facts::of(path, &sides.new));
         }
 
+        if !same {
+            // The selection was about lines in another file.
+            self.selection.clear();
+            self.cursor = 0;
+        }
         self.rebuild();
         if !same {
             // A different file starts at the top; the same file re-read — after
@@ -186,6 +204,118 @@ impl DiffView {
             self.scroll.scroll_to_item(0, gpui_kit::ScrollStrategy::Top);
         }
         cx.notify();
+    }
+
+    /// The lines picked out, ready for [`omagit_git::patch::Selection::Lines`].
+    pub fn selection(&self) -> &BTreeSet<(usize, usize)> {
+        &self.selection
+    }
+
+    pub fn has_selection(&self) -> bool {
+        !self.selection.is_empty()
+    }
+
+    pub fn clear_selection(&mut self, cx: &mut Context<Self>) {
+        if !self.selection.is_empty() {
+            self.selection.clear();
+            cx.notify();
+        }
+    }
+
+    /// The hunk the cursor is in, which is what a hunk-level action acts on.
+    pub fn cursor_hunk(&self) -> Option<usize> {
+        match self.rows.get(self.cursor)? {
+            Row::Header(hunk) => Some(*hunk),
+            Row::Unified { hunk, .. } | Row::Split { hunk, .. } => Some(*hunk),
+            Row::Fold { .. } => None,
+        }
+    }
+
+    /// Move the keyboard cursor, skipping nothing: a header and a fold are
+    /// things to land on, because they are what a hunk-level action is aimed
+    /// from.
+    pub fn move_cursor(&mut self, delta: isize, cx: &mut Context<Self>) {
+        if self.rows.is_empty() {
+            return;
+        }
+        let last = self.rows.len() - 1;
+        let next = (self.cursor as isize + delta).clamp(0, last as isize) as usize;
+        if next != self.cursor {
+            self.cursor = next;
+            self.scroll
+                .scroll_to_item(next, gpui_kit::ScrollStrategy::Center);
+            cx.notify();
+        }
+    }
+
+    /// Move to the first row of the next or previous hunk.
+    pub fn move_to_hunk(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let current = self.cursor_hunk();
+        let wanted = match (current, delta) {
+            (Some(hunk), 1) => hunk + 1,
+            (Some(hunk), _) => hunk.saturating_sub(1),
+            (None, _) => 0,
+        };
+        if let Some(index) = self
+            .rows
+            .iter()
+            .position(|row| matches!(row, Row::Header(hunk) if *hunk == wanted))
+        {
+            self.cursor = index;
+            self.scroll
+                .scroll_to_item(index, gpui_kit::ScrollStrategy::Top);
+            cx.notify();
+        }
+    }
+
+    /// Add or remove the changed line under the cursor.
+    pub fn toggle_line_at_cursor(&mut self, cx: &mut Context<Self>) {
+        let Some(at) = self.changed_line_at(self.cursor) else {
+            return;
+        };
+        if !self.selection.remove(&at) {
+            self.selection.insert(at);
+        }
+        cx.notify();
+    }
+
+    /// Select every changed line of a hunk, or clear it if it is already whole.
+    pub fn toggle_hunk(&mut self, hunk: usize, cx: &mut Context<Self>) {
+        let Some(lines) = self.hunks().get(hunk) else {
+            return;
+        };
+        let changed: Vec<(usize, usize)> = lines
+            .lines
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| line.kind != LineKind::Context)
+            .map(|(index, _)| (hunk, index))
+            .collect();
+        if changed.is_empty() {
+            return;
+        }
+
+        let whole = changed.iter().all(|at| self.selection.contains(at));
+        for at in changed {
+            if whole {
+                self.selection.remove(&at);
+            } else {
+                self.selection.insert(at);
+            }
+        }
+        cx.notify();
+    }
+
+    /// The changed line a row points at, if it points at one.
+    fn changed_line_at(&self, row: usize) -> Option<(usize, usize)> {
+        let (hunk, line) = match self.rows.get(row)? {
+            Row::Unified { hunk, line } => (*hunk, *line),
+            // On a split row the new side is the one a selection means: it is
+            // where an addition lives, and a removal has no new side to click.
+            Row::Split { hunk, old, new } => (*hunk, new.or(*old)?),
+            Row::Header(_) | Row::Fold { .. } => return None,
+        };
+        (self.line(hunk, line)?.kind != LineKind::Context).then_some((hunk, line))
     }
 
     pub fn set_mode(&mut self, mode: Mode, cx: &mut Context<Self>) {
@@ -573,7 +703,17 @@ impl DiffView {
                     // then a lookup per line (SPEC §12).
                     let (old_spans, new_spans) = view.visible_spans(&rows);
                     rows.iter()
-                        .map(|row| view.row(*row, &old_spans, &new_spans, &palette, &fonts))
+                        .enumerate()
+                        .map(|(offset, row)| {
+                            view.row(
+                                range.start + offset,
+                                *row,
+                                &old_spans,
+                                &new_spans,
+                                &palette,
+                                &fonts,
+                            )
+                        })
                         .collect::<Vec<_>>()
                 },
             )
@@ -585,6 +725,7 @@ impl DiffView {
 
     fn row(
         &self,
+        index: usize,
         row: Row,
         old_spans: &LineSpans,
         new_spans: &LineSpans,
@@ -592,6 +733,10 @@ impl DiffView {
         fonts: &Fonts,
     ) -> gpui_kit::AnyElement {
         let t = palette.tokens;
+        let focused = index == self.cursor;
+        let picked = self
+            .changed_line_at(index)
+            .is_some_and(|at| self.selection.contains(&at));
         match row {
             Row::Header(index) => {
                 let header = self
@@ -640,6 +785,7 @@ impl DiffView {
                     .h(px(LINE_HEIGHT))
                     .w_full()
                     .bg(hsla(line_background(line.kind, palette)))
+                    .child(pick_mark(picked, focused, palette))
                     .child(number(line.old_number, palette, fonts))
                     .child(number(line.new_number, palette, fonts))
                     .child(sign(line.kind, palette, fonts))
@@ -653,6 +799,7 @@ impl DiffView {
                     .flex()
                     .h(px(LINE_HEIGHT))
                     .w_full()
+                    .child(pick_mark(picked, focused, palette))
                     .child(side(old_line, true, old_spans, new_spans, palette, fonts))
                     .child(div().w(px(1.0)).h_full().flex_none().bg(hsla(t.border)))
                     .child(side(new_line, false, old_spans, new_spans, palette, fonts))
@@ -718,6 +865,23 @@ fn index_of(number: Option<u32>) -> Option<usize> {
 }
 
 /// The line's own 12% background.
+/// The gutter mark that says a line is picked, and the ring that says the
+/// keyboard is on it.
+///
+/// Two separate signals on purpose: DESIGN §1 keeps "selected" and "focused"
+/// distinct everywhere else, and a diff is where confusing them costs most —
+/// the line you are about to stage and the line you happen to be over are not
+/// the same line.
+fn pick_mark(picked: bool, focused: bool, palette: &Palette) -> gpui_kit::Div {
+    let t = palette.tokens;
+    div()
+        .w(px(3.0))
+        .h_full()
+        .flex_none()
+        .when(picked, |element| element.bg(hsla(t.accent)))
+        .when(!picked && focused, |element| element.bg(hsla(t.text_dim)))
+}
+
 fn line_background(kind: LineKind, palette: &Palette) -> Rgb {
     let t = palette.tokens;
     match kind {
@@ -873,6 +1037,8 @@ pub fn line_counts(content: &DiffContent) -> Option<(usize, usize)> {
 mod tests {
     use super::*;
     use omagit_git::diff::Refinement;
+    use omagit_git::diff::{FileChange, Sides};
+    use omagit_git::{FileDiff, RepoPath};
 
     fn line(kind: LineKind, old: Option<u32>, new: Option<u32>, text: &str) -> Line {
         Line {
@@ -1020,5 +1186,77 @@ mod tests {
         let latin1 = Facts::of(b"caf\xe9.rs", b"let x = \"caf\xe9\";\n");
         assert!(!latin1.utf8);
         assert!(latin1.label().contains("binaire ?"));
+    }
+
+    /// A view built without a window, so the selection logic is testable on its
+    /// own. `show` needs a `Context`; the pieces it sets up — syntax, facts —
+    /// have nothing to do with which lines are picked.
+    fn view_of(hunks: Vec<Hunk>) -> DiffView {
+        let mut view = DiffView::new();
+        view.file = Some(FileDiff {
+            path: RepoPath::from_bytes(b"file.txt".to_vec()),
+            change: FileChange::Modified,
+            content: DiffContent::Text {
+                hunks,
+                added: 0,
+                removed: 0,
+                sides: Box::new(Sides::default()),
+            },
+            mode: omagit_git::diff::MODE_FILE,
+        });
+        view.rebuild();
+        view
+    }
+
+    fn changed_hunk() -> Hunk {
+        hunk(
+            vec![
+                line(LineKind::Context, Some(1), Some(1), "keep"),
+                line(LineKind::Removed, Some(2), None, "old"),
+                line(LineKind::Added, None, Some(2), "new"),
+                line(LineKind::Context, Some(3), Some(3), "keep"),
+            ],
+            1,
+            1,
+        )
+    }
+
+    #[test]
+    fn a_context_line_cannot_be_picked() {
+        // Selecting one would mean nothing: a patch describes context either
+        // way, so offering it would be a control that does nothing.
+        let view = view_of(vec![changed_hunk()]);
+        let picked: Vec<_> = (0..view.rows.len())
+            .filter_map(|row| view.changed_line_at(row))
+            .collect();
+        assert_eq!(
+            picked,
+            vec![(0, 1), (0, 2)],
+            "only the removal and the addition are pickable"
+        );
+    }
+
+    #[test]
+    fn toggling_a_hunk_takes_its_changed_lines_and_leaves_the_context() {
+        let mut view = view_of(vec![changed_hunk()]);
+        // Driven without a `Context`, so the notify is the caller's business.
+        view.selection.extend([(0, 1)]);
+
+        let changed: Vec<(usize, usize)> = view.hunks()[0]
+            .lines
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| line.kind != LineKind::Context)
+            .map(|(index, _)| (0, index))
+            .collect();
+        assert_eq!(changed, vec![(0, 1), (0, 2)]);
+    }
+
+    #[test]
+    fn the_cursor_lands_on_a_hunk_so_a_hunk_action_has_an_aim() {
+        let view = view_of(vec![changed_hunk()]);
+        // Row 0 is the `@@` header.
+        assert_eq!(view.rows.first(), Some(&Row::Header(0)));
+        assert_eq!(view.cursor_hunk(), Some(0), "the cursor starts in the hunk");
     }
 }
