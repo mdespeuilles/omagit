@@ -25,7 +25,21 @@ use crate::{Cancel, RepoPath, Repository, Result};
 /// would buy nothing and cost the check that catches a misaddressed patch.
 const APPLY: [&str; 2] = ["apply", "--cached"];
 
-/// Add `selection` of `file` to the index.
+/// Add a whole file to the index.
+///
+/// `git add` rather than a patch, and it needs only a path: it stages a
+/// deletion, a mode change and a binary file, none of which a text patch
+/// describes — and asking for the diff first would mean a checkbox that does
+/// nothing until the file has been opened.
+pub fn stage_file(git: &Git, repo: &Repository, path: &RepoPath, cancel: &Cancel) -> Result<()> {
+    super::at(git, repo)?
+        .args(["add", "--"])
+        .arg(path.as_os_str())
+        .run(cancel)
+        .map(drop)
+}
+
+/// Add part of a file to the index, through a patch.
 pub fn stage(
     git: &Git,
     repo: &Repository,
@@ -33,27 +47,15 @@ pub fn stage(
     selection: &Selection,
     cancel: &Cancel,
 ) -> Result<()> {
-    match selection {
-        Selection::File => stage_whole(git, repo, &file.path, cancel),
-        partial => {
-            let patch = build(file, partial, Direction::Forward)
-                .map_err(|error| crate::GitError::backend("building the patch", error))?;
-            super::at(git, repo)?
-                .args(APPLY)
-                .arg("-")
-                .input(patch)
-                .run(cancel)
-                .map(drop)
-        }
+    if matches!(selection, Selection::File) {
+        return stage_file(git, repo, &file.path, cancel);
     }
-}
-
-/// `git add` rather than a patch: it stages a deletion, a mode change and a
-/// binary file, none of which a text patch describes.
-fn stage_whole(git: &Git, repo: &Repository, path: &RepoPath, cancel: &Cancel) -> Result<()> {
+    let patch = build(file, selection, Direction::Forward)
+        .map_err(|error| crate::GitError::backend("building the patch", error))?;
     super::at(git, repo)?
-        .args(["add", "--"])
-        .arg(path.as_os_str())
+        .args(APPLY)
+        .arg("-")
+        .input(patch)
         .run(cancel)
         .map(drop)
 }
@@ -62,6 +64,14 @@ fn stage_whole(git: &Git, repo: &Repository, path: &RepoPath, cancel: &Cancel) -
 ///
 /// `file` is the **staged** diff — `HEAD` against the index — because that is
 /// what describes what would be removed.
+pub fn unstage_file(git: &Git, repo: &Repository, path: &RepoPath, cancel: &Cancel) -> Result<()> {
+    super::at(git, repo)?
+        .args(["restore", "--staged", "--"])
+        .arg(path.as_os_str())
+        .run(cancel)
+        .map(drop)
+}
+
 pub fn unstage(
     git: &Git,
     repo: &Repository,
@@ -70,11 +80,7 @@ pub fn unstage(
     cancel: &Cancel,
 ) -> Result<()> {
     match selection {
-        Selection::File => super::at(git, repo)?
-            .args(["restore", "--staged", "--"])
-            .arg(file.path.as_os_str())
-            .run(cancel)
-            .map(drop),
+        Selection::File => unstage_file(git, repo, &file.path, cancel),
         partial => {
             let patch = build(file, partial, Direction::Reverse)
                 .map_err(|error| crate::GitError::backend("building the patch", error))?;
@@ -95,6 +101,28 @@ pub fn unstage(
 /// such, so the journal records it before it runs (SPEC §15 risk 5). The
 /// confirmation SPEC §3 rule 7 requires is the caller's — this is the layer
 /// that does it, not the one that asks.
+pub fn discard_file(
+    git: &Git,
+    repo: &Repository,
+    path: &RepoPath,
+    untracked: bool,
+    cancel: &Cancel,
+) -> Result<()> {
+    let invocation = if untracked {
+        // `git restore` has nothing to restore an untracked file to. Removing
+        // it is the only thing "discard" can mean, and `git clean` is the
+        // command that says so.
+        super::at(git, repo)?.args(["clean", "--force", "--"])
+    } else {
+        super::at(git, repo)?.args(["restore", "--worktree", "--"])
+    };
+    invocation
+        .arg(path.as_os_str())
+        .destructive()
+        .run(cancel)
+        .map(drop)
+}
+
 pub fn discard(
     git: &Git,
     repo: &Repository,
@@ -103,25 +131,12 @@ pub fn discard(
     untracked: bool,
     cancel: &Cancel,
 ) -> Result<()> {
-    if untracked {
-        // `git restore` has nothing to restore an untracked file to. Removing
-        // it is the only thing "discard" can mean, and `git clean` is the
-        // command that says so.
-        return super::at(git, repo)?
-            .args(["clean", "--force", "--"])
-            .arg(file.path.as_os_str())
-            .destructive()
-            .run(cancel)
-            .map(drop);
+    if untracked || matches!(selection, Selection::File) {
+        return discard_file(git, repo, &file.path, untracked, cancel);
     }
 
     match selection {
-        Selection::File => super::at(git, repo)?
-            .args(["restore", "--worktree", "--"])
-            .arg(file.path.as_os_str())
-            .destructive()
-            .run(cancel)
-            .map(drop),
+        Selection::File => unreachable!("handled above"),
         partial => {
             let patch = build(file, partial, Direction::Reverse)
                 .map_err(|error| crate::GitError::backend("building the patch", error))?;

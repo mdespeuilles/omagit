@@ -38,7 +38,7 @@ use crate::actions::*;
 use crate::git_runtime::ActiveGit;
 use crate::repo_store::{RepoStore, Side};
 use crate::time;
-use crate::writes::Write;
+use crate::writes::{Target, Write};
 
 /// Board 03: the sidebar is 260px, the file column 320px, the diff takes the
 /// rest and refuses to go under 420.
@@ -135,6 +135,47 @@ impl WorkingCopyScreen {
         Some((Arc::new(file.clone()), untracked))
     }
 
+    /// Move a whole file across the index, whichever side it is on.
+    ///
+    /// The one gesture that acts on a file rather than a hunk: `alt-S` aims at
+    /// what the diff cursor is in, which for a text file is always a hunk.
+    pub fn stage_whole_file(&mut self, side: Side, path: RepoPath, cx: &mut Context<Self>) {
+        self.toggle_file(side, path, false, cx);
+    }
+
+    fn toggle_file(&mut self, side: Side, path: RepoPath, untracked: bool, cx: &mut Context<Self>) {
+        let _ = untracked;
+        // No diff needed: a whole file moves through `git add` / `git restore`,
+        // which want a path. Requiring the diff would mean a checkbox that does
+        // nothing on a row nobody has opened yet.
+        let write = match side {
+            Side::Unstaged => Write::Stage(Target::File(path)),
+            Side::Staged => Write::Unstage(Target::File(path)),
+        };
+        self.queue(write, cx);
+    }
+
+    /// Stage every unstaged file, which board 09 binds to `a`.
+    fn stage_all(&mut self, _: &StageAll, _: &mut Window, cx: &mut Context<Self>) {
+        let store = self.store.read(cx);
+        let files: Vec<(RepoPath, bool)> = store
+            .status()
+            .value()
+            .map(|status| {
+                status
+                    .entries
+                    .iter()
+                    .filter(|entry| entry.unstaged.is_some())
+                    .map(|entry| (entry.path.clone(), entry.is_untracked()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        for (path, untracked) in files {
+            self.toggle_file(Side::Unstaged, path, untracked, cx);
+        }
+    }
+
     fn stage_picked(&mut self, _: &StagePicked, _: &mut Window, cx: &mut Context<Self>) {
         let Some((file, _)) = self.target(cx) else {
             return;
@@ -142,9 +183,10 @@ impl WorkingCopyScreen {
         let selection = self.aim(cx).unwrap_or(Selection::File);
         // Staging from the staged side would mean nothing; the file column's
         // selection is what says which direction this is.
+        let target = Target::Part { file, selection };
         match self.selected.as_ref().map(|(side, _)| *side) {
-            Some(Side::Unstaged) => self.queue(Write::Stage { file, selection }, cx),
-            Some(Side::Staged) => self.queue(Write::Unstage { file, selection }, cx),
+            Some(Side::Unstaged) => self.queue(Write::Stage(target), cx),
+            Some(Side::Staged) => self.queue(Write::Unstage(target), cx),
             None => {}
         }
     }
@@ -157,7 +199,7 @@ impl WorkingCopyScreen {
             return;
         }
         let selection = self.aim(cx).unwrap_or(Selection::File);
-        self.queue(Write::Unstage { file, selection }, cx);
+        self.queue(Write::Unstage(Target::Part { file, selection }), cx);
     }
 
     fn discard_picked(&mut self, _: &DiscardPicked, _: &mut Window, cx: &mut Context<Self>) {
@@ -172,8 +214,7 @@ impl WorkingCopyScreen {
         let selection = self.aim(cx).unwrap_or(Selection::File);
         // Not queued: asked first (SPEC §3 rule 7).
         self.confirming = Some(Write::Discard {
-            file,
-            selection,
+            target: Target::Part { file, selection },
             untracked,
         });
         cx.notify();
@@ -423,6 +464,7 @@ impl Render for WorkingCopyScreen {
             .on_action(cx.listener(Self::stage_picked))
             .on_action(cx.listener(Self::unstage_picked))
             .on_action(cx.listener(Self::discard_picked))
+            .on_action(cx.listener(Self::stage_all))
             .on_action(cx.listener(Self::commit))
             .on_action(cx.listener(|screen, _: &ToggleAmend, _, cx| {
                 screen.options.amend = !screen.options.amend;
@@ -926,6 +968,8 @@ impl WorkingCopyScreen {
             None => (String::new(), text),
         };
         let click_path = path.clone();
+        let toggle_path = path.clone();
+        let untracked = entry.is_some_and(StatusEntry::is_untracked);
 
         div()
             .id(SharedString::from(format!(
@@ -945,6 +989,32 @@ impl WorkingCopyScreen {
             })
             .on_click(
                 cx.listener(move |screen, _, _, cx| screen.select(side, click_path.clone(), cx)),
+            )
+            // Board 03 draws a checkbox on every file row, and it is the only
+            // gesture that moves a *whole* file: the diff keys always aim at a
+            // hunk, so without this a text file could not be staged in one go.
+            .child(
+                div()
+                    .id(SharedString::from(format!(
+                        "toggle:{}:{}",
+                        side.label(),
+                        path
+                    )))
+                    .w(px(12.0))
+                    .h(px(12.0))
+                    .flex_none()
+                    .border_1()
+                    .border_color(hsla(if side == Side::Staged {
+                        t.accent
+                    } else {
+                        t.border
+                    }))
+                    .when(side == Side::Staged, |element| element.bg(hsla(t.accent)))
+                    .cursor_pointer()
+                    .hover(|style| style.border_color(hsla(t.accent)))
+                    .on_click(cx.listener(move |screen, _, _, cx| {
+                        screen.toggle_file(side, toggle_path.clone(), untracked, cx);
+                    })),
             )
             .child(
                 div()

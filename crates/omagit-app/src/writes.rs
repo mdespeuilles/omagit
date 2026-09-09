@@ -32,17 +32,10 @@ use omagit_git::{Cancel, FileDiff, GitError, RepoPath, Repository, Result};
 /// corrupting anything — but it fails, and the message says why.
 #[derive(Clone, Debug)]
 pub enum Write {
-    Stage {
-        file: Arc<FileDiff>,
-        selection: Selection,
-    },
-    Unstage {
-        file: Arc<FileDiff>,
-        selection: Selection,
-    },
+    Stage(Target),
+    Unstage(Target),
     Discard {
-        file: Arc<FileDiff>,
-        selection: Selection,
+        target: Target,
         /// An untracked file has nothing to be restored to, so discarding it
         /// means removing it. Carried rather than re-derived, because the
         /// status it came from is what knew.
@@ -54,21 +47,52 @@ pub enum Write {
     },
 }
 
+/// What a write acts on.
+///
+/// The two are genuinely different operations, not one with a flag: a whole
+/// file goes through `git add` and needs only a path, while a hunk or a set of
+/// lines goes through a patch and needs the diff it was built from. Modelling
+/// them as one meant a checkbox that did nothing until the file had been
+/// opened, because a diff it did not need had not been read yet.
+#[derive(Clone, Debug)]
+pub enum Target {
+    File(RepoPath),
+    Part {
+        file: Arc<FileDiff>,
+        selection: Selection,
+    },
+}
+
+impl Target {
+    pub fn path(&self) -> &RepoPath {
+        match self {
+            Target::File(path) => path,
+            Target::Part { file, .. } => &file.path,
+        }
+    }
+
+    fn describe(&self) -> String {
+        let what = match self {
+            Target::File(_) => "le fichier".to_owned(),
+            Target::Part { selection, .. } => match selection {
+                Selection::File => "le fichier".to_owned(),
+                Selection::Hunks(hunks) if hunks.len() == 1 => "le bloc".to_owned(),
+                Selection::Hunks(hunks) => format!("{} blocs", hunks.len()),
+                Selection::Lines(lines) if lines.len() == 1 => "la ligne".to_owned(),
+                Selection::Lines(lines) => format!("{} lignes", lines.len()),
+            },
+        };
+        format!("{what} · {}", self.path().display_lossy())
+    }
+}
+
 impl Write {
     /// What the interface calls this, for the confirmation and the error.
     pub fn describe(&self) -> String {
         match self {
-            Write::Stage { file, selection } => {
-                format!("Indexer {}", scope(selection, &file.path))
-            }
-            Write::Unstage { file, selection } => {
-                format!("Désindexer {}", scope(selection, &file.path))
-            }
-            Write::Discard {
-                file, selection, ..
-            } => {
-                format!("Rejeter {}", scope(selection, &file.path))
-            }
+            Write::Stage(target) => format!("Indexer {}", target.describe()),
+            Write::Unstage(target) => format!("Désindexer {}", target.describe()),
+            Write::Discard { target, .. } => format!("Rejeter {}", target.describe()),
             Write::Commit { options, .. } if options.amend => "Corriger le commit".to_owned(),
             Write::Commit { .. } => "Commiter".to_owned(),
         }
@@ -80,7 +104,7 @@ impl Write {
         match self {
             Write::Discard { .. } => true,
             Write::Commit { options, .. } => options.amend,
-            Write::Stage { .. } | Write::Unstage { .. } => false,
+            Write::Stage(_) | Write::Unstage(_) => false,
         }
     }
 
@@ -89,15 +113,24 @@ impl Write {
     pub fn run(&self, git: &Git, repo: &Repository, cancel: &Cancel) -> Result<Done> {
         use omagit_git::ops;
         match self {
-            Write::Stage { file, selection } => {
+            Write::Stage(Target::File(path)) => {
+                ops::stage_file(git, repo, path, cancel).map(|()| Done::Staged)
+            }
+            Write::Stage(Target::Part { file, selection }) => {
                 ops::stage(git, repo, file, selection, cancel).map(|()| Done::Staged)
             }
-            Write::Unstage { file, selection } => {
+            Write::Unstage(Target::File(path)) => {
+                ops::unstage_file(git, repo, path, cancel).map(|()| Done::Staged)
+            }
+            Write::Unstage(Target::Part { file, selection }) => {
                 ops::unstage(git, repo, file, selection, cancel).map(|()| Done::Staged)
             }
             Write::Discard {
-                file,
-                selection,
+                target: Target::File(path),
+                untracked,
+            } => ops::discard_file(git, repo, path, *untracked, cancel).map(|()| Done::Staged),
+            Write::Discard {
+                target: Target::Part { file, selection },
                 untracked,
             } => {
                 ops::discard(git, repo, file, selection, *untracked, cancel).map(|()| Done::Staged)
@@ -107,17 +140,6 @@ impl Write {
             }
         }
     }
-}
-
-fn scope(selection: &Selection, path: &RepoPath) -> String {
-    let what = match selection {
-        Selection::File => "le fichier".to_owned(),
-        Selection::Hunks(hunks) if hunks.len() == 1 => "le bloc".to_owned(),
-        Selection::Hunks(hunks) => format!("{} blocs", hunks.len()),
-        Selection::Lines(lines) if lines.len() == 1 => "la ligne".to_owned(),
-        Selection::Lines(lines) => format!("{} lignes", lines.len()),
-    };
-    format!("{what} · {}", path.display_lossy())
 }
 
 /// What a write produced, for the caller that has to react to it.
@@ -221,6 +243,15 @@ mod tests {
     use core::prelude::v1::test;
     use std::sync::Arc;
 
+    fn a_file() -> Arc<FileDiff> {
+        Arc::new(FileDiff {
+            path: RepoPath::from_bytes(b"src/main.rs".to_vec()),
+            change: omagit_git::diff::FileChange::Modified,
+            content: omagit_git::diff::DiffContent::Empty,
+            mode: omagit_git::diff::MODE_FILE,
+        })
+    }
+
     fn a_write(n: usize) -> Write {
         Write::Commit {
             message: format!("commit {n}"),
@@ -289,17 +320,14 @@ mod tests {
 
     #[test]
     fn destructive_writes_are_the_ones_that_lose_work() {
-        let file = Arc::new(FileDiff {
-            path: RepoPath::from_bytes(b"a.txt".to_vec()),
-            change: omagit_git::diff::FileChange::Modified,
-            content: omagit_git::diff::DiffContent::Empty,
-            mode: omagit_git::diff::MODE_FILE,
-        });
+        let file = a_file();
 
         assert!(
             Write::Discard {
-                file: file.clone(),
-                selection: Selection::File,
+                target: Target::Part {
+                    file: file.clone(),
+                    selection: Selection::File
+                },
                 untracked: false
             }
             .is_destructive()
@@ -316,32 +344,51 @@ mod tests {
             "an amend replaces a commit"
         );
         assert!(
-            !Write::Stage {
+            !Write::Stage(Target::Part {
                 file: file.clone(),
                 selection: Selection::File
-            }
+            })
             .is_destructive(),
             "staging loses nothing: the working tree is untouched"
         );
         assert!(
-            !Write::Unstage {
+            !Write::Unstage(Target::Part {
                 file,
                 selection: Selection::File
-            }
+            })
             .is_destructive()
         );
     }
 
     #[test]
-    fn a_selection_is_described_by_what_it_covers() {
+    fn a_target_is_described_by_what_it_covers() {
         let path = RepoPath::from_bytes(b"src/main.rs".to_vec());
-        assert!(scope(&Selection::File, &path).starts_with("le fichier"));
-        assert!(scope(&Selection::hunk(0), &path).starts_with("le bloc"));
+        assert!(
+            Target::File(path.clone())
+                .describe()
+                .starts_with("le fichier")
+        );
+
+        let part = |selection| Target::Part {
+            file: a_file(),
+            selection,
+        };
+        assert!(part(Selection::hunk(0)).describe().starts_with("le bloc"));
 
         let lines = Selection::Lines([(0, 1), (0, 2), (1, 0)].into_iter().collect());
         assert!(
-            scope(&lines, &path).starts_with("3 lignes"),
+            part(lines).describe().starts_with("3 lignes"),
             "a confirmation has to say how much is at stake"
         );
+    }
+
+    #[test]
+    fn a_whole_file_needs_no_diff_to_be_written() {
+        // The bug this pins: modelling "the file" as a selection meant the
+        // checkbox on a row nobody had opened had no diff to build from, and
+        // did nothing.
+        let target = Target::File(RepoPath::from_bytes(b"a.txt".to_vec()));
+        assert_eq!(target.path().display_lossy(), "a.txt");
+        assert!(!Write::Stage(target).is_destructive());
     }
 }

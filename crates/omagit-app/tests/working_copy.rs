@@ -329,3 +329,51 @@ fn discarding_asks_before_it_removes_anything() {
         "answering no changes nothing"
     );
 }
+
+#[test]
+fn a_whole_file_stages_without_its_diff_ever_being_read() {
+    // The gesture board 03 draws as a checkbox, and the bug it used to have:
+    // modelling "the file" as a kind of selection meant it needed the diff, so
+    // the checkbox on a row nobody had opened did nothing.
+    let fixture = Fixture::new();
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("writes"));
+    let (screen, mut visual) = screen(&mut cx, &fixture.path);
+    visual.run_until_parked();
+
+    // `alpha.rs` is modified and unstaged. The screen opens on some file; this
+    // one is deliberately acted on without selecting it first.
+    let path = omagit_git::RepoPath::from_bytes(b"alpha.rs".to_vec());
+    screen.update(&mut visual, |screen, cx| {
+        screen.stage_whole_file(Side::Unstaged, path, cx);
+    });
+    visual.run_until_parked();
+
+    assert_eq!(
+        fixture.staged("alpha.rs"),
+        "fn alpha() { println!() }\n",
+        "the file has to reach the index without its diff being read first"
+    );
+}
+
+#[test]
+fn a_key_stages_every_unstaged_file_at_once() {
+    // `a`, from DESIGN board 09.
+    let fixture = Fixture::new();
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("writes"));
+    let (_screen, mut visual) = screen(&mut cx, &fixture.path);
+    visual.run_until_parked();
+
+    visual.simulate_keystrokes("a");
+    visual.run_until_parked();
+
+    assert_eq!(
+        fixture.staged("alpha.rs"),
+        "fn alpha() { println!() }\n",
+        "the modified file is staged"
+    );
+    assert_eq!(
+        fixture.staged("gamma.txt"),
+        "untracked\n",
+        "and so is the untracked one, which is what `git add` is for"
+    );
+}

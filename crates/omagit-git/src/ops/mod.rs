@@ -22,7 +22,7 @@ pub mod commit;
 pub mod stage;
 
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
-pub use stage::{discard, stage, unstage};
+pub use stage::{discard, discard_file, stage, stage_file, unstage, unstage_file};
 
 use std::path::Path;
 

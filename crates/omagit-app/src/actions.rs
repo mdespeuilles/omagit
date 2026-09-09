@@ -66,6 +66,8 @@ actions!(
         UnstagePicked,
         /// Undo it in the working tree. Destructive; confirmed first.
         DiscardPicked,
+        /// Stage every unstaged file (DESIGN board 09).
+        StageAll,
         /// Commit what is staged.
         Commit,
         /// The three flags of SPEC §11, each a deliberate act rather than a
@@ -161,6 +163,7 @@ pub fn bind(cx: &mut App) {
         KeyBinding::new("alt-d", DiscardPicked, Some(CONTEXT_WORKING_COPY)),
         // Commit is the one write with a `⌘`: it is the screen's primary
         // action, and DESIGN board 03 draws it as ⌘⏎.
+        KeyBinding::new("a", StageAll, Some(WORKING_COPY_OUTSIDE_TEXT)),
         KeyBinding::new("secondary-enter", Commit, Some(CONTEXT_WORKING_COPY)),
         KeyBinding::new("secondary-shift-a", ToggleAmend, Some(CONTEXT_WORKING_COPY)),
         KeyBinding::new(
