@@ -1165,6 +1165,158 @@ button.danger.solid:hover {
   background: color-mix(in oklab, var(--danger) 15%, transparent);
 }
 
+/* A folder that was not a repository, or a clone that failed. Dismissed by
+   clicking it, the way the status bar's own errors are. */
+.library-error {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: var(--text-meta);
+  color: var(--danger);
+  text-align: left;
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  opacity: 1;
+}
+
+.library-empty-actions {
+  display: flex;
+  gap: var(--gap);
+}
+
+/* Board 07's form dialog: a titled bar, a grid of fields, and a footer. Wider
+   and taller than the confirmation, which is one sentence and two buttons. */
+.dialog.form {
+  width: 520px;
+  padding: 0;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-panel);
+  font-weight: 600;
+}
+.dialog-body {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  padding: 12px;
+}
+.dialog-label {
+  text-align: right;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+.dialog-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* The folder name and the button that chooses what it sits in. */
+.clone-destination {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.clone-destination input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Where it will actually land, under the field rather than in it: the parent
+   comes from a picker and the name from a box, and the answer to "so where does
+   this go" is the two of them joined. */
+.clone-path {
+  overflow: hidden;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clone-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.clone-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-body);
+}
+.clone-options code {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  color: var(--text-muted);
+}
+
+/* The one line in this dialog that wraps. `git`'s refusal begins with the
+   command and ends with the reason, so truncating it to one line shows the
+   half the reader already knows and hides the half they need. */
+.clone-probe {
+  max-height: 48px;
+  overflow-y: auto;
+  font-size: var(--text-meta);
+  line-height: 1.4;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.clone-probe.ok {
+  color: var(--success);
+}
+.clone-probe.bad {
+  color: var(--danger);
+}
+
+/* Square, like everything else (DESIGN §1). A native checkbox is round and
+   blue on both platforms, which is two ways of not being this design. */
+input[type="checkbox"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  /* The tick is drawn rather than a glyph: a character would be a font away
+     from being the wrong size. */
+  box-shadow: inset 0 0 0 3px var(--bg);
+}
+input[type="checkbox"]:focus-visible {
+  border-color: var(--border-focus);
+}
+
+select {
+  height: 26px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+select:focus {
+  border-color: var(--border-focus);
+}
+
+/* Pushes the footer's buttons to the trailing edge. */
+.dialog-foot .spacer {
+  flex: 1;
+}
+
 /* ── The sidebar ─────────────────────────────────────────────────────────── */
 
 .sidebar-glyph {

@@ -113,6 +113,9 @@ export class Repository {
   failNetwork: string | null = null;
   /// What `git` said. Real operations answer with their stderr.
   networkSays = "Everything up-to-date";
+
+  /// What `check_remote` says when the dialog asks. `null` means it answers.
+  unreachable: string | null = null;
   cancelled = 0;
   /// What the current branch tracks, which is what decides where a push goes
   /// and whether it has to set an upstream.
@@ -165,6 +168,7 @@ export class Repository {
           modifier_label: "Ctrl",
           reserve: { leading: 0, trailing: 0 },
           credential_helper: "store",
+          home: "/home/dev",
         } satisfies PlatformFacts;
       case "git_status":
         return null;
@@ -226,6 +230,45 @@ export class Repository {
         this.failNetwork = null;
         if (failure) throw new Error(failure);
         return this.networkSays;
+      }
+      case "clone_directory": {
+        // The backend's rule, kept in step by `network.rs`'s own tests. Here it
+        // only has to be *a* rule, so the dialog has a name to show.
+        const last = (args["url"] as string)
+          .trim()
+          .replace(/\/+$/, "")
+          .split(/[/:]/)
+          .filter(Boolean)
+          .pop();
+        return last ? last.replace(/\.git$/, "") : null;
+      }
+      case "check_remote": {
+        if (this.unreachable) throw new Error(this.unreachable);
+        return undefined;
+      }
+      case "clone_repository": {
+        const request = args["request"] as {
+          url: string;
+          parent: string;
+          name: string;
+          group: number | null;
+        };
+        if (this.holdNetwork) await this.holdNetwork;
+        const failure = this.failNetwork;
+        this.failNetwork = null;
+        if (failure) throw new Error(failure);
+        const path = `${request.parent}/${request.name}`;
+        this.library.push({
+          group: request.group ?? 0,
+          index: this.library.length,
+          group_name: "Récents",
+          path,
+          name: request.name,
+          description: "",
+          last_opened: null,
+          missing: false,
+        });
+        return this.summary(path);
       }
       case "merge":
       case "rebase":

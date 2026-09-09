@@ -157,6 +157,29 @@ type State = {
   compare: Async<Comparison>;
   /// The commit a comparison would start from, once one has been marked.
   compareFrom: string | null;
+  /// The clone dialog, while it is up. `null` when it is not.
+  clone: CloneForm | null;
+};
+
+/// What the clone dialog is holding, board 07's fields one for one.
+export type CloneForm = {
+  url: string;
+  /// The folder the clone is created *in*. The destination the dialog shows is
+  /// this joined with `name`.
+  parent: string;
+  /// Derived from the URL by the backend, using `git`'s own rule — but
+  /// editable, because a second clone of the same repository needs a different
+  /// folder and the URL is not going to change.
+  name: string;
+  /// True once someone has typed in the name field. The URL stops filling it in
+  /// after that: overwriting what was typed is the worst thing a helpful
+  /// default can do.
+  renamed: boolean;
+  shallow: boolean;
+  submodules: boolean;
+  group: number | null;
+  /// What `git ls-remote` said about the URL, if it has been asked yet.
+  probe: "idle" | "checking" | "reachable" | { error: string };
 };
 
 const state = reactive<State>({
@@ -202,6 +225,7 @@ const state = reactive<State>({
   refs: idle(),
   collapsed: {},
   panes: {},
+  clone: null,
 });
 
 export const app = readonly(state);
@@ -750,11 +774,188 @@ export function pushBranch(force: boolean): void {
   );
 }
 
+// ── Cloning (M7) ────────────────────────────────────────────────────────────
+//
+// The one operation with no repository to start from, and the only one that
+// needs a form. Board 07 draws it: URL, destination, group, two options, and a
+// line saying whether the remote answered.
+
+/// Where a clone goes when nobody has said otherwise.
+///
+/// `~/src`, which is board 06's own example. It does not have to exist — the
+/// backend creates it — so proposing it for someone who has never had one is a
+/// suggestion rather than a broken default.
+function defaultParent(): string {
+  const home = state.platform?.home ?? "";
+  return home ? `${home}/src` : "";
+}
+
+/// Timers for the two things the URL field sets off. Module-level rather than
+/// on the state: they are not something anything renders.
+let namingTimer: ReturnType<typeof setTimeout> | undefined;
+let probeTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function openClone(): void {
+  if (state.clone) return;
+  state.clone = {
+    url: "",
+    parent: defaultParent(),
+    name: "",
+    renamed: false,
+    shallow: false,
+    submodules: false,
+    group: null,
+    probe: "idle",
+  };
+  state.addError = null;
+}
+
+export function closeClone(): void {
+  clearTimeout(namingTimer);
+  clearTimeout(probeTimer);
+  state.clone = null;
+}
+
+/// The URL changed: fill the folder in, and ask whether the remote is there.
+///
+/// Two timers rather than one because they answer at different costs. The name
+/// is a string rule and can be asked for as fast as someone types; the probe
+/// starts a `git` process that talks to a server, so it waits until the typing
+/// has stopped.
+export function setCloneUrl(url: string): void {
+  const form = state.clone;
+  if (!form) return;
+  form.url = url;
+  form.probe = "idle";
+  clearTimeout(namingTimer);
+  clearTimeout(probeTimer);
+
+  namingTimer = setTimeout(() => {
+    void (async () => {
+      // Derived by the backend, using `git`'s own rule, rather than by a second
+      // regular expression here that would be subtly different from it.
+      const name = await api.cloneDirectory(url);
+      const current = state.clone;
+      if (!current || current.url !== url || current.renamed) return;
+      current.name = name ?? "";
+    })();
+  }, 120);
+
+  // Nothing to ask about half a URL. `git` would refuse it instantly, and a red
+  // line under a field somebody is still typing into is noise.
+  if (!looksLikeUrl(url)) return;
+  probeTimer = setTimeout(() => {
+    void (async () => {
+      const current = state.clone;
+      if (!current || current.url !== url) return;
+      current.probe = "checking";
+      try {
+        await api.checkRemote(url);
+        if (state.clone?.url === url) state.clone.probe = "reachable";
+      } catch (error) {
+        if (state.clone?.url === url) state.clone.probe = { error: message(error) };
+      }
+    })();
+  }, 700);
+}
+
+/// Enough of a URL to be worth asking a server about.
+///
+/// Deliberately loose: it is a gate on wasting a network round trip, not a
+/// validator. `git` accepts more forms than this recognises, and the ones it
+/// misses simply get no probe — the clone still runs.
+function looksLikeUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) || /^[^/\s]+@[^/\s]+:.+/.test(trimmed);
+}
+
+export function setCloneName(name: string): void {
+  if (!state.clone) return;
+  state.clone.name = name;
+  // From here the URL stops filling it in. Overwriting what someone typed is
+  // the worst thing a helpful default can do.
+  state.clone.renamed = true;
+}
+
+export function setCloneParent(parent: string): void {
+  if (state.clone) state.clone.parent = parent;
+}
+
+export function setCloneGroup(group: number | null): void {
+  if (state.clone) state.clone.group = group;
+}
+
+export function setCloneOption(option: "shallow" | "submodules", on: boolean): void {
+  if (state.clone) state.clone[option] = on;
+}
+
+/// Choose the folder to clone into, through the platform's own picker.
+export async function browseCloneParent(): Promise<void> {
+  const chosen = await open({ directory: true, multiple: false, title: "Cloner dans" });
+  if (typeof chosen === "string") setCloneParent(chosen);
+}
+
+/// Whether the form has enough in it to run, and why not when it has not.
+export function cloneBlocker(form: CloneForm): string | null {
+  if (!form.url.trim()) return "Une URL est nécessaire";
+  if (!form.parent.trim()) return "Un dossier de destination est nécessaire";
+  if (!form.name.trim()) return "Un nom de dossier est nécessaire";
+  // A name with a separator in it would put the clone somewhere other than
+  // where the destination line says.
+  if (/[/\\]/.test(form.name.trim())) return "Le nom du dossier ne peut pas contenir de /";
+  return null;
+}
+
+/// Run the clone, then open what landed.
+///
+/// The dialog closes first. It has nothing left to show — the progress overlay
+/// takes over — and leaving it up over a four-minute operation would be a form
+/// nobody can use blocking a screen they can.
+export function startClone(): void {
+  const form = state.clone;
+  if (!form || cloneBlocker(form)) return;
+  const request = {
+    url: form.url.trim(),
+    parent: form.parent.trim(),
+    name: form.name.trim(),
+    shallow: form.shallow,
+    submodules: form.submodules,
+    group: form.group,
+  };
+  closeClone();
+
+  void (async () => {
+    if (state.running) return;
+    state.running = { what: "Clonage", phase: "…", percent: null };
+    state.stopping = false;
+    state.networkSaid = null;
+    let landed: string | null = null;
+    try {
+      const summary = await api.cloneRepository(request);
+      landed = summary.path;
+      state.networkSaid = `Cloné dans ${summary.path}`;
+    } catch (error) {
+      state.addError = message(error);
+    } finally {
+      state.running = null;
+      state.stopping = false;
+    }
+    await readLibrary();
+    // Straight into it. A clone that finished and left you looking at the same
+    // list you started from has made you find it yourself.
+    if (landed) await openRepository(landed);
+  })();
+}
+
 /// Stop what is running. `git` stops when it next looks, which is not instant.
 export function stopNetwork(): void {
   if (!state.running) return;
   state.stopping = true;
   void api.cancelOperation();
+}
+
+export function dismissAddError(): void {
+  state.addError = null;
 }
 
 export function dismissNetworkSaid(): void {

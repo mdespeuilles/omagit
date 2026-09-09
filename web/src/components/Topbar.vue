@@ -22,7 +22,15 @@
 // reads better as not-yet than as absent.
 
 import { computed } from "vue";
-import { addRepository, app, fetchRemote, pullRemote, pushBranch, showScreen } from "../state";
+import {
+  addRepository,
+  app,
+  fetchRemote,
+  openClone,
+  pullRemote,
+  pushBranch,
+  showScreen,
+} from "../state";
 import { tildify } from "../format";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
@@ -134,7 +142,7 @@ const where = computed(() => {
       <button @click="addRepository()">
         Ajouter un dépôt local<span class="hint">{{ modifier }}O</span>
       </button>
-      <button disabled title="Clonage — jalon M7">
+      <button :disabled="busy || !!app.gitUnusable" @click="openClone()">
         Cloner…<span class="hint">⇧{{ modifier }}N</span>
       </button>
     </template>

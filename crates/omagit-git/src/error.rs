@@ -78,9 +78,53 @@ impl GitError {
         }
     }
 
+    /// The failure without the command that caused it.
+    ///
+    /// `Display` puts the command first — "git ls-remote --heads -- <url>
+    /// failed: fatal: could not read Username" — and that is right for a log
+    /// and for the journal, where *which* command failed is the question. It is
+    /// wrong beside the field somebody just typed that URL into, where the
+    /// command echo is two thirds of the message and says nothing they do not
+    /// already see.
+    ///
+    /// Only `CommandFailed` has a command to drop. Everything else is already
+    /// only its reason.
+    pub fn reason(&self) -> String {
+        match self {
+            Self::CommandFailed { stderr, .. } => stderr.clone(),
+            other => other.to_string(),
+        }
+    }
+
     /// True when the error is the user's own doing and the UI should stay
     /// silent rather than show a failed state.
     pub fn is_cancelled(&self) -> bool {
         matches!(self, Self::Cancelled)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failure_can_be_read_without_the_command_that_caused_it() {
+        let failed = GitError::CommandFailed {
+            command: "git ls-remote --heads -- https://example.com/repo.git".into(),
+            stderr: "fatal: could not read Username".into(),
+        };
+        assert_eq!(failed.reason(), "fatal: could not read Username");
+        // And the whole thing is still there for the log and the journal, where
+        // *which* command failed is the question.
+        assert!(failed.to_string().contains("ls-remote"));
+    }
+
+    #[test]
+    fn everything_else_is_already_only_its_reason() {
+        let timed_out = GitError::Timeout {
+            command: "git fetch".into(),
+            seconds: 20.0,
+        };
+        assert_eq!(timed_out.reason(), timed_out.to_string());
     }
 }

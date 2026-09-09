@@ -20,10 +20,11 @@
 //! actionable; pointing it at a helper that cannot draw a window would hang the
 //! same way.
 
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::cli::{Git, Progress};
-use crate::{Cancel, Repository, Result};
+use crate::{Cancel, GitError, Repository, Result};
 
 /// Network operations get their own deadline.
 ///
@@ -32,6 +33,12 @@ use crate::{Cancel, Repository, Result};
 /// a `git` that has stopped making progress has to end eventually, and
 /// cancellation is the user's answer for everything shorter than this.
 const NETWORK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
+/// Asking a remote whether it is there gets a much shorter one.
+///
+/// It runs while somebody watches a dialog. A probe that takes thirty minutes
+/// to say "unreachable" has answered nothing.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// What a push is allowed to do to the remote.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -151,6 +158,151 @@ pub fn push(
         .map(|output| output.stderr)
 }
 
+/// What a clone brings down beyond the default.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CloneOptions {
+    /// `--depth 1`: the tip of each branch and none of the history behind it.
+    ///
+    /// Fast, and a real trade: the log has one commit in it, `blame` cannot see
+    /// past it, and a push from a shallow clone is refused by some servers.
+    /// Offered because for a theme repository somebody wants to *read* it is
+    /// the difference between four seconds and four minutes, and the caller is
+    /// the one who knows which case this is.
+    ///
+    /// `git` ignores it when the URL is a local path — it clones those by
+    /// copying object files, a transport with no notion of depth — and says so
+    /// on stderr, which reaches the progress stream. Not routed around by
+    /// rewriting the URL to `file://`: that would be a different clone from the
+    /// one that was asked for, no longer sharing objects with the original, and
+    /// deciding that quietly is worse than a warning that says what happened.
+    pub shallow: bool,
+    /// `--recurse-submodules`: clone the submodules too, rather than leaving
+    /// empty directories where they should be.
+    pub submodules: bool,
+}
+
+/// Copy a remote repository into `parent`, as a directory called `name`.
+///
+/// The one operation here with no repository to start from, so it runs in the
+/// parent directory rather than through [`super::at`] — and that is why it
+/// takes `parent` and `name` apart rather than one path: `git clone <url>
+/// <dir>` creates `<dir>`, and running *inside* a directory that does not exist
+/// yet is not a thing.
+///
+/// Returns where it landed. `git` refuses a destination that exists and is not
+/// empty, which is the check this does not repeat: the race between asking and
+/// cloning is real, and `git`'s answer is the one that is true at the moment it
+/// matters.
+///
+/// Not marked destructive. It writes a great deal, but everything it writes is
+/// in a directory that did not exist a moment ago; there is nothing of anyone's
+/// to lose.
+pub fn clone(
+    git: &Git,
+    url: &str,
+    parent: &Path,
+    name: &str,
+    options: &CloneOptions,
+    watch: Option<Progress>,
+    cancel: &Cancel,
+) -> Result<PathBuf> {
+    // The parent has to exist for `git` to have somewhere to run. A picker
+    // hands back a directory that does, but a path remembered from a previous
+    // session can name one that has since gone.
+    std::fs::create_dir_all(parent).map_err(|failed| {
+        GitError::backend(
+            "creating the destination folder",
+            NoSuchParent {
+                parent: parent.to_owned(),
+                failed,
+            },
+        )
+    })?;
+
+    let mut invocation = git
+        .at(parent)
+        .args(["clone", "--progress"])
+        .timeout(NETWORK_TIMEOUT);
+    if options.shallow {
+        invocation = invocation.args(["--depth", "1"]);
+    }
+    if options.submodules {
+        invocation = invocation.arg("--recurse-submodules");
+    }
+    if let Some(watch) = watch {
+        invocation = invocation.watching(watch);
+    }
+    // `--` before the URL: a URL is a string somebody pasted, and one starting
+    // with a dash would otherwise be read as an option.
+    invocation
+        .arg("--")
+        .arg(url)
+        .arg(name)
+        .run(cancel)
+        .map(|_| parent.join(name))
+}
+
+/// The destination's parent could not be made.
+///
+/// Named rather than passed through, because `std::io::Error` does not carry
+/// the path it failed on: "permission denied" without saying *where* is a
+/// message that sends someone looking.
+#[derive(Debug)]
+struct NoSuchParent {
+    parent: PathBuf,
+    failed: std::io::Error,
+}
+
+impl std::fmt::Display for NoSuchParent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.parent.display(), self.failed)
+    }
+}
+
+impl std::error::Error for NoSuchParent {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.failed)
+    }
+}
+
+/// Ask a remote whether it is there and whether we are allowed in.
+///
+/// `git ls-remote` is the cheapest question that exercises the whole path: DNS,
+/// the transport, and the credential helper. It is asked *before* the clone
+/// because the alternative is finding out from a four-minute operation that
+/// failed on its first second — and because with `GIT_TERMINAL_PROMPT=0` a
+/// repository whose credentials no helper can supply fails rather than
+/// prompting, which makes this a real test of authentication and not just of
+/// the network.
+///
+/// Its own timeout, much shorter than a clone's: this runs while somebody
+/// watches a dialog, and a probe that takes thirty minutes to say "unreachable"
+/// has answered nothing.
+pub fn reachable(git: &Git, url: &str, cancel: &Cancel) -> Result<()> {
+    git.at(std::env::temp_dir())
+        .args(["ls-remote", "--heads"])
+        .timeout(PROBE_TIMEOUT)
+        .arg("--")
+        .arg(url)
+        .run(cancel)
+        .map(drop)
+}
+
+/// The directory `git clone` would create for this URL, by `git`'s own rule.
+///
+/// The last path segment, without a trailing `.git` and without a trailing
+/// slash. Derived rather than asked for, because a form that made someone type
+/// the name of the thing they just pasted a URL to is a form asking a question
+/// it can answer.
+pub fn directory_for(url: &str) -> Option<String> {
+    let trimmed = url.trim().trim_end_matches('/');
+    let last = trimmed
+        .rsplit(['/', ':'])
+        .find(|segment| !segment.is_empty())?;
+    let name = last.strip_suffix(".git").unwrap_or(last);
+    (!name.is_empty()).then(|| name.to_owned())
+}
+
 /// What one line of `git`'s progress means.
 ///
 /// Parsed here rather than in the interface because the shape is Git's, not the
@@ -224,6 +376,29 @@ mod tests {
             let step = Step::parse(line);
             assert_eq!(step.phase, line.trim());
             assert_eq!(step.percent, None);
+        }
+    }
+
+    #[test]
+    fn the_directory_is_the_one_git_would_choose() {
+        for (url, expected) in [
+            ("https://github.com/owner/repo.git", "repo"),
+            ("https://github.com/owner/repo", "repo"),
+            ("git@github.com:owner/repo.git", "repo"),
+            ("ssh://git@host:22/owner/repo.git", "repo"),
+            ("/srv/git/repo.git", "repo"),
+            // A trailing slash is something a browser adds, not something the
+            // person meant.
+            ("https://github.com/owner/repo/", "repo"),
+        ] {
+            assert_eq!(directory_for(url).as_deref(), Some(expected), "for {url}");
+        }
+    }
+
+    #[test]
+    fn a_url_with_no_name_in_it_yields_none_rather_than_a_guess() {
+        for url in ["", "   ", "/", "///"] {
+            assert_eq!(directory_for(url), None, "for {url:?}");
         }
     }
 

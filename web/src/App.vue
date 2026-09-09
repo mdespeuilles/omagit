@@ -6,6 +6,7 @@
 // pane's own stylesheet rule: a splitter has to know which two things it sits
 // between, and that is only true at this level.
 
+import CloneDialog from "./components/CloneDialog.vue";
 import CommitBox from "./components/CommitBox.vue";
 import CommitDetail from "./components/CommitDetail.vue";
 import Confirm from "./components/Confirm.vue";
@@ -86,4 +87,5 @@ const widths = {
   <Progress />
   <StatusBar />
   <Confirm v-if="app.question" />
+  <CloneDialog v-if="app.clone" />
 </template>

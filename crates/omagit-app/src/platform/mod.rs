@@ -55,6 +55,12 @@ pub struct PlatformFacts {
     pub modifier_label: &'static str,
     pub reserve: TopbarReserve,
     pub credential_helper: &'static str,
+    /// The user's home directory, empty when the environment does not say.
+    ///
+    /// Reported rather than guessed from a path's shape, because the clone
+    /// dialog has to *propose* a destination before there is any path to guess
+    /// from — and `~/src` is where board 06 puts one.
+    pub home: String,
 }
 
 pub trait Platform: Send + Sync + 'static {
@@ -89,6 +95,10 @@ pub trait Platform: Send + Sync + 'static {
             modifier_label: self.primary_modifier().label(),
             reserve: self.topbar_reserve(),
             credential_helper: self.credential_helper(),
+            home: std::env::var("HOME")
+                .ok()
+                .or_else(|| std::env::var("USERPROFILE").ok())
+                .unwrap_or_default(),
         }
     }
 }

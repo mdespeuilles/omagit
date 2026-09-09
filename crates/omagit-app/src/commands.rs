@@ -535,6 +535,100 @@ pub fn push(
     .map_err(say)
 }
 
+/// The folder `git clone` would create for this URL.
+///
+/// Asked as the URL is typed, so the destination line can fill itself in. A
+/// form that made someone type the name of the thing they just pasted a URL to
+/// is a form asking a question it can answer.
+#[tauri::command]
+pub fn clone_directory(url: String) -> Option<String> {
+    omagit_git::ops::directory_for(&url)
+}
+
+/// Ask a remote whether it is there and whether we are allowed in.
+///
+/// Cheap, and asked before the clone rather than after: the alternative is
+/// finding out from a four-minute operation that failed on its first second.
+/// It does not take the network slot — it is a question, not an operation, and
+/// blocking it behind a running fetch would leave the dialog unable to say
+/// anything about what was typed into it.
+#[tauri::command(async)]
+pub fn check_remote(state: State<'_, AppState>, url: String) -> Answer<()> {
+    let git = state.git().map_err(say)?.clone();
+    // Its reason rather than its whole `Display`: the command echo would be two
+    // thirds of a message shown beside the field the URL was typed into.
+    omagit_git::ops::reachable(&git, url.trim(), &state.cancel()).map_err(|failed| failed.reason())
+}
+
+/// Everything the clone dialog collected.
+///
+/// One struct rather than six arguments, and not only for clippy's count:
+/// `clone(url, parent, name, true, false, None)` is a call where swapping the
+/// two flags compiles and does something else.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloneRequest {
+    pub url: String,
+    /// The folder the clone is created *in*. `git clone <url> <dir>` creates
+    /// `<dir>`, so the destination the dialog shows is these two joined.
+    pub parent: String,
+    pub name: String,
+    pub shallow: bool,
+    pub submodules: bool,
+    /// Which group of the library it joins, or the default one.
+    pub group: Option<usize>,
+}
+
+/// Copy a remote repository onto the disk, and remember it.
+///
+/// Returns the summary of what landed, so the window can open it without a
+/// second round trip — a clone that finished and left you looking at the same
+/// list you started from has made you find it yourself.
+#[tauri::command(async)]
+pub fn clone_repository(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: CloneRequest,
+) -> Answer<dto::RepoSummary> {
+    let CloneRequest {
+        url,
+        parent,
+        name,
+        shallow,
+        submodules,
+        group,
+    } = request;
+    let git = state.git().map_err(say)?.clone();
+    let slot = state.start_network("Clonage")?;
+
+    let landed = omagit_git::ops::clone(
+        &git,
+        url.trim(),
+        &PathBuf::from(parent),
+        name.trim(),
+        &omagit_git::ops::CloneOptions {
+            shallow,
+            submodules,
+        },
+        Some(reporting(&app, "Clonage")),
+        &slot.cancel,
+    )
+    .map_err(say)?;
+
+    // Opening it is what says it is a repository. A clone that produced a
+    // directory this cannot read is a failure worth hearing about here rather
+    // than from a struck-through row in the list.
+    let open = state.open(&landed).map_err(say)?;
+    let summary = Summary::load(&open.repo, &state.cancel()).map_err(say)?;
+
+    state.with_library(|library| {
+        if library.find(&open.path).is_none() {
+            library.add(omagit_settings::Entry::new(open.path.clone()), group);
+        }
+    });
+    Ok(dto::summary(&open.path, &summary))
+}
+
 /// Stop whatever is running on the network.
 ///
 /// Nothing to stop is not an error: the button is pressed at the moment an

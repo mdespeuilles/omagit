@@ -8,7 +8,15 @@
 
 import { computed } from "vue";
 import type { LibraryRow } from "../ipc";
-import { addRepository, app, forgetRepository, openRepository, showCard } from "../state";
+import {
+  addRepository,
+  app,
+  dismissAddError,
+  forgetRepository,
+  openClone,
+  openRepository,
+  showCard,
+} from "../state";
 
 const groups = computed(() => {
   const seen = new Map<number, { name: string; rows: LibraryRow[] }>();
@@ -77,6 +85,13 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
       <input type="search" placeholder="Filtrer les dépôts" disabled title="Filtre — jalon M9" />
     </div>
 
+    <!-- A folder that turned out not to be a repository, or a clone that
+         failed. It was being set and never shown, which made "Ajouter un dépôt"
+         look as though the button did nothing. -->
+    <button v-if="app.addError" class="library-error" @click="dismissAddError()">
+      {{ app.addError }} ✗
+    </button>
+
     <!-- Board 06's empty state: what to do, not just that there is nothing. -->
     <div v-if="app.repositories.length === 0" class="library-empty">
       <p class="library-empty-title">Aucun dépôt pour l'instant</p>
@@ -84,7 +99,10 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
         Ajoute un dossier déjà versionné. Il reste sur le disque : cette liste n'en garde que le
         chemin.
       </p>
-      <button class="primary" @click="addRepository()">Ajouter un dépôt local</button>
+      <span class="library-empty-actions">
+        <button class="primary" @click="addRepository()">Ajouter un dépôt local</button>
+        <button @click="openClone()">Cloner…</button>
+      </span>
     </div>
 
     <div v-else class="library-groups">

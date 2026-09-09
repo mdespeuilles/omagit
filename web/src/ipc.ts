@@ -206,6 +206,8 @@ export type PlatformFacts = {
   modifier_label: string;
   reserve: { leading: number; trailing: number };
   credential_helper: string;
+  /// Empty when the environment does not say.
+  home: string;
 };
 
 /// What part of a file an operation acts on.
@@ -219,6 +221,20 @@ export type Target =
   | { kind: "lines"; lines: [number, number][] };
 
 export type Made = { id: Oid; notes: string };
+
+/// Everything the clone dialog collected.
+///
+/// `parent` is the folder the clone is created *in*: `git clone <url> <dir>`
+/// creates `<dir>`, so the destination the dialog shows is these two joined.
+export type CloneRequest = {
+  url: string;
+  parent: string;
+  name: string;
+  shallow: boolean;
+  submodules: boolean;
+  /// Which group of the library it joins, or the default one.
+  group: number | null;
+};
 
 export const api = {
   platform: () => invoke<PlatformFacts>("platform"),
@@ -244,6 +260,12 @@ export const api = {
   push: (path: string, remote: string, branch: string, force: boolean, setUpstream: boolean) =>
     invoke<string>("push", { path, remote, branch, force, setUpstream }),
   cancelOperation: () => invoke<string | null>("cancel_operation"),
+
+  // Cloning (M7). The one operation with no repository to start from, so it
+  // takes a URL and a place to put it rather than a path that already exists.
+  cloneDirectory: (url: string) => invoke<string | null>("clone_directory", { url }),
+  checkRemote: (url: string) => invoke<void>("check_remote", { url }),
+  cloneRepository: (request: CloneRequest) => invoke<RepoSummary>("clone_repository", { request }),
 
   // Integrating one branch into another (M7). Both can stop half-way on a
   // conflict; `abortOperation` is the way out, and it reads what is running

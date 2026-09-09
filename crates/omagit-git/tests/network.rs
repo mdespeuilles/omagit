@@ -336,3 +336,198 @@ fn a_cancelled_fetch_stops_and_says_so() {
         "{error:?}"
     );
 }
+
+// ── Cloning ─────────────────────────────────────────────────────────────────
+//
+// The one operation with no repository to start from. Everything below clones
+// the same on-disk bare repository the rest of this file pushes to, so the
+// remote is real to `git` — the same transport code path, the same `--depth`
+// handling — and needs no network.
+
+#[test]
+fn cloning_brings_the_history_and_a_working_tree() {
+    let pair = pair();
+    pair.local.commit_file("a.txt", "new\n", "a second commit");
+    pair.local.git(&["push", "origin", "main"]);
+    let into = tempfile::tempdir().expect("a temporary directory");
+
+    let landed = network::clone(
+        &git(),
+        &pair.remote.path().display().to_string(),
+        into.path(),
+        "copy",
+        &network::CloneOptions::default(),
+        None,
+        &never(),
+    )
+    .expect("cloned");
+
+    assert_eq!(landed, into.path().join("copy"));
+    assert!(
+        landed.join("a.txt").exists(),
+        "a clone lands a working tree"
+    );
+    // Opening it is the assertion that matters: a directory full of files is
+    // not the same thing as a repository this application can read, and the
+    // library adds what it clones without a second chance to notice.
+    let opened = omagit_git::Repository::open(&landed).expect("a repository");
+    let head = opened.head().expect("HEAD resolves");
+    assert!(
+        matches!(head, omagit_git::repo::Head::Branch { ref branch, .. } if branch == "main"),
+        "a clone checks out the remote's default branch: {head:?}"
+    );
+
+    let counted = std::process::Command::new("git")
+        .args(["rev-list", "--count", "HEAD"])
+        .current_dir(&landed)
+        .output()
+        .expect("git");
+    assert_eq!(
+        String::from_utf8_lossy(&counted.stdout).trim(),
+        "2",
+        "and the whole history behind it"
+    );
+}
+
+#[test]
+fn a_shallow_clone_stops_at_the_tip() {
+    // `--depth 1` is a real trade and the test says which half you get: the
+    // files, without the history behind them.
+    //
+    // `file://` rather than a bare path, and not for tidiness: `git` clones a
+    // local path by copying object files, a transport that has no notion of
+    // depth, so it *ignores* `--depth` there and says so on stderr. Only the
+    // `file://` URL goes through the real protocol. That is Git's behaviour and
+    // not something to route around — see the note on `CloneOptions::shallow`.
+    let pair = pair();
+    for n in 0..5 {
+        pair.local
+            .commit_file("bulk.txt", &format!("{n}\n"), &format!("commit {n}"));
+    }
+    pair.local.git(&["push", "origin", "main"]);
+    let into = tempfile::tempdir().expect("a temporary directory");
+
+    let landed = network::clone(
+        &git(),
+        &format!("file://{}", pair.remote.path().display()),
+        into.path(),
+        "shallow",
+        &network::CloneOptions {
+            shallow: true,
+            submodules: false,
+        },
+        None,
+        &never(),
+    )
+    .expect("cloned");
+
+    let counted = std::process::Command::new("git")
+        .args(["rev-list", "--count", "HEAD"])
+        .current_dir(&landed)
+        .output()
+        .expect("git");
+    assert_eq!(
+        String::from_utf8_lossy(&counted.stdout).trim(),
+        "1",
+        "the tip and nothing behind it"
+    );
+    assert!(landed.join("bulk.txt").exists(), "and the files are there");
+}
+
+#[test]
+fn cloning_into_a_parent_that_does_not_exist_yet_makes_it() {
+    // `~/src` for somebody who has never had one. `git` needs somewhere to run,
+    // and refusing here would be refusing over a directory this can create.
+    let pair = pair();
+    let into = tempfile::tempdir().expect("a temporary directory");
+    let parent = into.path().join("never").join("existed");
+
+    let landed = network::clone(
+        &git(),
+        &pair.remote.path().display().to_string(),
+        &parent,
+        "copy",
+        &network::CloneOptions::default(),
+        None,
+        &never(),
+    )
+    .expect("cloned");
+
+    assert!(landed.join("README.md").exists());
+}
+
+#[test]
+fn cloning_onto_something_that_is_already_there_is_refused_in_gits_own_words() {
+    let pair = pair();
+    let into = tempfile::tempdir().expect("a temporary directory");
+    std::fs::create_dir(into.path().join("taken")).expect("made");
+    std::fs::write(into.path().join("taken").join("mine.txt"), "mine\n").expect("written");
+
+    let refused = network::clone(
+        &git(),
+        &pair.remote.path().display().to_string(),
+        into.path(),
+        "taken",
+        &network::CloneOptions::default(),
+        None,
+        &never(),
+    )
+    .expect_err("the directory is not empty");
+    assert!(
+        refused.to_string().contains("taken"),
+        "the refusal names the directory: {refused}"
+    );
+    assert!(
+        into.path().join("taken").join("mine.txt").exists(),
+        "and it left what was there alone"
+    );
+}
+
+#[test]
+fn a_clone_reports_progress_while_it_runs() {
+    let pair = pair();
+    for n in 0..40 {
+        pair.local
+            .commit_file("bulk.txt", &format!("{n}\n"), &format!("commit {n}"));
+    }
+    pair.local.git(&["push", "origin", "main"]);
+    let into = tempfile::tempdir().expect("a temporary directory");
+    let (watch, seen) = collector();
+
+    network::clone(
+        &git(),
+        &pair.remote.path().display().to_string(),
+        into.path(),
+        "copy",
+        &network::CloneOptions::default(),
+        Some(watch),
+        &never(),
+    )
+    .expect("cloned");
+
+    let lines = seen.lock().expect("not poisoned");
+    assert!(
+        !lines.is_empty(),
+        "a clone is the longest wait in the application: {lines:?}"
+    );
+}
+
+#[test]
+fn a_reachable_remote_answers_and_a_missing_one_says_so() {
+    let pair = pair();
+    let url = pair.remote.path().display().to_string();
+
+    network::reachable(&git(), &url, &never()).expect("it is right there");
+
+    let gone = pair
+        .remote
+        .path()
+        .join("not-a-repository")
+        .display()
+        .to_string();
+    let refused = network::reachable(&git(), &gone, &never()).expect_err("nothing is at that path");
+    assert!(
+        !refused.to_string().is_empty(),
+        "the probe says why: {refused}"
+    );
+}
