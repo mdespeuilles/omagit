@@ -400,6 +400,10 @@ pub fn unstaged_file(
 
     let (change, old_path) = match unstaged {
         WorktreeChange::Untracked => (FileChange::Added, None),
+        // Intent-to-add: the index holds the name and an empty blob, so the
+        // diff is the whole file appearing — the same shape as untracked, and
+        // the reason `git add -N` exists is that this one *can* be patched.
+        WorktreeChange::Added => (FileChange::Added, None),
         WorktreeChange::Deleted => (FileChange::Deleted, Some(entry.path.clone())),
         WorktreeChange::Renamed { from } => (
             FileChange::Renamed { from: from.clone() },

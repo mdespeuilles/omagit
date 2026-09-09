@@ -315,3 +315,30 @@ fn a_status_can_be_cancelled() {
         .expect_err("a cancelled read returns");
     assert!(error.is_cancelled(), "got {error:?}");
 }
+
+#[test]
+fn an_intent_to_add_file_is_listed_the_way_git_lists_it() {
+    // It used to vanish from the status entirely: `gix` reports an
+    // intent-to-add entry only on the index→worktree side, and that arm dropped
+    // it on the belief its staged half came through the tree→index comparison.
+    // `git status` prints ` A`; so do we.
+    let repo = TestRepo::new();
+    repo.commit_file("kept.txt", "kept\n", "base");
+    repo.write("new.txt", "fresh\ncontent\n");
+    repo.git(&["add", "-N", "new.txt"]);
+
+    let status = Status::load(&repo.open(), StatusOptions::default(), &never()).expect("a status");
+    let entry = status
+        .entries
+        .iter()
+        .find(|entry| entry.path.display_lossy() == "new.txt")
+        .expect("the file has to be in the status at all");
+
+    assert_eq!(entry.staged, None, "nothing is staged yet");
+    assert_eq!(entry.unstaged, Some(WorktreeChange::Added));
+    assert_eq!(short_code(entry), " A", "the same two letters git prints");
+    assert!(
+        !entry.is_untracked(),
+        "it has an index entry, which is exactly what untracked does not"
+    );
+}

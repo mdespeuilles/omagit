@@ -532,14 +532,6 @@ Re-read at every milestone (SPEC §15).
 
 ### Known defects, open
 
-**A file in intent-to-add state is invisible.** After `git add -N path`, `git
-status` reports ` A path`; omagit's status drops the entry entirely, so the file
-does not appear in the Working Copy at all. Found at M5 (2026-09-09) while
-building the patch tests, and it matters beyond cosmetics: `git add -N` is the
-step that gives a new file an index entry, which is what staging *part* of a new
-file requires. The bug is in `omagit-git/status.rs`, in what it does with the
-gix status items for an intent-to-add entry, not in the diff or the patch.
-
 **The three-column Working Copy does not fit below ~1100px.** The sidebar and
 the file column are fixed widths and the diff panel has a floor, so under that
 the diff header's right-hand content falls outside the window and is clipped.

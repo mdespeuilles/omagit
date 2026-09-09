@@ -115,6 +115,14 @@ pub enum StageChange {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorktreeChange {
     Modified,
+    /// A file the index knows the *name* of and nothing else — `git add -N`,
+    /// which is how a new file is made diffable so part of it can be staged.
+    ///
+    /// Its own state rather than `Untracked`: the file has an index entry, so
+    /// `git diff` describes it and a patch can be built against it, neither of
+    /// which is true of an untracked file. `git status` prints it as ` A`, in
+    /// the worktree column, for the same reason — nothing is staged yet.
+    Added,
     Deleted,
     TypeChanged,
     Untracked,
@@ -341,11 +349,18 @@ fn absorb_unstaged(
                     target.unstaged = Some(unstaged);
                     target.is_submodule |= is_submodule;
                 }
-                // Not changes: the first is `gix` telling us the index could be
-                // written back faster next time, the second is a file added
-                // with `git add -N`, whose staged half already came through the
-                // tree-index comparison.
-                EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => {}
+                // `gix` telling us the index could be written back faster next
+                // time. Not a change to anything the user did.
+                EntryStatus::NeedsUpdate(_) => {}
+                // A file added with `git add -N`. This used to be dropped here,
+                // on the belief that its staged half arrived through the
+                // tree-index comparison — it does not: `gix` reports an
+                // intent-to-add entry only on this side, so the file vanished
+                // from the working copy entirely. `git status` shows it as
+                // ` A`, and so do we.
+                EntryStatus::IntentToAdd => {
+                    entry_for(entries, path).unstaged = Some(WorktreeChange::Added);
+                }
             }
         }
         Item::DirectoryContents { entry, .. } => {
@@ -435,6 +450,7 @@ pub fn short_code(entry: &StatusEntry) -> String {
     };
     let unstaged = match &entry.unstaged {
         Some(WorktreeChange::Modified) => 'M',
+        Some(WorktreeChange::Added) => 'A',
         Some(WorktreeChange::Deleted) => 'D',
         Some(WorktreeChange::TypeChanged) => 'T',
         Some(WorktreeChange::Renamed { .. }) => 'R',

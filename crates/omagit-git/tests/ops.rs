@@ -405,3 +405,42 @@ fn staged_lines_stage_alone_through_the_operation() {
     stage(&git, &opened, &file, &selection, &never()).expect("staged the lines");
     assert_eq!(staged_blob(&repo, "file.txt"), "a\nB\nc\nd\ne\n");
 }
+
+#[test]
+fn part_of_a_new_file_can_be_staged_once_git_knows_its_name() {
+    // What `git add -N` is *for*, and what the status bug made impossible: an
+    // untracked file has no index entry, so nothing can be diffed against it
+    // and no patch can be built. Marked intent-to-add, it can — and only some
+    // of it goes in.
+    let repo = TestRepo::new();
+    repo.commit_file("kept.txt", "kept\n", "base");
+    repo.write("new.txt", "one\ntwo\nthree\n");
+    repo.git(&["add", "-N", "new.txt"]);
+    let git = git();
+    let opened = repo.open();
+
+    let file = entry_diff(&opened, "new.txt", false);
+    let hunk = match &file.content {
+        omagit_git::diff::DiffContent::Text { hunks, .. } => &hunks[0],
+        other => panic!("a new file has to have a text diff, got {other:?}"),
+    };
+    let second = hunk
+        .lines
+        .iter()
+        .position(|line| line.text == b"two")
+        .expect("the second line is in the hunk");
+
+    let selection = Selection::Lines(BTreeSet::from([(0, second)]));
+    stage(&git, &opened, &file, &selection, &never()).expect("staged one line of a new file");
+
+    assert_eq!(
+        staged_blob(&repo, "new.txt"),
+        "two\n",
+        "only the picked line should be in the index"
+    );
+    assert_eq!(
+        String::from_utf8(repo.read("new.txt")).expect("utf-8"),
+        "one\ntwo\nthree\n",
+        "and the working tree keeps the whole file"
+    );
+}
