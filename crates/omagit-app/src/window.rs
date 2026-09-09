@@ -91,12 +91,21 @@ impl Shell {
         let t = palette.tokens;
         let reserve = self.platform.topbar_reserve();
         let modifier = self.platform.primary_modifier();
-        let open = self
-            .store
-            .read(cx)
-            .open_repository()
-            .and_then(|path| path.file_name())
-            .map(|name| name.to_string_lossy().into_owned());
+        // The trail says where you *are*, not what the store happens to
+        // remember. Coming back to the list does not close the repository — the
+        // Working Copy keeps its state and its watcher — so keying the trail on
+        // "a repository is open" left the list showing a repository segment it
+        // was not showing, and offering a way back to the screen already under
+        // the pointer.
+        let showing_repository = match self.screen {
+            Screen::Repositories => None,
+            Screen::WorkingCopy => self
+                .store
+                .read(cx)
+                .open_repository()
+                .and_then(|path| path.file_name())
+                .map(|name| name.to_string_lossy().into_owned()),
+        };
 
         div()
             .flex()
@@ -122,20 +131,21 @@ impl Shell {
                     .child("omagit"),
             )
             .child(separator(palette))
-            // The trail reads as a trail, so it has to behave like one: with a
-            // repository open this is the way back to the list, and it was
-            // inert — the only visible affordance for "go back" did nothing,
-            // and the ones that worked were Escape and a row pinned to the
-            // bottom of the sidebar. Neither is something you find by looking.
+            // A trail reads as a trail, so it has to behave like one: from a
+            // repository this is the way back to the list, and it was inert —
+            // the ones that worked were Escape and a row pinned to the bottom
+            // of the sidebar, neither of which you find by looking. On the list
+            // itself it is where you already are, so it is a label.
             .child({
-                let crumb = div()
-                    .px(px(4.0))
-                    .text_size(px(12.5))
-                    .text_color(hsla(if open.is_some() { t.text_muted } else { t.text }));
-                match open.is_some() {
-                    false => crumb.child("Dépôts").into_any_element(),
+                let crumb = div().px(px(4.0)).text_size(px(12.5));
+                match showing_repository.is_some() {
+                    false => crumb
+                        .text_color(hsla(t.text))
+                        .child("Dépôts")
+                        .into_any_element(),
                     true => crumb
                         .id("back-to-repositories")
+                        .text_color(hsla(t.text_muted))
                         .cursor_pointer()
                         .hover(|style| style.bg(hsla(t.surface_hover)).text_color(hsla(t.text)))
                         .on_click(|_, window, cx| {
@@ -145,7 +155,7 @@ impl Shell {
                         .into_any_element(),
                 }
             })
-            .children(open.map(|name| {
+            .children(showing_repository.map(|name| {
                 div()
                     .flex()
                     .items_center()
