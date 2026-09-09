@@ -87,6 +87,12 @@ pub fn run() {
             commands::merge,
             commands::rebase,
             commands::abort_operation,
+            commands::stashes,
+            commands::stash_files,
+            commands::stash_file_diff,
+            commands::stash_push,
+            commands::stash_restore,
+            commands::stash_drop,
             commands::journal,
             commands::log,
         ])

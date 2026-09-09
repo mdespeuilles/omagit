@@ -177,6 +177,26 @@ export type Refs = {
   remotes: RemoteRow[];
 };
 
+/// One entry of the shelf.
+///
+/// `index` is `git`'s own address — `stash@{0}` is the most recent — and it is
+/// here to be *shown*, never to be sent back: dropping one renumbers every
+/// entry below it, so every write is addressed by `id` and resolved to an index
+/// on the Rust side, under the lock.
+export type StashRow = {
+  index: number;
+  id: Oid;
+  /// Null for one made on a detached HEAD, where git writes `(no branch)` —
+  /// a sentence rather than somewhere to switch to.
+  branch: string | null;
+  message: string;
+  /// Seconds since the epoch, from the reflog: the time `git stash list` shows.
+  when: number;
+  /// Holds files that were on no index. They live in a third parent, which is
+  /// why its preview is not a commit diff.
+  untracked: boolean;
+};
+
 /// One line of `git`'s progress, as the overlay draws it.
 export type Progress = { what: string; phase: string; percent: number | null };
 
@@ -294,6 +314,18 @@ export const api = {
     invoke<void>("create_branch", { path, name, start, switch: switch_ }),
   deleteBranch: (path: string, name: string, force: boolean) =>
     invoke<void>("delete_branch", { path, name, force }),
+
+  // The shelf (M8). Reads are addressed by index because that is what the row
+  // shows; writes by commit, because the numbering moves under them.
+  stashes: (path: string) => invoke<StashRow[]>("stashes", { path }),
+  stashFiles: (path: string, id: string) => invoke<FileRow[]>("stash_files", { path, id }),
+  stashFileDiff: (path: string, id: string, file: string) =>
+    invoke<Diff | null>("stash_file_diff", { path, id, file }),
+  stashPush: (path: string, message: string, untracked: boolean) =>
+    invoke<string>("stash_push", { path, message, untracked }),
+  stashRestore: (path: string, id: string, keep: boolean) =>
+    invoke<string>("stash_restore", { path, id, keep }),
+  stashDrop: (path: string, id: string) => invoke<string>("stash_drop", { path, id }),
 
   // History. `history` always restarts the walk; `historyMore` continues the
   // one already parked on the backend, and refuses if there is none — a "load

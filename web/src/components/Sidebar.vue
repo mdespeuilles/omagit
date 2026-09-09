@@ -5,10 +5,10 @@
 // In the GPUI build History replaced the window and left no way back, because
 // the chrome belonged to whichever screen had drawn it.
 //
-// Everything below Workspace is a later milestone. Board 03 draws those rows
-// anyway, dimmed and labelled, and it is right to: an entry that will exist
-// reads better as not-yet than as absent, and a sidebar that filled itself in
-// over six milestones would move under the reader every time.
+// Settings is still a later milestone. Board 03 draws it anyway, dimmed and
+// labelled, and it is right to: an entry that will exist reads better as
+// not-yet than as absent, and a sidebar that filled itself in over six
+// milestones would move under the reader every time.
 
 import { computed } from "vue";
 import { app, showScreen, stagedCount, unstagedCount } from "../state";
@@ -44,13 +44,16 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       <span>History</span>
     </button>
 
-    <div class="row sidebar-row deferred" title="Jalon M8">
+    <button
+      class="row sidebar-row"
+      :class="{ selected: app.screen === 'stashes' }"
+      @click="showScreen('stashes')"
+    >
       <span class="sidebar-glyph mono">⌥</span>
       <span>Stashes</span>
       <span class="pane-head-spacer" />
       <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
-      <span class="tag">M8</span>
-    </div>
+    </button>
 
     <div class="row sidebar-row deferred" title="Jalon M9">
       <span class="sidebar-glyph mono">⚙</span>

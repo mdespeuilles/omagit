@@ -43,9 +43,11 @@ import type {
   Made as Committed,
   Page,
   PlatformFacts,
+  FileRow,
   Refs,
   RemoteBranchRow,
   RepoSummary,
+  StashRow,
   StatusRow,
   TagRow,
   Tracking,
@@ -141,6 +143,14 @@ export class Repository {
   /// Whether the last `history` call asked for a filter — which is what decides
   /// whether the rows carry a graph, as it does on the real backend.
   private filtering = false;
+  /// The shelf, newest first — and what each entry took off the working copy,
+  /// so that applying one puts the files back. The fake has to *change*: a
+  /// shelf whose answers never moved would agree with any bug about which
+  /// entry a command was aimed at.
+  stashes: { row: StashRow; held: Fixture[] }[] = [];
+  /// Numbers the fake's stash commits, so two entries never share an id.
+  private stashed = 0;
+
   /// Holds one repository's summary open, by path.
   ///
   /// By path and not for all of them, because the repository being *opened*
@@ -368,6 +378,65 @@ export class Repository {
         } satisfies Comparison;
       case "compare_file_diff":
         return this.diff("a.txt", false);
+      case "stashes":
+        // The index is a position in the list, recomputed on every read — the
+        // way the reflog numbers them, and the reason no write may be given one.
+        return this.stashes.map((entry, index) => ({
+          ...entry.row,
+          index,
+        })) satisfies StashRow[];
+      case "stash_files":
+        return this.shelf(args["id"] as string).held.map((file) => ({
+          path: file.path,
+          change: "modified",
+          added: 1,
+          removed: 0,
+          reason: null,
+        })) satisfies FileRow[];
+      case "stash_file_diff": {
+        const held = this.shelf(args["id"] as string).held.find(
+          (file) => file.path === args["file"],
+        );
+        return held ? this.rowsFor(held, false) : null;
+      }
+      case "stash_push": {
+        this.guard();
+        if (this.files.length === 0) return "No local changes to save";
+        this.stashed += 1;
+        const id = `s${this.stashed}`.padEnd(40, "0");
+        const message = ((args["message"] as string) ?? "").trim();
+        this.stashes.unshift({
+          row: {
+            index: 0,
+            id: { full: id, short: id.slice(0, 7) },
+            branch: this.head,
+            message: message === "" ? `WIP on ${this.head}: seed` : message,
+            when: 1_767_225_600,
+            untracked: args["untracked"] as boolean,
+          },
+          held: this.files,
+        });
+        this.files = [];
+        return `Saved working directory and index state On ${this.head}`;
+      }
+      case "stash_restore": {
+        this.guard();
+        const at = this.at(args["id"] as string);
+        const entry = this.stashes[at]!;
+        this.files = [
+          ...this.files,
+          ...entry.held.filter((file) => this.find(file.path) === undefined),
+        ];
+        // `keep` applies and leaves it; otherwise it is popped off.
+        if (!(args["keep"] as boolean)) this.stashes.splice(at, 1);
+        return "Already up to date.";
+      }
+      case "stash_drop": {
+        this.guard();
+        const at = this.at(args["id"] as string);
+        const [gone] = this.stashes.splice(at, 1);
+        return `Dropped stash@{${at}} (${gone!.row.id.full})`;
+      }
       case "log":
         return undefined;
       case "stage":
@@ -401,7 +470,7 @@ export class Repository {
         conflicted: 0,
       },
       last_commit: null,
-      stashes: 0,
+      stashes: this.stashes.length,
       remotes: [],
       activity: [],
       commits: 0,
@@ -456,11 +525,32 @@ export class Repository {
     };
   }
 
+  /// One entry of the shelf, by the commit it is addressed by.
+  ///
+  /// Refused by name when it is gone, the way the backend does: an id that no
+  /// longer resolves is a list the front end has not re-read yet.
+  private shelf(id: string): { row: StashRow; held: Fixture[] } {
+    return this.stashes[this.at(id)]!;
+  }
+
+  private at(id: string): number {
+    const at = this.stashes.findIndex((entry) => entry.row.id.full === id);
+    if (at < 0) throw new Error(`the stash ${id} not found in this repository`);
+    return at;
+  }
+
   private diff(path: string, staged: boolean): Diff | null {
     const file = this.find(path);
     if (!file) return null;
     if (staged ? file.staged === null : file.unstaged === null) return null;
+    return this.rowsFor(file, staged);
+  }
 
+  /// The rows of one fixture's diff. Split out from `diff` because a stashed
+  /// file has left the working copy and is no longer in `files`, but its
+  /// preview is drawn by the same viewer.
+  private rowsFor(file: Fixture, staged: boolean): Diff {
+    const path = file.path;
     const hunks = staged ? 1 : file.hunks;
     const rows: DiffRow[] = [];
     for (let hunk = 0; hunk < hunks; hunk += 1) {

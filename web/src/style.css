@@ -701,7 +701,8 @@ button.icon {
 
 /* A list you read: the row you are looking at. */
 .file-row.selected,
-.commit-row.selected {
+.commit-row.selected,
+.stash-entry.selected {
   background: var(--surface-raised);
 }
 
@@ -721,8 +722,15 @@ button.icon {
    one takes the hover surface. Neither ever changes its text colour, which is
    what made a hovered selection unreadable. */
 .row:hover,
-.file-row:hover {
+.file-row:hover,
+.stash-entry:hover {
   background: var(--surface-hover);
+}
+/* The shelf's actions sit beside its row rather than inside it, so the `<li>`
+   is what paints and the button inside must not: two backgrounds over one row
+   is how a selected row lost its fill the first time. */
+.stash-row:hover {
+  background: transparent;
 }
 .sidebar-row.selected:hover,
 .library-row.selected:hover {
@@ -730,7 +738,8 @@ button.icon {
   color: var(--on-accent);
 }
 .file-row.selected:hover,
-.commit-row.selected:hover {
+.commit-row.selected:hover,
+.stash-entry.selected:hover {
   background: var(--surface-raised);
 }
 .file-row:focus-visible,
@@ -2211,4 +2220,119 @@ select:focus {
     width: 100%;
     opacity: 0.4;
   }
+}
+
+/* ── The shelf (M8) ──────────────────────────────────────────────────────── */
+
+.stashes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.stash-rows {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* Two lines, like the library and the history: an address and a message read
+   as one thing, where it came from and when as another. */
+.stash-entry {
+  display: flex;
+  align-items: center;
+}
+.stash-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+.stash-lines {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.stash-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.stash-address {
+  flex: none;
+  color: var(--text-dim);
+  font-size: var(--text-meta);
+}
+.stash-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stash-origin {
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Said on the row, not only in the preview: these files are in no commit, and
+   the difference between an entry that holds them and one that does not is the
+   difference between deleting them and finding them again. */
+.stash-note {
+  flex: none;
+  font-size: var(--text-meta);
+  color: var(--warning);
+}
+
+.stash-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 4px;
+  padding-right: 10px;
+}
+.stash-actions .row-action {
+  height: 16px;
+  opacity: 0;
+}
+.stash-entry:hover .row-action,
+.stash-actions .row-action:focus-visible {
+  opacity: 1;
+}
+
+/* The form that adds to the list, at the top of the list it adds to. */
+.stash-new {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+.stash-new input[type="text"] {
+  width: 100%;
+  font-size: var(--text-body);
+}
+.stash-new-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
 }

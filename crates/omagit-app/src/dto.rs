@@ -461,6 +461,39 @@ pub fn file_row(file: &FileDiff) -> FileRow {
     }
 }
 
+/// One entry of the shelf, as the Stashes list draws it.
+///
+/// `index` is `git`'s own address — `stash@{0}` is the most recent — and it is
+/// sent so the row can show it, not so a command can be given it: the numbering
+/// shifts the moment one is dropped, so every write is addressed by `id` and
+/// resolved to an index on the Rust side (`omagit_git::stash::find`).
+#[derive(Debug, serde::Serialize)]
+pub struct StashRow {
+    pub index: usize,
+    pub id: Oid,
+    /// `None` for one made on a detached `HEAD`, where `git` writes
+    /// `(no branch)` — a sentence rather than somewhere to switch to.
+    pub branch: Option<String>,
+    pub message: String,
+    /// Seconds since the epoch, from the reflog: the time `git stash list`
+    /// shows.
+    pub when: i64,
+    /// Holds files that were on no index, which is what makes its preview more
+    /// than a commit diff.
+    pub untracked: bool,
+}
+
+pub fn stash_row(stash: &omagit_git::Stash) -> StashRow {
+    StashRow {
+        index: stash.index,
+        id: stash.commit.into(),
+        branch: stash.branch.clone(),
+        message: stash.message.clone(),
+        when: stash.when.seconds,
+        untracked: stash.untracked,
+    }
+}
+
 /// Everything that differs between two commits.
 ///
 /// Not a [`CommitDetail`]: there is no single commit here, so there is no

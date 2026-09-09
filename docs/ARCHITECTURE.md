@@ -940,6 +940,68 @@ and passing `--ff-only` would refuse merges the repository is set up to accept.
 **Not built:** clone, which board 06 draws disabled, and `continue` for a
 resolved conflict, which is M8's.
 
+### 2.35 M8, first slice: the shelf
+
+**A stash list is a reflog, and everything awkward follows from that.**
+`refs/stash` is one reference, not one per entry; `stash@{0}` is a *position* in
+its log. So `stash::list` reads a log rather than enumerating references, reads
+it forward and reverses — `gix`'s reverse iterator says in its own
+documentation that it is I/O-expensive and meant for the last few entries, and a
+shelf is short — and hands out an index that is `git`'s address rather than an
+identity.
+
+**Which is why every write is addressed by commit.** Dropping `stash@{1}`
+renumbers everything below it, so an index that crossed to the webview and came
+back is a copy of a numbering that may already have moved. `stash::find`
+resolves a commit to the index it has *now*, and the command that follows runs
+under the same write lock as the resolution. It is the rule `abort_operation`
+already follows for the running operation, and the failure it prevents is worse
+here: a `git stash drop` aimed one row off.
+
+**A log line that will not parse fails the list rather than being skipped.**
+Skipping renumbers every entry below it, silently, and the number is what a
+destructive command is given. An error the reader can see beats a list that is
+quietly wrong about which stash is which.
+
+**The preview is not `Diff::commit`.** A stash made with `--include-untracked`
+keeps those files in a *third* parent, whose tree is in neither side of the
+ordinary first-parent comparison. A preview built from it would tell someone
+their untracked files are not in the stash — and they would go and delete them.
+`stash::diff` compares against the first parent and appends the third against
+nothing, so those files read as the additions they are. The row says
+`+ non suivis` for the same reason, before the entry is ever opened.
+
+**Only `drop` asks.** Applying is recoverable — the entry stays — and what a
+pop takes off the shelf is in the working tree by the time it does, with `git`
+keeping the entry whenever the apply conflicts. `drop` is the one that leaves
+what it held reachable only through the reflog. A confirmation on all three
+would make the one that matters unreadable (SPEC §3 rule 7).
+
+**The screen takes History's shape**: the list in the middle column, and what
+one entry holds stacked above its diff, because a stash *is* a commit and the
+right-hand side is the same two panes. `DiffView` already draws itself
+read-only anywhere but the Working Copy, so nothing there invites a click that
+would stage out of a stash.
+
+**One diff pane is shared by three screens, and it did not belong to any of
+them.** Found while building this and already latent since History: `settle()`
+re-reads the working copy after every write, wherever the write was started
+from, so applying a stash — or merging a branch from the sidebar while reading
+History — replaced the diff on screen with a working-copy file the reader had
+selected on another screen. The pane now belongs to the screen that is open:
+`settle` leaves it alone unless the Working Copy is the one being looked at, and
+each screen reclaims it when it opens. Two tests hold it, and removing either
+half of the fix fails one of them.
+
+**The shelf's row actions sit beside the row, not inside it.** A `<button>`
+inside a `<button>` is invalid, and the Vue compiler says so; the branch tree
+only escapes the warning because its actions are behind a `v-if`. So a stash
+entry is an `<li>` carrying the row and its three buttons as siblings, and the
+`<li>` is what hover and selected paint — with those two states defined in
+`style.css`'s one block for them, where §2.31 put every other row's. The branch
+tree's nesting is left as it is and recorded below rather than changed in a
+slice about stashes.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -1149,6 +1211,17 @@ a tab; that collapse is not built. What *was* a bug — the header's controls
 drawn on top of the file path — is fixed: the path could not shrink and had no
 clip, so its text spilled over them. It now keeps a floor and the stats clip
 first (`tests/working_copy.rs`).
+
+A fourteenth, from M8: **the branch tree nests `<button>` inside `<button>`.**
+Its row is a button so the keyboard can reach it (§2.31) and its three actions
+are buttons inside that one, which is invalid HTML — the Vue compiler warns
+about exactly this shape, and only stays quiet here because the actions are
+behind a `v-if` it cannot resolve at compile time. Nothing is visibly broken:
+Vue builds the tree through DOM calls rather than the HTML parser, so the
+nesting survives where a parsed document would have flattened it. What it costs
+is the accessibility tree — a button inside a button has no defined meaning for
+a screen reader. The shelf's list (§2.35) does it the other way round; the
+branch tree should follow when something else takes it apart.
 
 A seventh, found while building M0 and worth watching: `block 0.1.6`, deep under
 `gpui-pre-apple`, emits a future-incompatibility warning. Not actionable from

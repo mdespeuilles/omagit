@@ -21,6 +21,7 @@ import {
   type CommitDetail,
   type Comparison,
   type DiffRow,
+  type FileRow,
   type HistoryQuery,
   type HistoryRow,
   type JournalRow,
@@ -29,6 +30,7 @@ import {
   type Progress,
   type Refs,
   type RepoSummary,
+  type StashRow,
   type StatusRow,
 } from "./ipc";
 
@@ -42,7 +44,7 @@ export type Async<T> =
 
 export const idle = <T>(): Async<T> => ({ status: "idle" });
 
-export type Screen = "repositories" | "working-copy" | "history";
+export type Screen = "repositories" | "working-copy" | "history" | "stashes";
 
 type DiffValue = {
   path: string;
@@ -159,6 +161,30 @@ type State = {
   compareFrom: string | null;
   /// The clone dialog, while it is up. `null` when it is not.
   clone: CloneForm | null;
+
+  /// The shelf, read when the screen is first looked at.
+  stashes: Async<StashRow[]>;
+  /// Which entry the preview is about, by commit — never by index. `git`
+  /// addresses a stash by its position in a log, and that position moves the
+  /// moment one is dropped; the commit is what does not.
+  stash: string | null;
+  /// What that entry holds, one row per file.
+  stashFiles: Async<FileRow[]>;
+  /// Which of those files the diff pane shows. Its own field rather than
+  /// `commitFile`: a stash is not a commit here, and two screens sharing one
+  /// selection is how a pane ends up drawing the other one's file.
+  stashFile: string | null;
+  /// The "Remiser" form, while it is open. `null` when it is not.
+  stashing: StashForm | null;
+};
+
+/// What the Remiser form is holding.
+export type StashForm = {
+  message: string;
+  /// Take the files git has never seen along too. Off by default: it removes
+  /// files from the disk that are in no index and no commit, and the entry it
+  /// puts them in is the only copy.
+  untracked: boolean;
 };
 
 /// What the clone dialog is holding, board 07's fields one for one.
@@ -226,6 +252,12 @@ const state = reactive<State>({
   collapsed: {},
   panes: {},
   clone: null,
+
+  stashes: idle(),
+  stash: null,
+  stashFiles: idle(),
+  stashFile: null,
+  stashing: null,
 });
 
 export const app = readonly(state);
@@ -375,6 +407,11 @@ export async function openRepository(path: string): Promise<void> {
   state.compare = idle();
   state.compareFrom = null;
   state.refs = idle();
+  state.stashes = idle();
+  state.stash = null;
+  state.stashFiles = idle();
+  state.stashFile = null;
+  state.stashing = null;
   // The box belongs to the repository, not to the window.
   state.message = "";
   state.amend = false;
@@ -471,6 +508,37 @@ export function showScreen(screen: Screen): void {
   // opens: a walk of a hundred thousand commits is not what someone who wanted
   // to stage a file asked for.
   if (screen === "history" && state.history.status === "idle") void loadHistory();
+  // Same rule as History: read when it is first looked at. A shelf is cheap to
+  // read, but the reflog walk plus one object per entry is still work nobody
+  // who came to stage a file asked for.
+  else if (screen === "stashes" && state.stashes.status === "idle") void readStashes();
+  // And the other half of it: the screen that opens takes the diff pane back.
+  // It is one pane for three screens, so whichever was last to write into it
+  // wins otherwise — a stash's diff under the Working Copy's file list.
+  else void reopenDiff(screen);
+}
+
+/// Put the shared diff pane back on the file the screen being opened is about.
+async function reopenDiff(screen: Screen): Promise<void> {
+  if (screen === "history") {
+    if (state.commitFile) await selectCommitFile(state.commitFile);
+    return;
+  }
+  if (screen === "stashes") {
+    if (state.stashFile) await selectStashFile(state.stashFile);
+    return;
+  }
+  if (screen !== "working-copy") return;
+
+  const rows = state.status.status === "ready" ? state.status.value : [];
+  const held = state.selected;
+  const row = held ? rows.find((entry) => entry.path === held.path) : rows[0];
+  if (!row) {
+    state.selected = null;
+    state.diff = idle();
+    return;
+  }
+  await selectFile(row.path, sideOf(row, held?.staged ?? row.staged !== null));
 }
 
 export async function loadHistory(): Promise<void> {
@@ -1099,6 +1167,163 @@ export function deleteBranch(row: { name: string; merged: boolean }): void {
   );
 }
 
+// ── The shelf (M8) ──────────────────────────────────────────────────────────
+//
+// Every write here is addressed by commit, never by the index the row shows.
+// `stash@{0}` is a position in a reflog, and dropping one renumbers everything
+// below it: an index held on this side is a copy of a numbering that has
+// already moved. The backend resolves the commit to the index it has *now*,
+// under the same lock as the command.
+
+export async function readStashes(): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  state.stashes = { status: "loading" };
+  try {
+    const shelf = await api.stashes(path);
+    if (state.open !== path) return;
+    state.stashes = { status: "ready", value: shelf };
+
+    // Stay on the entry being read when the list moves underneath, and fall to
+    // the newest when it is gone — popped, dropped, or never there.
+    const held = shelf.find((row) => row.id.full === state.stash);
+    const first = shelf[0];
+    if (!held && !first) {
+      state.stash = null;
+      state.stashFiles = idle();
+      state.stashFile = null;
+      state.diff = idle();
+      return;
+    }
+    if (!held && first) await selectStash(first.id.full);
+    else if (held && state.stashFiles.status === "idle") await selectStash(held.id.full);
+  } catch (error) {
+    state.stashes = { status: "failed", error: message(error) };
+  }
+}
+
+/// What one entry holds. Its files, then the first of them.
+export async function selectStash(id: string): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  state.stash = id;
+  state.stashFiles = { status: "loading" };
+  state.stashFile = null;
+  state.diff = idle();
+
+  try {
+    const files = await api.stashFiles(path, id);
+    // The selection may have moved while this was in flight.
+    if (state.open !== path || state.stash !== id) return;
+    state.stashFiles = { status: "ready", value: files };
+    const first = files[0];
+    if (first) await selectStashFile(first.path);
+  } catch (error) {
+    if (state.stash === id) state.stashFiles = { status: "failed", error: message(error) };
+  }
+}
+
+export async function selectStashFile(file: string): Promise<void> {
+  const path = state.open;
+  const id = state.stash;
+  if (!path || !id) return;
+
+  state.stashFile = file;
+  state.diff = { status: "loading" };
+  try {
+    const diff = await api.stashFileDiff(path, id, file);
+    if (state.stash !== id || state.stashFile !== file) return;
+    if (!diff) {
+      state.diff = { status: "failed", error: "ce fichier n'est plus dans cette remise" };
+      return;
+    }
+    state.diff = {
+      status: "ready",
+      value: {
+        path: diff.path,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        rows: diff.rows ?? [],
+        reason: diff.reason,
+      },
+    };
+  } catch (error) {
+    if (state.stashFile === file) state.diff = { status: "failed", error: message(error) };
+  }
+}
+
+export function openStashForm(): void {
+  state.stashing = { message: "", untracked: false };
+}
+
+export function closeStashForm(): void {
+  state.stashing = null;
+}
+
+export function setStashMessage(text: string): void {
+  if (state.stashing) state.stashing.message = text;
+}
+
+export function setStashUntracked(on: boolean): void {
+  if (state.stashing) state.stashing.untracked = on;
+}
+
+/// Put the working copy on the shelf.
+///
+/// Not confirmed: what it takes off the working tree it stores, and the entry
+/// is the first row of the list by the time the form closes. `git`'s own answer
+/// is kept, because the one worth reading is the one it gives when there was
+/// nothing to stash.
+export function stashChanges(): void {
+  const path = state.open;
+  const form = state.stashing;
+  if (!path || !form) return;
+  const { message: text, untracked } = form;
+  state.stashing = null;
+  void write("Remiser", async () => {
+    state.notes = await api.stashPush(path, text, untracked);
+  });
+}
+
+/// Bring one back: `keep` applies it and leaves it on the shelf, otherwise it
+/// is popped off.
+///
+/// Neither is confirmed, and that is a decision rather than an omission. What
+/// a pop takes off the shelf is in the working tree by the time it does, `git`
+/// keeps the entry when the apply conflicts, and a confirmation on everything
+/// is a confirmation on nothing — the one below has to mean something.
+export function restoreStash(row: StashRow, keep: boolean): void {
+  const path = state.open;
+  if (!path) return;
+  void write(keep ? `Appliquer ${address(row)}` : `Retirer ${address(row)}`, async () => {
+    state.notes = await api.stashRestore(path, row.id.full, keep);
+  });
+}
+
+/// Throw one away without applying it.
+///
+/// The destructive one, and the one that looks least like it: the working tree
+/// does not move, so nothing on screen changes except a row disappearing.
+export function dropStash(row: StashRow): void {
+  const path = state.open;
+  if (!path) return;
+  ask(
+    {
+      title: `Supprimer ${address(row)} ?`,
+      detail: `« ${row.message} » sera jeté sans être appliqué. Ce qu'il contient n'est dans aucun commit et ne sera plus joignable que par le reflog.`,
+      verb: "Supprimer",
+    },
+    () =>
+      void write(`Supprimer ${address(row)}`, async () => {
+        state.notes = await api.stashDrop(path, row.id.full);
+      }),
+  );
+}
+
+/// `stash@{0}` — what `git` calls it, and what the journal will show.
+export function address(row: { index: number }): string {
+  return `stash@{${row.index}}`;
+}
+
 // ── Writing ─────────────────────────────────────────────────────────────────
 
 /// Run one write, then put the screen back in agreement with the repository.
@@ -1135,8 +1360,26 @@ async function settle(): Promise<void> {
     void refreshJournal();
     // A checkout, a branch created or deleted: the tree is what changed.
     void readRefs();
+    // Only once it has been looked at: a write on the Working Copy screen
+    // cannot change the shelf, and reading it on every stage would be a reflog
+    // walk per checkbox. Popping and dropping do change it, and they happen on
+    // a screen that has read it.
+    if (state.stashes.status !== "idle") void readStashes();
 
     const was = state.selected;
+
+    // One diff pane is shared by three screens, and this is the Working Copy's
+    // half of that. A write started from the sidebar — a stash applied, a
+    // branch merged — settles the same way wherever the reader is standing, and
+    // re-reading the working copy's file here would replace the stash's diff
+    // they are looking at with a file from another screen.
+    if (state.screen !== "working-copy") {
+      // The selection is still dropped when the file has left the status, so
+      // coming back does not open on a file that is gone.
+      if (was && !rows.some((entry) => entry.path === was.path)) state.selected = null;
+      return;
+    }
+
     if (!was) return;
     const row = rows.find((entry) => entry.path === was.path);
     if (!row) {

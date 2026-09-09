@@ -428,6 +428,122 @@ pub fn delete_branch(
     omagit_git::ops::delete(&git, &open.repo, &name, force, &state.cancel()).map_err(say)
 }
 
+// ── Stashes (M8) ────────────────────────────────────────────────────────────
+//
+// Reads are addressed by index, writes by commit. `git` addresses a stash by
+// its position in a log — `stash@{0}` is the most recent — and that position
+// moves: dropping one renumbers every entry below it. An index that crossed to
+// the webview and came back is a copy of a numbering that may have changed
+// since, so each write below resolves the commit to the index it has *now*,
+// under the same lock as the command it feeds. It is the same rule
+// `abort_operation` follows for the running operation, for the same reason.
+
+/// Everything on the shelf, newest first.
+#[tauri::command(async)]
+pub fn stashes(state: State<'_, AppState>, path: String) -> Answer<Vec<dto::StashRow>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let shelf = omagit_git::stash::list(&open.repo).map_err(say)?;
+    Ok(shelf.iter().map(dto::stash_row).collect())
+}
+
+/// What one stash holds, one row per file.
+///
+/// Not `commit_detail` with the stash's own id, which would be the same call
+/// for less code: that diffs against the first parent and stops, and a stash
+/// made with `--include-untracked` keeps those files in a third parent. The
+/// files a preview omits are exactly the ones nobody else has a copy of.
+#[tauri::command(async)]
+pub fn stash_files(
+    state: State<'_, AppState>,
+    path: String,
+    id: String,
+) -> Answer<Vec<dto::FileRow>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let id = id.parse().map_err(say)?;
+    let diff = omagit_git::stash::diff(&open.repo, id, DiffOptions::default(), &state.cancel())
+        .map_err(say)?;
+    Ok(diff.files.iter().map(dto::file_row).collect())
+}
+
+/// One file of one stash.
+#[tauri::command(async)]
+pub fn stash_file_diff(
+    state: State<'_, AppState>,
+    path: String,
+    id: String,
+    file: String,
+) -> Answer<Option<dto::Diff>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let id = id.parse().map_err(say)?;
+    let diff = omagit_git::stash::diff(&open.repo, id, DiffOptions::default(), &state.cancel())
+        .map_err(say)?;
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+    Ok(diff
+        .files
+        .iter()
+        .find(|file| file.path == wanted)
+        .map(dto::diff))
+}
+
+/// Put the working copy on the shelf.
+#[tauri::command(async)]
+pub fn stash_push(
+    state: State<'_, AppState>,
+    path: String,
+    message: String,
+    untracked: bool,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::stash::push(&git, &open.repo, &message, untracked, &state.cancel())
+        .map_err(say)
+}
+
+/// Bring one back: applying leaves it on the shelf, popping takes it off.
+///
+/// One command for the two because they differ by a flag to `git` and by
+/// nothing here — and because the pair is what makes the difference legible in
+/// the journal, which records the line that ran.
+#[tauri::command(async)]
+pub fn stash_restore(
+    state: State<'_, AppState>,
+    path: String,
+    id: String,
+    keep: bool,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let id = id.parse().map_err(say)?;
+
+    let _serialised = open.write_lock.lock();
+    let entry = omagit_git::stash::find(&open.repo, id).map_err(say)?;
+    if keep {
+        omagit_git::ops::stash::apply(&git, &open.repo, entry.index, &state.cancel())
+    } else {
+        omagit_git::ops::stash::pop(&git, &open.repo, entry.index, &state.cancel())
+    }
+    .map_err(say)
+}
+
+/// Throw one away without applying it.
+///
+/// Destructive and quiet: the working tree does not move, and what disappears
+/// is reachable only through the reflog line `git` prints on its way out —
+/// which is why that line is what comes back. The confirmation is the front
+/// end's, before this is ever called (SPEC §3 rule 7).
+#[tauri::command(async)]
+pub fn stash_drop(state: State<'_, AppState>, path: String, id: String) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let id = id.parse().map_err(say)?;
+
+    let _serialised = open.write_lock.lock();
+    let entry = omagit_git::stash::find(&open.repo, id).map_err(say)?;
+    omagit_git::ops::stash::drop(&git, &open.repo, entry.index, &state.cancel()).map_err(say)
+}
+
 // ── The network (M7) ────────────────────────────────────────────────────────
 //
 // Everything here can take minutes and can be stopped. Two rules hold it

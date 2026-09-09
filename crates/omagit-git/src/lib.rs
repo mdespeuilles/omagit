@@ -10,6 +10,7 @@
 //! * [`repo`] — opening a repository, `HEAD`, and any half-finished operation.
 //! * [`refs`] — branches, remotes and tags, with ahead/behind.
 //! * [`status`] — the working copy: staged, unstaged, untracked, conflicted.
+//! * [`stash`] — the shelf: what is on it, and what one entry holds.
 //! * [`summary`] — the whole of one repository at a glance, in one read.
 //! * [`history`] — a resumable walk over commits.
 //! * [`graph`] — which lane each commit sits in, and what connects to it.
@@ -43,6 +44,7 @@ pub mod patch;
 pub mod paths;
 pub mod refs;
 pub mod repo;
+pub mod stash;
 pub mod status;
 pub mod summary;
 pub mod thread_guard;
@@ -56,6 +58,7 @@ pub use history::{Civil, Commit, HistoryQuery, Signature, Time, Walk};
 pub use paths::RepoPath;
 pub use refs::{Branch, Refs, Remote, Tag, Tracking};
 pub use repo::{Head, Operation, Repository};
+pub use stash::Stash;
 pub use status::{Conflict, StageChange, Status, StatusEntry, StatusOptions, WorktreeChange};
 pub use summary::{Activity, Counts, Identity, Summary};
 pub use thread_guard::{assert_off_render_thread, mark_render_thread, on_render_thread};

@@ -18,6 +18,8 @@ import RepositoryList from "./components/RepositoryList.vue";
 import Progress from "./components/Progress.vue";
 import Sidebar from "./components/Sidebar.vue";
 import Splitter from "./components/Splitter.vue";
+import StashDetail from "./components/StashDetail.vue";
+import StashList from "./components/StashList.vue";
 import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
 import Topbar from "./components/Topbar.vue";
@@ -70,6 +72,20 @@ const widths = {
         </section>
       </template>
 
+      <!-- The shelf, in the shape History already has: the list in the middle
+           column, and what one entry holds stacked above its diff. A stash is a
+           commit, so the right-hand side is the same two panes. -->
+      <template v-else-if="app.screen === 'stashes'">
+        <section class="pane" :style="{ width: `${paneWidth('middle', widths.middle)}px` }">
+          <StashList />
+          <Splitter pane="middle" :width="paneWidth('middle', widths.middle)" :min="280" />
+        </section>
+        <section class="stack">
+          <StashDetail />
+          <DiffView />
+        </section>
+      </template>
+
       <template v-else>
         <section class="pane" :style="{ width: `${paneWidth('middle', widths.middle)}px` }">
           <div class="middle">
@@ -80,7 +96,7 @@ const widths = {
         </section>
       </template>
 
-      <DiffView v-if="app.screen !== 'history'" />
+      <DiffView v-if="app.screen === 'working-copy'" />
       <Journal v-if="app.showJournal" />
     </template>
   </div>
