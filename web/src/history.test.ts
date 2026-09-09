@@ -328,3 +328,76 @@ describe("filtering", () => {
     expect(state.app.query.firstParent).toBe(true);
   });
 });
+
+describe("comparing two commits", () => {
+  it("compares the marked commit with the second one, in that order", async () => {
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+
+    const [newest, , older] = rows(state).map((row) => row.id.full);
+    state.markCompareFrom(newest!);
+    await state.compareWith(older!);
+    await drawn(state);
+
+    const call = backend.current.calls.find((call) => call.command === "compare");
+    expect(call?.args).toMatchObject({ from: newest, to: older });
+    expect(state.app.compare.status).toBe("ready");
+    // And it opens on a file, so the diff pane is not blank.
+    expect(state.app.commitFile).toBe("a.txt");
+  });
+
+  it("refuses to compare a commit with itself", async () => {
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+
+    const only = rows(state)[0]!.id.full;
+    state.markCompareFrom(only);
+    await state.compareWith(only);
+    await drawn(state);
+
+    expect(backend.current.calls.filter((call) => call.command === "compare")).toHaveLength(0);
+    expect(state.app.compare.status).toBe("idle");
+  });
+
+  it("goes back to the open commit when the comparison stops", async () => {
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+    const [newest, , older] = rows(state).map((row) => row.id.full);
+
+    state.markCompareFrom(newest!);
+    await state.compareWith(older!);
+    await drawn(state);
+
+    state.stopComparing();
+    await settled(state);
+
+    expect(state.app.compare.status).toBe("idle");
+    expect(state.app.compareFrom).toBeNull();
+    // The detail pane has something in it again, rather than being left blank.
+    expect(state.app.commit.status).toBe("ready");
+    expect(state.app.commitFile).toBe("a.txt");
+  });
+
+  it("drops the comparison when the walk it named is replaced", async () => {
+    // Both ends are rows of a history that is about to be replaced; keeping
+    // them would leave the pane pointing at commits nobody can see.
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+    const [newest, , older] = rows(state).map((row) => row.id.full);
+
+    state.markCompareFrom(newest!);
+    await state.compareWith(older!);
+    await drawn(state);
+    expect(state.app.compare.status).toBe("ready");
+
+    await state.setQuery({ all: true });
+    await settled(state);
+
+    expect(state.app.compare.status).toBe("idle");
+    expect(state.app.compareFrom).toBeNull();
+  });
+});

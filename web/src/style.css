@@ -1015,3 +1015,13 @@ button.danger.solid:hover {
   width: 20px;
   flex: none;
 }
+
+/* The two ends of a comparison, marked in the list so a reader who scrolled
+   away from one of them can still see which rows it is about. */
+.commit-row.compare-from,
+.commit-row.compare-to {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.commit-row.compare-to {
+  background: var(--surface-raised);
+}

@@ -582,6 +582,28 @@ the kept commits form a connected graph. That is what would let a path-filtered
 view keep its gutter, and it is a separate piece of work with its own
 pathological cases.
 
+### 2.26 A ↔ B is two clicks, not a mode
+
+SPEC §11's comparison between two commits. `from` and `to` are exactly that and
+not "older" and "newer": comparing a commit with one of its own descendants is
+the ordinary case, and comparing the tips of two divergent branches is the
+interesting one, where neither is older.
+
+**Shift-click rather than a mode.** Comparing is something done to two rows you
+can see; a mode would have to be entered, remembered and left again for an
+action that takes two clicks. Marking where a comparison starts is therefore
+separate from running one — the second commit is chosen by *scrolling*, and a
+comparison that ran on every row the pointer landed on would read a diff per
+row. `HistoryList.test.ts` pins that a plain click compares nothing, and both
+halves were checked by putting the bug back.
+
+The comparison is its own field rather than a mode on the commit detail, because
+it answers a different question: a commit detail asks what this one changed, a
+comparison asks what is between these two, and the second has no author, no
+message and no parent to show. It also disappears when the walk that produced
+its two ends is replaced — a filter typed into a box leaves the pane pointing at
+rows nobody can see otherwise.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -755,9 +777,10 @@ window:
 - **The filters of SPEC §11** — author, message, path, date range — over the
   walk, with the graph off while one is on (§2.25).
 
-Not yet ported: the Repositories screen (the sidebar lists what the library
-holds, but nothing adds to it from the window), and M6's A ↔ B comparison, for
-which `Diff::between` already exists. The Linux measurement §2.20 calls unknown is
+- **A ↔ B**, on a shift-click (§2.26).
+
+Not yet ported: the Repositories screen — the sidebar lists what the library
+holds, but nothing adds to it from the window. The Linux measurement §2.20 calls unknown is
 still unknown — it needs one run of `scripts/dev.sh` there.
 
 ## 5. Risks

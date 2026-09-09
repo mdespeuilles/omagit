@@ -372,6 +372,20 @@ pub fn file_row(file: &FileDiff) -> FileRow {
     }
 }
 
+/// Everything that differs between two commits.
+///
+/// Not a [`CommitDetail`]: there is no single commit here, so there is no
+/// author, no message and no parent. What a comparison has instead is two ends
+/// and a count, and the two ends are what the pane has to keep saying — a
+/// reader who has scrolled a long file list needs to be told which way round
+/// the diff is.
+#[derive(Debug, serde::Serialize)]
+pub struct Comparison {
+    pub from: Oid,
+    pub to: Oid,
+    pub files: Vec<FileRow>,
+}
+
 /// A commit that was just made.
 #[derive(Debug, serde::Serialize)]
 pub struct Made {

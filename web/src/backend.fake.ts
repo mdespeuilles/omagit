@@ -132,6 +132,14 @@ export class Repository {
         return this.detail(args["id"] as string);
       case "commit_file_diff":
         return this.diff("a.txt", false);
+      case "compare":
+        return {
+          from: { full: args["from"], short: (args["from"] as string).slice(0, 7) },
+          to: { full: args["to"], short: (args["to"] as string).slice(0, 7) },
+          files: [{ path: "a.txt", change: "modified", added: 3, removed: 1, reason: null }],
+        };
+      case "compare_file_diff":
+        return this.diff("a.txt", false);
       case "log":
         return undefined;
       case "stage":

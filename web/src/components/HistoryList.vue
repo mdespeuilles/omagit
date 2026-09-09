@@ -8,7 +8,7 @@
 
 import { computed } from "vue";
 import { when, exact } from "../format";
-import { app, moreHistory, selectCommit, setQuery } from "../state";
+import { app, compareWith, markCompareFrom, moreHistory, selectCommit, setQuery } from "../state";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
 import VirtualList from "./VirtualList.vue";
@@ -16,6 +16,20 @@ import VirtualList from "./VirtualList.vue";
 const ROW_HEIGHT = 24;
 
 const rows = computed(() => (app.history.status === "ready" ? app.history.value : []));
+
+/// A plain click opens a commit; a shift-click compares it with the marked one.
+///
+/// Shift-click rather than a mode: comparing is something you do to two rows
+/// you can see, and a mode would have to be entered, remembered and left again
+/// for an action that takes two clicks.
+function open(id: string, extend: boolean): void {
+  if (extend && app.compareFrom && app.compareFrom !== id) {
+    void compareWith(id);
+    return;
+  }
+  markCompareFrom(id);
+  void selectCommit(id);
+}
 </script>
 
 <template>
@@ -61,8 +75,16 @@ const rows = computed(() => (app.history.status === "ready" ? app.history.value 
         class="commit-row"
         :class="{
           selected: app.commit.status === 'ready' && app.commit.value.id.full === item.id.full,
+          'compare-from': app.compareFrom === item.id.full && app.compare.status !== 'idle',
+          'compare-to':
+            app.compare.status === 'ready' && app.compare.value.to.full === item.id.full,
         }"
-        @click="selectCommit(item.id.full)"
+        :title="
+          app.compareFrom && app.compareFrom !== item.id.full
+            ? `Maj-clic : comparer avec ${app.compareFrom.slice(0, 7)}`
+            : ''
+        "
+        @click="open(item.id.full, $event.shiftKey)"
       >
         <GraphGutter v-if="item.graph" :row="item" :height="ROW_HEIGHT" />
         <span v-else class="gutter-none" />

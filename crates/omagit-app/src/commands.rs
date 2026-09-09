@@ -211,6 +211,65 @@ pub fn commit_file_diff(
         .map(dto::diff))
 }
 
+/// What differs between two commits, in either direction.
+///
+/// `from` and `to` are exactly that and not "older" and "newer": comparing a
+/// commit with one of its own descendants is the ordinary case, and comparing
+/// two tips of divergent branches is the interesting one, where neither is
+/// older. The diff is `from` → `to`, whatever their order in the history.
+#[tauri::command(async)]
+pub fn compare(
+    state: State<'_, AppState>,
+    path: String,
+    from: String,
+    to: String,
+) -> Answer<dto::Comparison> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let (from, to) = (from.parse().map_err(say)?, to.parse().map_err(say)?);
+    let diff = omagit_git::Diff::between(
+        &open.repo,
+        Some(from),
+        Some(to),
+        DiffOptions::default(),
+        &state.cancel(),
+    )
+    .map_err(say)?;
+
+    Ok(dto::Comparison {
+        from: from.into(),
+        to: to.into(),
+        files: diff.files.iter().map(dto::file_row).collect(),
+    })
+}
+
+/// One file of a comparison.
+#[tauri::command(async)]
+pub fn compare_file_diff(
+    state: State<'_, AppState>,
+    path: String,
+    from: String,
+    to: String,
+    file: String,
+) -> Answer<Option<dto::Diff>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let (from, to) = (from.parse().map_err(say)?, to.parse().map_err(say)?);
+    let diff = omagit_git::Diff::between(
+        &open.repo,
+        Some(from),
+        Some(to),
+        DiffOptions::default(),
+        &state.cancel(),
+    )
+    .map_err(say)?;
+
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+    Ok(diff
+        .files
+        .iter()
+        .find(|file| file.path == wanted)
+        .map(dto::diff))
+}
+
 /// The operations journal (SPEC §11): the exact command, not a summary.
 #[tauri::command]
 pub fn journal(state: State<'_, AppState>) -> Vec<dto::JournalRow> {

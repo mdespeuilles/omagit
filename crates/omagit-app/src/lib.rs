@@ -56,6 +56,8 @@ pub fn run() {
             commands::history_more,
             commands::commit_detail,
             commands::commit_file_diff,
+            commands::compare,
+            commands::compare_file_diff,
             commands::journal,
             commands::log,
         ])

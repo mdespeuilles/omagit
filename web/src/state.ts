@@ -16,6 +16,7 @@ import {
   api,
   isFiltered,
   type CommitDetail,
+  type Comparison,
   type DiffRow,
   type HistoryQuery,
   type HistoryRow,
@@ -103,6 +104,15 @@ type State = {
   commit: Async<CommitDetail>;
   /// Which file of that commit the diff pane shows.
   commitFile: string | null;
+  /// Two commits being compared, when someone has picked a second one.
+  ///
+  /// Its own field rather than a mode on `commit`, because it is a different
+  /// question: a commit detail asks "what did this change", a comparison asks
+  /// "what is between these two", and the second has no author, no message and
+  /// no parent to show.
+  compare: Async<Comparison>;
+  /// The commit a comparison would start from, once one has been marked.
+  compareFrom: string | null;
 };
 
 const state = reactive<State>({
@@ -136,6 +146,8 @@ const state = reactive<State>({
   query: { all: false, firstParent: false, author: "", text: "", path: "", since: 0, until: 0 },
   commit: idle(),
   commitFile: null,
+  compare: idle(),
+  compareFrom: null,
 });
 
 export const app = readonly(state);
@@ -171,6 +183,8 @@ export async function openRepository(path: string): Promise<void> {
   state.historyDone = false;
   state.commit = idle();
   state.commitFile = null;
+  state.compare = idle();
+  state.compareFrom = null;
   // The box belongs to the repository, not to the window.
   state.message = "";
   state.amend = false;
@@ -267,6 +281,10 @@ export async function loadHistory(): Promise<void> {
   state.historyDone = false;
   state.commit = idle();
   state.commitFile = null;
+  // A comparison names two commits, and the walk that produced them is being
+  // replaced. Keeping it would leave the pane pointing at rows nobody can see.
+  state.compare = idle();
+  state.compareFrom = null;
 
   const started = performance.now();
   try {
@@ -377,6 +395,73 @@ export async function selectCommitFile(file: string): Promise<void> {
         performance.now() - started
       ).toFixed(1)}ms`,
     );
+  } catch (error) {
+    if (state.commitFile === file) state.diff = { status: "failed", error: message(error) };
+  }
+}
+
+// ── Comparing two commits (SPEC §11) ────────────────────────────────────────
+
+/// Mark where a comparison starts, or drop the mark.
+///
+/// Marking is separate from comparing because the second commit is chosen by
+/// scrolling, and a comparison that ran on every row the pointer touched would
+/// read a diff per row.
+export function markCompareFrom(id: string | null): void {
+  state.compareFrom = id;
+  if (id === null) state.compare = idle();
+}
+
+/// Compare the marked commit with `id`.
+export async function compareWith(id: string): Promise<void> {
+  const path = state.open;
+  const from = state.compareFrom;
+  if (!path || !from || from === id) return;
+
+  state.compare = { status: "loading" };
+  state.commitFile = null;
+  state.diff = idle();
+  try {
+    const comparison = await api.compare(path, from, id);
+    if (state.open !== path || state.compare.status !== "loading") return;
+    state.compare = { status: "ready", value: comparison };
+    const first = comparison.files[0];
+    if (first) await selectCompareFile(first.path);
+  } catch (error) {
+    state.compare = { status: "failed", error: message(error) };
+  }
+}
+
+export function stopComparing(): void {
+  state.compare = idle();
+  state.compareFrom = null;
+  const open = state.commit.status === "ready" ? state.commit.value : null;
+  if (open) void selectCommit(open.id.full);
+}
+
+export async function selectCompareFile(file: string): Promise<void> {
+  const path = state.open;
+  const ends = state.compare.status === "ready" ? state.compare.value : null;
+  if (!path || !ends) return;
+
+  state.commitFile = file;
+  state.diff = { status: "loading" };
+  try {
+    const diff = await api.compareFileDiff(path, ends.from.full, ends.to.full, file);
+    if (state.commitFile !== file) return;
+    if (!diff) {
+      state.diff = { status: "failed", error: "ce fichier n'est pas dans cette comparaison" };
+      return;
+    }
+    state.diff = {
+      status: "ready",
+      value: {
+        path: diff.path,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        rows: diff.rows ?? [],
+        reason: diff.reason,
+      },
+    };
   } catch (error) {
     if (state.commitFile === file) state.diff = { status: "failed", error: message(error) };
   }

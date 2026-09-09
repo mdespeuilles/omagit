@@ -124,6 +124,8 @@ export type CommitDetail = {
   files: FileRow[];
 };
 
+export type Comparison = { from: Oid; to: Oid; files: FileRow[] };
+
 export type LibraryRow = {
   group: number;
   index: number;
@@ -178,6 +180,10 @@ export const api = {
   commitDetail: (path: string, id: string) => invoke<CommitDetail>("commit_detail", { path, id }),
   commitFileDiff: (path: string, id: string, file: string) =>
     invoke<Diff | null>("commit_file_diff", { path, id, file }),
+  compare: (path: string, from: string, to: string) =>
+    invoke<Comparison>("compare", { path, from, to }),
+  compareFileDiff: (path: string, from: string, to: string, file: string) =>
+    invoke<Diff | null>("compare_file_diff", { path, from, to, file }),
 
   // The writes. Each takes the repository's lock on the Rust side for its whole
   // duration, so two of these can never run at once on one repository.

@@ -3,9 +3,15 @@
 
 import { computed } from "vue";
 import { authored, exact, when } from "../format";
-import { app, selectCommitFile } from "../state";
+import { app, selectCommitFile, selectCompareFile, stopComparing } from "../state";
 
 const detail = computed(() => (app.commit.status === "ready" ? app.commit.value : null));
+const comparison = computed(() => (app.compare.status === "ready" ? app.compare.value : null));
+
+/// A comparison takes the pane over while it is on: it answers a different
+/// question from the one below it, and showing both would leave the file list
+/// ambiguous about which of the two it belongs to.
+const comparing = computed(() => app.compare.status !== "idle");
 
 function sign(row: { added: number; removed: number; reason: string | null }): string {
   return row.reason ?? `+${row.added} −${row.removed}`;
@@ -15,11 +21,57 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
 <template>
   <section class="detail">
     <header class="pane-head">
-      <span>Commit</span>
-      <span v-if="detail" class="pane-head-title mono">{{ detail.id.short }}</span>
+      <span>{{ comparing ? "Comparaison" : "Commit" }}</span>
+      <span v-if="comparing && comparison" class="pane-head-title mono">
+        {{ comparison.from.short }} ↔ {{ comparison.to.short }}
+      </span>
+      <span v-else-if="detail" class="pane-head-title mono">{{ detail.id.short }}</span>
     </header>
 
-    <p v-if="app.commit.status === 'idle'" class="pane-empty">Aucun commit sélectionné</p>
+    <template v-if="comparing">
+      <p v-if="app.compare.status === 'loading'" class="pane-empty">Lecture de la comparaison…</p>
+      <p v-else-if="app.compare.status === 'failed'" class="pane-error mono">
+        {{ app.compare.error }}
+      </p>
+      <template v-else-if="comparison">
+        <div class="detail-head">
+          <p class="detail-summary mono">{{ comparison.from.short }} ↔ {{ comparison.to.short }}</p>
+          <p class="detail-who">
+            <span class="dim">
+              {{ comparison.files.length }} fichier{{ comparison.files.length > 1 ? "s" : "" }}
+              entre les deux
+            </span>
+            <button class="link" @click="stopComparing()">Arrêter la comparaison</button>
+          </p>
+        </div>
+
+        <header class="pane-head">
+          <span>Fichiers</span>
+          <span class="pane-head-count">{{ comparison.files.length }}</span>
+        </header>
+        <p v-if="comparison.files.length === 0" class="pane-empty">
+          Rien ne diffère entre ces deux commits
+        </p>
+        <ol v-else class="detail-files">
+          <li
+            v-for="file in comparison.files"
+            :key="file.path"
+            class="file-row"
+            :class="{ selected: app.commitFile === file.path }"
+            @click="selectCompareFile(file.path)"
+          >
+            <span class="file-code mono" :class="file.change">{{ file.change.charAt(0) }}</span>
+            <span class="file-path mono">
+              <span class="dir">{{ file.path.slice(0, file.path.lastIndexOf("/") + 1) }}</span>
+              <span class="name">{{ file.path.slice(file.path.lastIndexOf("/") + 1) }}</span>
+            </span>
+            <span class="file-count mono">{{ sign(file) }}</span>
+          </li>
+        </ol>
+      </template>
+    </template>
+
+    <p v-else-if="app.commit.status === 'idle'" class="pane-empty">Aucun commit sélectionné</p>
     <p v-else-if="app.commit.status === 'loading'" class="pane-empty">Lecture du commit…</p>
     <p v-else-if="app.commit.status === 'failed'" class="pane-error mono">{{ app.commit.error }}</p>
 
