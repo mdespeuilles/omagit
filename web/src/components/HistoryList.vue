@@ -8,7 +8,16 @@
 
 import { computed } from "vue";
 import { when, exact } from "../format";
-import { app, compareWith, markCompareFrom, moreHistory, selectCommit, setQuery } from "../state";
+import {
+  app,
+  compareWith,
+  isFilteringHistory,
+  markCompareFrom,
+  moreHistory,
+  selectCommit,
+  setQuery,
+  toggleFilters,
+} from "../state";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
 import { doubleRowHeight } from "../metrics";
@@ -71,8 +80,19 @@ function open(id: string, extend: boolean): void {
         /><span class="check" aria-hidden="true">✓</span>
         Tronc
       </label>
+      <span class="pane-head-rule" />
+      <!-- Folded away by default: five fields answering a question most
+           readers are not asking, in a column they want for commits. -->
+      <button
+        class="link"
+        :class="{ on: app.showFilters || isFilteringHistory() }"
+        :aria-expanded="app.showFilters || isFilteringHistory()"
+        @click="toggleFilters()"
+      >
+        Filtrer{{ isFilteringHistory() ? " ·" : "" }}
+      </button>
     </header>
-    <HistoryFilters />
+    <HistoryFilters v-if="app.showFilters || isFilteringHistory()" />
 
     <p v-if="app.history.status === 'idle'" class="pane-empty">Historique non chargé</p>
     <p v-else-if="app.history.status === 'loading'" class="pane-empty">Lecture de l'historique…</p>

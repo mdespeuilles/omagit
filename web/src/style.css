@@ -100,7 +100,7 @@ button:disabled {
 button.primary:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
   font-weight: 500;
 }
 button.primary:not(:disabled):hover {
@@ -120,7 +120,7 @@ button.danger:not(:disabled):hover {
 }
 button.danger:not(:disabled):active {
   background: var(--danger);
-  color: var(--bg);
+  color: var(--on-danger);
 }
 
 /* The shortcut inside a button. */
@@ -160,7 +160,7 @@ button.primary .hint {
 .check.all {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
 }
 /* Half in, drawn as half: the accent on the border and the bar, not a filled
    box — a filled box is what "wholly staged" means one row above. */
@@ -213,7 +213,7 @@ button.primary .hint {
 /* A conflict is the one that is filled: it is the state that has to be
    resolved before any of the others matter. */
 .badge.conflict {
-  color: var(--bg);
+  color: var(--on-danger);
   background: var(--danger);
   border-color: var(--danger);
 }
@@ -370,6 +370,16 @@ button.icon {
   min-width: 0;
 }
 
+/* Two panes one above the other, sharing the width of the column. The top one
+   takes the height it needs and no more; the bottom one takes the rest. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* On the border, not beside it: a separator with width of its own would push
    everything along and put a gap in the hairline grid. */
 .splitter {
@@ -419,13 +429,6 @@ button.icon {
   text-align: left;
   font-size: var(--text-body);
   cursor: pointer;
-}
-/* The view you are in is filled, as board 03 fills it: this is a chooser, and
-   the row is the answer. */
-.sidebar-row.selected {
-  background: var(--accent);
-  color: var(--bg);
-  font-weight: 500;
 }
 .sidebar-row.selected .sidebar-glyph,
 .sidebar-row.selected .sidebar-count {
@@ -639,12 +642,30 @@ button.icon {
 
 /* Selected and focused stay distinct everywhere (DESIGN §1): selected is a
    surface change, focus is a ring drawn *inside* the row so it cannot be
-   clipped by the virtualised container. */
+   clipped by the virtualised container.
+
+   Every "selected" in the app is defined here and nowhere else. It was in two
+   places, and the second — this one — quietly won the background from the
+   first while leaving its text colour behind: a sidebar row ended up written in
+   `--bg` on `--surface-raised`, dark on dark. Two rules for one state at equal
+   specificity is not something a linter catches when the selector lists differ;
+   keeping them together is. */
+
+/* A list you read: the row you are looking at. */
 .file-row.selected,
-.sidebar-row.selected,
-.library-row.selected,
 .commit-row.selected {
   background: var(--surface-raised);
+}
+
+/* A list you choose from: the row is the answer, so it is filled (board 03,
+   board 06). `--on-accent` rather than `--bg`, because a theme whose accent is
+   dark would put near-black on near-black — the theme picks the readable one of
+   the pair. */
+.sidebar-row.selected,
+.library-row.selected {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
 }
 .file-row:focus-visible,
 .library-row:focus-visible,
@@ -742,7 +763,7 @@ button.icon {
 .toggle input:checked + .check {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
 }
 .toggle input:focus-visible + .check {
   outline: 1px solid var(--border-focus);
@@ -798,6 +819,18 @@ button.icon {
 
 .pane-head-spacer {
   flex: 1;
+}
+/* A hairline between two groups of controls in one header. */
+.pane-head-rule {
+  width: 1px;
+  height: 14px;
+  flex: none;
+  margin: 0 2px;
+  background: var(--border);
+}
+/* A toggle that is on. */
+button.link.on {
+  color: var(--accent);
 }
 
 button.link {
@@ -1228,7 +1261,7 @@ button.danger.solid:hover {
   color: var(--text);
 }
 .ref.head {
-  color: var(--bg);
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -1243,16 +1276,28 @@ button.danger.solid:hover {
 
 /* ── The commit detail ───────────────────────────────────────────────────── */
 
+/* Above the diff rather than beside it, and never more than its share of the
+   height: a commit that touched two hundred files must not push the diff off
+   the screen. Inside, the message and the file list each scroll on their own —
+   the message shrinks first, because a file list of one row that has to be
+   scrolled to is worse than a long message that has to be. */
 .detail {
   display: flex;
   flex-direction: column;
+  flex: 0 1 auto;
+  max-height: 45%;
   min-height: 0;
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
 }
 
+/* `0 1 auto`, not a percentage of a box that is itself a percentage: nesting
+   the two gave the message forty per cent of forty-five and cut its last line
+   in half. */
 .detail-head {
-  flex: none;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--pad);
   border-bottom: 1px solid var(--border);
 }
@@ -1282,11 +1327,18 @@ button.danger.solid:hover {
   color: var(--text-dim);
 }
 
+/* Scrolls on its own, so the header above it and the diff below it stay put,
+   and keeps a floor of three rows: a long commit message would otherwise take
+   the whole box and leave the file list at nothing, with no way to pick the
+   file whose diff is showing underneath. The message shrinks and scrolls
+   instead. */
 .detail-files {
   margin: 0;
   padding: 0;
   list-style: none;
-  flex: none;
+  flex: 1 1 auto;
+  min-height: calc(var(--row-height) * 3);
+  overflow-y: auto;
 }
 .detail-files .file-row {
   height: var(--row-height);
@@ -1434,13 +1486,9 @@ button.danger.solid:hover {
 .library-row:hover {
   background: var(--surface-hover);
 }
-/* Board 06 fills the selected row with the accent. It is the only full-bleed
-   accent in the app, and it is here because this list is a chooser: the row is
-   the answer to the question the screen is asking. */
-.library-row.selected {
-  background: var(--accent);
-  color: var(--bg);
-}
+/* Board 06 fills the selected row with the accent, because this list is a
+   chooser: the row is the answer to the question the screen is asking. The fill
+   itself is defined with the sidebar's, above. */
 .library-row.selected .library-state,
 .library-row.selected .library-icon {
   color: inherit;

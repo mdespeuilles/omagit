@@ -57,9 +57,14 @@ const widths = {
           <HistoryList />
           <Splitter pane="history" :width="paneWidth('history', widths.history)" :min="360" />
         </section>
-        <section class="pane" :style="{ width: `${paneWidth('detail', widths.detail)}px` }">
+        <!-- The commit and its diff, stacked. Side by side they were two
+             narrow columns fighting for the same width, and the diff — which
+             is the wider of the two by nature, because it holds code — got the
+             worse half. Stacked, the diff has the window's full width and the
+             commit keeps only the height it needs. -->
+        <section class="stack">
           <CommitDetail />
-          <Splitter pane="detail" :width="paneWidth('detail', widths.detail)" :min="260" />
+          <DiffView />
         </section>
       </template>
 
@@ -73,7 +78,7 @@ const widths = {
         </section>
       </template>
 
-      <DiffView />
+      <DiffView v-if="app.screen !== 'history'" />
       <Journal v-if="app.showJournal" />
     </template>
   </div>

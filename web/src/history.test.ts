@@ -402,3 +402,38 @@ describe("comparing two commits", () => {
     expect(state.app.compareFrom).toBeNull();
   });
 });
+
+describe("the filter row", () => {
+  it("is folded away until it is asked for", async () => {
+    // Five fields answering a question most readers are not asking, in a column
+    // they want for commits.
+    const state = await open(chain(9));
+    expect(state.app.showFilters).toBe(false);
+
+    state.toggleFilters();
+    expect(state.app.showFilters).toBe(true);
+
+    state.toggleFilters();
+    expect(state.app.showFilters).toBe(false);
+  });
+
+  it("stays open while something is being filtered", async () => {
+    // A filter still narrowing the list while the fields that explain it are
+    // hidden would be a list that lies about what it is showing.
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+
+    state.toggleFilters();
+    await state.setQuery({ author: "marek" });
+    await settled(state);
+
+    state.toggleFilters();
+    expect(state.app.showFilters).toBe(true);
+
+    await state.clearFilters();
+    await settled(state);
+    state.toggleFilters();
+    expect(state.app.showFilters).toBe(false);
+  });
+});

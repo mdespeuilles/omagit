@@ -106,6 +106,10 @@ type State = {
   /// same page, and the rows arrive four times.
   historyLoading: boolean;
   query: HistoryQuery;
+  /// Whether the filter row is unfolded. Folded by default: it is five fields
+  /// answering a question most readers are not asking, and it was taking two
+  /// rows of a column they wanted for commits.
+  showFilters: boolean;
   /// The commit the detail pane is about.
   commit: Async<CommitDetail>;
   /// Which file of that commit the diff pane shows.
@@ -163,6 +167,7 @@ const state = reactive<State>({
   historyDone: false,
   historyLoading: false,
   query: { all: false, firstParent: false, author: "", text: "", path: "", since: 0, until: 0 },
+  showFilters: false,
   commit: idle(),
   commitFile: null,
   compare: idle(),
@@ -486,6 +491,15 @@ export async function clearFilters(): Promise<void> {
 
 export function isFilteringHistory(): boolean {
   return isFiltered(state.query);
+}
+
+/// Fold the filter row away, or bring it back.
+///
+/// Folding it never *clears* it: a filter that went on narrowing the list while
+/// the fields that explain it were hidden would be a list that lies. So the
+/// row stays open as long as something is filtered.
+export function toggleFilters(): void {
+  state.showFilters = !state.showFilters || isFiltered(state.query);
 }
 
 export async function selectCommit(id: string): Promise<void> {

@@ -27,6 +27,9 @@ pub fn variables(theme: &Theme, density: DensityMode) -> String {
     for (name, value) in colours(&t) {
         push(&mut css, name, &hex(value));
     }
+    for (name, value) in on_filled(&t) {
+        push(&mut css, name, &hex(value));
+    }
     for (name, value) in lanes(theme) {
         push(&mut css, &name, &hex(value));
     }
@@ -86,6 +89,30 @@ fn colours(t: &Tokens) -> [(&'static str, Rgb); 18] {
         ("diff-deleted", t.diff_deleted),
         ("diff-deleted-word", t.diff_deleted_word),
     ]
+}
+
+/// What to write *on* a filled surface.
+///
+/// A filled accent is the one place the interface puts text on something other
+/// than the background, and `--bg` is not always the answer: a theme whose
+/// accent is dark — Matte Black's, or a light theme's — puts near-black on
+/// near-black, which is what made a selected sidebar row unreadable. So the
+/// pair is chosen by contrast rather than assumed, which is DESIGN-TOKENS §4.3
+/// applied to a case §4.3 did not name.
+fn on_filled(t: &Tokens) -> [(&'static str, Rgb); 2] {
+    [
+        ("on-accent", readable_on(t.accent, t.bg, t.text)),
+        ("on-danger", readable_on(t.danger, t.bg, t.text)),
+    ]
+}
+
+/// Whichever of the two reads better against `surface`.
+fn readable_on(surface: Rgb, dark: Rgb, light: Rgb) -> Rgb {
+    if crate::oklch::contrast_ratio(dark, surface) >= crate::oklch::contrast_ratio(light, surface) {
+        dark
+    } else {
+        light
+    }
 }
 
 /// The graph lanes, which never read the theme — only their lightness and
@@ -163,7 +190,7 @@ mod tests {
     fn every_token_reaches_the_stylesheet() {
         let css = variables(&embedded::tokyo_night(), DensityMode::Compact);
         // The eighteen colours, the eight lanes, the six metrics, two fonts.
-        assert_eq!(css.matches("--").count(), 18 + 8 + 7 + 5 + 2);
+        assert_eq!(css.matches("--").count(), 18 + 2 + 8 + 7 + 5 + 2);
         assert!(css.contains("--surface-raised: #283457;"));
         assert!(css.contains("--lane-0: #"));
         assert!(css.contains("--row-height: 26px;"));
@@ -239,5 +266,49 @@ mod scaling {
     fn a_scale_is_a_preference_not_a_measurement() {
         let css = scaled(&tokyo(), DensityMode::Comfortable, 1.0 / 3.0);
         assert!(css.contains("--scale: 0.33;"), "{css}");
+    }
+}
+
+#[cfg(test)]
+mod on_a_filled_surface {
+    use super::*;
+    use crate::oklch::contrast_ratio;
+
+    /// Every theme in the catalogue, because the failure is per-theme: the
+    /// pairing that reads on Tokyo Night's accent is the one that does not read
+    /// on Matte Black's.
+    #[test]
+    fn text_on_a_filled_accent_is_the_readable_one_in_every_theme() {
+        for theme in crate::embedded::catalogue() {
+            let t = theme.tokens();
+            for (surface, chosen) in [
+                (t.accent, readable_on(t.accent, t.bg, t.text)),
+                (t.danger, readable_on(t.danger, t.bg, t.text)),
+            ] {
+                let other = if chosen == t.bg { t.text } else { t.bg };
+                assert!(
+                    contrast_ratio(chosen, surface) >= contrast_ratio(other, surface),
+                    "{}: picked the worse of the two against {surface:?}",
+                    theme.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_selected_row_is_legible_in_every_theme() {
+        // The bug this pins: a sidebar row filled with the accent, written in
+        // `--bg`, came out near-black on near-black. 4.5 is the floor
+        // DESIGN-TOKENS §4.3 sets for text.
+        for theme in crate::embedded::catalogue() {
+            let t = theme.tokens();
+            let on = readable_on(t.accent, t.bg, t.text);
+            let ratio = contrast_ratio(on, t.accent);
+            assert!(
+                ratio >= 4.5,
+                "{}: text on a filled accent is {ratio:.2}:1",
+                theme.name
+            );
+        }
     }
 }

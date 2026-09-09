@@ -739,6 +739,42 @@ disappears leaves a key nobody reads rather than a migration. Written when the
 drag ends and not while it moves — the file is rewritten on every call, and a
 drag is a hundred of them.
 
+### 2.30 The commit sits above its diff, and a filled row picks its own text
+
+**The commit and the diff are stacked, not side by side.** Two narrow columns
+were fighting for the same width and the diff — the wider of the two by nature,
+because it holds code — got the worse half. Stacked, the diff has the column's
+full width and the commit keeps only the height it needs. Inside the commit,
+the message and the file list each scroll on their own, and the file list keeps
+a floor of three rows: a long message would otherwise take the whole box and
+leave no way to pick the file whose diff is showing underneath.
+
+The one thing to get right there is that a percentage inside a percentage is
+not a height. The message had `max-height: 40%` inside a box that was itself
+`45%` of the column, which came to about a hundred pixels and cut its last line
+in half. It shrinks by flex now, against a file list that has a floor.
+
+**The filters fold behind a button**, and folding never clears them: a filter
+still narrowing the list while the fields that explain it are hidden would be a
+list that lies about what it is showing. So the row stays open as long as
+something is filtered, which is a rule with a test rather than a habit.
+
+**A filled row picks its own text colour.** `--on-accent` and `--on-danger` are
+emitted by the theme as whichever of `bg` / `text` reads better against the
+fill — DESIGN-TOKENS §4.3 applied to a case §4.3 did not name. A theme whose
+accent is dark otherwise puts near-black on near-black.
+
+That was not, in the end, what made the selected sidebar row unreadable, and
+the difference is worth recording. **`.sidebar-row.selected` was written
+twice**: once with the accent fill and `--bg` text, and once — later, inside a
+shared "selected is a surface change" rule — with `--surface-raised`. Equal
+specificity, so the later background won while the earlier text colour stayed:
+`--bg` on `--surface-raised`, dark on dark. `stylelint`'s
+`no-duplicate-selectors` does not see it, because the two selector *lists*
+differ. What does see it is keeping every "selected" in one block, which is
+where they now are, and the contrast token means the remaining pairing cannot
+go wrong per theme.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
