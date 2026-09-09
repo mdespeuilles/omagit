@@ -50,19 +50,72 @@ pub fn git_status(state: State<'_, AppState>) -> Option<String> {
 }
 
 /// The repositories the user has added.
-#[tauri::command]
+///
+/// The library and a stat per row, and nothing Git knows. Reading a summary for
+/// each would mean a status walk over every repository the user has ever added
+/// before the screen drew anything; the rows arrive first and the front end
+/// fills them in.
+#[tauri::command(async)]
 pub fn repositories(state: State<'_, AppState>) -> Vec<dto::LibraryRow> {
     state.with_library(|library| {
         library
+            .groups
             .iter()
-            .map(|(at, entry)| dto::LibraryRow {
-                group: at.group,
-                index: at.index,
-                path: entry.path.display().to_string(),
-                name: entry.name.clone(),
+            .enumerate()
+            .flat_map(|(group, entries)| {
+                entries
+                    .repositories
+                    .iter()
+                    .enumerate()
+                    .map(move |(index, entry)| dto::LibraryRow {
+                        group,
+                        index,
+                        group_name: entries.name.clone(),
+                        path: entry.path.display().to_string(),
+                        name: entry.name.clone(),
+                        description: entry.description.clone(),
+                        last_opened: entry.last_opened,
+                        // Stat rather than open: a directory that is gone must
+                        // keep its row (DESIGN §4), and finding that out by
+                        // failing to open it would cost a `gix` open per row.
+                        missing: !entry.path.exists(),
+                    })
             })
             .collect()
     })
+}
+
+/// Add a folder, remembering nothing about it until it turns out to be one.
+///
+/// Separate from [`add_repository`], which also loads a summary: the picker
+/// hands back a path and the answer to "is this a repository" is the first
+/// thing the window needs.
+#[tauri::command(async)]
+pub fn forget_repository(state: State<'_, AppState>, path: String) -> Answer<()> {
+    let path = PathBuf::from(path);
+    state.with_library(|library| {
+        if let Some(at) = library.find(&path) {
+            library.remove(at);
+        }
+    });
+    Ok(())
+}
+
+/// Record that this repository was opened, for the "Last Opened" line.
+#[tauri::command(async)]
+pub fn touch_repository(state: State<'_, AppState>, path: String) {
+    let path = PathBuf::from(path);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|since| since.as_secs() as i64)
+        .unwrap_or_default();
+    state.with_library(|library| {
+        if let Some(at) = library.find(&path)
+            && let Some(entry) = library.get_mut(at)
+        {
+            entry.last_opened = Some(now);
+        }
+    });
 }
 
 /// Add a folder, if it is a repository.

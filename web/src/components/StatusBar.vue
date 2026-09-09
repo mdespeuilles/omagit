@@ -23,8 +23,11 @@ import {
     <span class="sep">│</span>
     <span>{{ plural(stagedCount(), "indexé") }} · {{ unstagedCount() }} non indexé</span>
 
-    <span v-if="app.summary && app.summary.conflicted > 0" class="conflict">
-      │ {{ plural(app.summary.conflicted, "conflit") }}
+    <!-- A half-finished merge or rebase, said instead of the branch: "on main"
+         is misleading while one is stuck. -->
+    <span v-if="app.summary?.operation" class="conflict">│ {{ app.summary.operation }}</span>
+    <span v-if="app.summary && app.summary.counts.conflicted > 0" class="conflict">
+      │ {{ plural(app.summary.counts.conflicted, "conflit") }}
     </span>
 
     <span class="pane-head-spacer" />

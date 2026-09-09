@@ -1025,3 +1025,198 @@ button.danger.solid:hover {
 .commit-row.compare-to {
   background: var(--surface-raised);
 }
+
+/* ── The repository list ─────────────────────────────────────────────────── */
+
+.library {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 320px;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.library-groups {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.library-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--row-height);
+  padding: 0 var(--pad);
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.library-row:hover {
+  background: var(--surface-hover);
+}
+.library-row.selected {
+  background: var(--surface-raised);
+}
+/* The one currently open, so switching back to this screen says where you were. */
+.library-row.open .library-name {
+  color: var(--accent);
+}
+
+.library-glyph {
+  flex: none;
+  color: var(--text-dim);
+}
+.library-name {
+  flex: none;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* DESIGN §4: a repository that has moved keeps its row, struck through. */
+.library-glyph.missing,
+.library-name.missing {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+.library-state {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.library-ahead {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.library-row .row-action {
+  height: 16px;
+}
+
+.library-empty {
+  padding: 24px var(--pad);
+  max-width: 380px;
+}
+.library-empty-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.library-empty-text {
+  margin: 8px 0 16px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ── The repository card ─────────────────────────────────────────────────── */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 360px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.card-head {
+  flex: none;
+  padding: var(--pad);
+  border-bottom: 1px solid var(--border);
+}
+.card-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.card-note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.card-path {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  user-select: text;
+  word-break: break-all;
+}
+.card-missing {
+  margin: 10px 0 0;
+  padding-left: 8px;
+  font-size: 11px;
+  color: var(--warning);
+  border-left: 2px solid var(--warning);
+}
+.card-actions {
+  display: flex;
+  gap: var(--gap);
+  margin-top: 12px;
+}
+
+/* Label and value, so the card reads as a list of facts rather than prose. */
+.card-facts {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 6px var(--gap);
+  margin: 0;
+  padding: var(--pad);
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--border);
+}
+.card-facts dt {
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+.card-facts dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+  user-select: text;
+}
+.card-facts .dim {
+  color: var(--text-dim);
+}
+
+.card-count {
+  margin-right: 8px;
+}
+
+.card-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  font-size: 9px;
+  vertical-align: -4px;
+  color: var(--bg);
+  background: var(--accent);
+}
+
+/* The sparkline: a bar per bucket, scaled to the busiest one, because the shape
+   is the point and an absolute scale flattens every quiet repository. */
+.card-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 24px;
+}
+.spark-bar {
+  width: 3px;
+  flex: none;
+  background: var(--accent);
+}
+.spark-bar.empty {
+  background: var(--surface-raised);
+}
+.card-spark .dim {
+  align-self: center;
+  margin-left: 8px;
+  font-size: 10.5px;
+}

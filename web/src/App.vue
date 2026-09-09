@@ -13,6 +13,8 @@ import Confirm from "./components/Confirm.vue";
 import DiffView from "./components/DiffView.vue";
 import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
+import RepositoryCard from "./components/RepositoryCard.vue";
+import RepositoryList from "./components/RepositoryList.vue";
 import Sidebar from "./components/Sidebar.vue";
 import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
@@ -25,16 +27,22 @@ import { app } from "./state";
   <div class="shell">
     <Sidebar />
 
-    <template v-if="app.screen === 'history'">
+    <template v-if="app.screen === 'repositories'">
+      <RepositoryList />
+      <RepositoryCard />
+    </template>
+    <template v-else-if="app.screen === 'history'">
       <HistoryList />
       <CommitDetail />
+      <DiffView />
     </template>
-    <section v-else class="middle">
-      <CommitBox />
-      <StatusList />
-    </section>
-
-    <DiffView />
+    <template v-else>
+      <section class="middle">
+        <CommitBox />
+        <StatusList />
+      </section>
+      <DiffView />
+    </template>
     <Journal v-if="app.showJournal" />
   </div>
   <StatusBar />

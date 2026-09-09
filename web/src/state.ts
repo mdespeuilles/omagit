@@ -12,6 +12,7 @@
 // State lives here, screens derive from it, and none of them can disagree.
 
 import { reactive, readonly } from "vue";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   api,
   isFiltered,
@@ -87,6 +88,10 @@ type State = {
   /// Whatever `git commit` said on the way — hook output, its own summary.
   notes: string | null;
   question: Question | null;
+  /// Why the last folder that was picked could not be added. Kept until the
+  /// next attempt: a dialog that closed on an error would take the message with
+  /// it.
+  addError: string | null;
   journal: JournalRow[];
   showJournal: boolean;
 
@@ -104,6 +109,15 @@ type State = {
   commit: Async<CommitDetail>;
   /// Which file of that commit the diff pane shows.
   commitFile: string | null;
+  /// One summary per repository in the library, filled in after the rows
+  /// arrive. Keyed by path, because that is what a row is addressed by.
+  ///
+  /// Separate from the rows because reading one is Git work: a status walk per
+  /// repository the user has ever added, before the screen has drawn anything,
+  /// is what asking for them together would cost.
+  library: Record<string, Async<RepoSummary>>;
+  /// Which card the Repositories screen is showing.
+  card: string | null;
   /// Two commits being compared, when someone has picked a second one.
   ///
   /// Its own field rather than a mode on `commit`, because it is a different
@@ -137,6 +151,7 @@ const state = reactive<State>({
   writeError: null,
   notes: null,
   question: null,
+  addError: null,
   journal: [],
   showJournal: false,
 
@@ -148,6 +163,8 @@ const state = reactive<State>({
   commitFile: null,
   compare: idle(),
   compareFrom: null,
+  library: {},
+  card: null,
 });
 
 export const app = readonly(state);
@@ -168,13 +185,92 @@ export async function boot(): Promise<void> {
   state.gitUnusable = gitUnusable;
   state.repositories = repositories;
 
-  const first = repositories[0];
+  // The list first, then a summary per row in the background: the screen draws
+  // immediately and fills in, rather than waiting on a status walk per
+  // repository.
+  void readLibrary();
+
+  // Straight into the first repository that is actually there. A missing one
+  // would greet the reader with an error they did not ask for, and a library
+  // with nothing openable in it belongs on the Repositories screen.
+  const first = repositories.find((row) => !row.missing);
   if (first) await openRepository(first.path);
+  else state.screen = "repositories";
+}
+
+/// Re-read the library, and a summary for each row that is still on disk.
+export async function readLibrary(): Promise<void> {
+  const rows = await api.repositories();
+  state.repositories = rows;
+  if (state.card && !rows.some((row) => row.path === state.card)) state.card = null;
+  state.card ??= rows[0]?.path ?? null;
+
+  await Promise.all(rows.map((row) => readSummary(row)));
+}
+
+async function readSummary(row: LibraryRow): Promise<void> {
+  if (row.missing) {
+    // Not an error to be reported: DESIGN §4 says the row stays and says
+    // "introuvable", because a repository on an unmounted disk comes back.
+    state.library[row.path] = { status: "failed", error: "introuvable sur le disque" };
+    return;
+  }
+  state.library[row.path] = { status: "loading" };
+  try {
+    state.library[row.path] = { status: "ready", value: await api.summary(row.path) };
+  } catch (error) {
+    state.library[row.path] = { status: "failed", error: message(error) };
+  }
+}
+
+export function showCard(path: string): void {
+  state.card = path;
+}
+
+/// Add a folder to the library, through the platform's own folder picker.
+///
+/// The picker is the platform's rather than a path box: a path typed by hand is
+/// a path that can be mistyped, and every desktop has a folder chooser people
+/// already know.
+export async function addRepository(): Promise<void> {
+  const chosen = await open({ directory: true, multiple: false, title: "Ajouter un dépôt" });
+  if (typeof chosen !== "string") return;
+
+  state.addError = null;
+  try {
+    // Opening it is what says whether it is a repository, so a folder that is
+    // not one is refused here rather than added and struck through.
+    await api.addRepository(chosen);
+    await readLibrary();
+    state.card = chosen;
+  } catch (error) {
+    state.addError = message(error);
+  }
+}
+
+/// Take a repository out of the list. Never off the disk.
+export function forgetRepository(row: LibraryRow): void {
+  ask(
+    {
+      title: `Retirer ${row.name} de la liste ?`,
+      detail:
+        "Le dépôt reste sur le disque : seule son entrée dans cette liste disparaît, et il peut être rajouté.",
+      verb: "Retirer",
+    },
+    () => {
+      void (async () => {
+        await api.forgetRepository(row.path);
+        if (state.open === row.path) state.open = null;
+        await readLibrary();
+      })();
+    },
+  );
 }
 
 export async function openRepository(path: string): Promise<void> {
   state.open = path;
   state.screen = "working-copy";
+  void api.touchRepository(path);
   state.selected = null;
   state.diff = idle();
   state.picked.clear();

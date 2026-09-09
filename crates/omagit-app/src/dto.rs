@@ -243,16 +243,75 @@ fn line_row(hunk: usize, index: usize, line: &Line) -> DiffRow {
 }
 
 /// What a repository is, at a glance.
+///
+/// Wide because `omagit_git::Summary` is: it was written for board 06's card
+/// and reads everything that card shows in one pass. Sending a narrower shape
+/// would mean the Repositories screen asking a second time for what the first
+/// answer already held.
 #[derive(Debug, serde::Serialize)]
 pub struct RepoSummary {
     pub path: String,
     pub name: String,
+    /// The branch, or `detached at 9f3c1a2`.
     pub head: String,
+    /// A half-finished merge, rebase or cherry-pick. The row says so *instead*
+    /// of the branch, because "on main" is misleading while a merge is stuck.
+    pub operation: Option<String>,
+    pub tracking: Option<Tracking>,
+    pub counts: Counts,
+    pub last_commit: Option<LastCommit>,
+    pub stashes: usize,
+    pub remotes: Vec<RemoteRow>,
+    /// Commits per bucket over the activity window, and the total beside it.
+    pub activity: Vec<u32>,
+    pub commits: u32,
+    pub committer: Option<Identity>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct Tracking {
+    pub upstream: String,
+    pub ahead: usize,
+    pub behind: usize,
+    /// The upstream is configured but no longer exists. The card says "gone"
+    /// rather than 0/0, which would read as "up to date".
+    pub gone: bool,
+}
+
+#[derive(Debug, Default, serde::Serialize)]
+pub struct Counts {
     pub modified: usize,
+    pub added: usize,
+    pub deleted: usize,
+    pub renamed: usize,
     pub untracked: usize,
     pub conflicted: usize,
-    pub stashes: usize,
-    pub committer: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct LastCommit {
+    pub id: Oid,
+    pub summary: String,
+    pub author: String,
+    pub when: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct RemoteRow {
+    pub name: String,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct Identity {
+    pub name: String,
+    pub email: String,
+    /// The card's avatar: `Élodie Laurent` → `EL`.
+    pub initials: String,
+    /// True when it comes from the global or system configuration rather than
+    /// from this repository — a per-repository identity is a deliberate act and
+    /// worth distinguishing.
+    pub inherited: bool,
 }
 
 pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
@@ -263,14 +322,44 @@ pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default(),
         head: summary.head.label().to_string(),
-        modified: summary.counts.modified,
-        untracked: summary.counts.untracked,
-        conflicted: summary.counts.conflicted,
+        operation: summary.operation.map(|operation| operation.to_string()),
+        tracking: summary.tracking.as_ref().map(|tracking| Tracking {
+            upstream: tracking.upstream.clone(),
+            ahead: tracking.ahead,
+            behind: tracking.behind,
+            gone: tracking.gone,
+        }),
+        counts: Counts {
+            modified: summary.counts.modified,
+            added: summary.counts.added,
+            deleted: summary.counts.deleted,
+            renamed: summary.counts.renamed,
+            untracked: summary.counts.untracked,
+            conflicted: summary.counts.conflicted,
+        },
+        last_commit: summary.last_commit.as_ref().map(|commit| LastCommit {
+            id: commit.id.into(),
+            summary: commit.summary.clone(),
+            author: commit.author.name.clone(),
+            when: commit.author.time.seconds,
+        }),
         stashes: summary.stashes,
-        committer: summary
-            .committer
-            .as_ref()
-            .map(|who| format!("{} <{}>", who.name, who.email)),
+        remotes: summary
+            .remotes
+            .iter()
+            .map(|remote| RemoteRow {
+                name: remote.name.clone(),
+                url: remote.url.clone(),
+            })
+            .collect(),
+        activity: summary.activity.buckets.clone(),
+        commits: summary.activity.total,
+        committer: summary.committer.as_ref().map(|who| Identity {
+            name: who.name.clone(),
+            email: who.email.clone(),
+            initials: who.initials(),
+            inherited: who.inherited,
+        }),
     }
 }
 
@@ -397,12 +486,26 @@ pub struct Made {
 }
 
 /// One row of the repository list.
+///
+/// What the library holds and nothing Git knows: reading a summary per row
+/// would mean a status walk for every repository the user has ever added,
+/// before the screen has drawn anything. The rows arrive first and fill in.
 #[derive(Debug, serde::Serialize)]
 pub struct LibraryRow {
     pub group: usize,
     pub index: usize,
+    pub group_name: String,
     pub path: String,
     pub name: String,
+    /// The user's own note. Not read from the repository: Git has no such
+    /// field.
+    pub description: String,
+    /// Unix seconds, or `None` for a repository that has never been opened.
+    pub last_opened: Option<i64>,
+    /// The directory is gone. DESIGN §4: such an entry keeps its row with a
+    /// struck-through icon and is *never* silently removed — a repository on an
+    /// unmounted disk comes back.
+    pub missing: bool,
 }
 
 /// One line of the operations journal.

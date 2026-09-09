@@ -42,6 +42,8 @@ pub fn run() {
             commands::git_status,
             commands::repositories,
             commands::add_repository,
+            commands::forget_repository,
+            commands::touch_repository,
             commands::summary,
             commands::status,
             commands::file_diff,

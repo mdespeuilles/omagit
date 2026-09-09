@@ -35,7 +35,11 @@ const changes = computed(() => (app.open ? unstagedCount() + stagedCount() : 0))
       </button>
     </template>
 
-    <header class="pane-head">Dépôts</header>
+    <header class="pane-head">
+      <span>Dépôts</span>
+      <span class="pane-head-spacer" />
+      <button class="link" @click="showScreen('repositories')">Tous</button>
+    </header>
     <button
       v-for="row in app.repositories"
       :key="row.path"

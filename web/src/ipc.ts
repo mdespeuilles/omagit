@@ -41,15 +41,44 @@ export type Diff = {
   hunks: number;
 };
 
+export type Tracking = { upstream: string; ahead: number; behind: number; gone: boolean };
+
+export type Counts = {
+  modified: number;
+  added: number;
+  deleted: number;
+  renamed: number;
+  untracked: number;
+  conflicted: number;
+};
+
+export type LastCommit = { id: Oid; summary: string; author: string; when: number };
+
+export type RemoteRow = { name: string; url: string | null };
+
+export type Identity = {
+  name: string;
+  email: string;
+  initials: string;
+  /// From the global or system configuration rather than from this repository.
+  inherited: boolean;
+};
+
 export type RepoSummary = {
   path: string;
   name: string;
   head: string;
-  modified: number;
-  untracked: number;
-  conflicted: number;
+  /// A half-finished merge, rebase or cherry-pick. Shown *instead* of the
+  /// branch: "on main" is misleading while a merge is stuck.
+  operation: string | null;
+  tracking: Tracking | null;
+  counts: Counts;
+  last_commit: LastCommit | null;
   stashes: number;
-  committer: string | null;
+  remotes: RemoteRow[];
+  activity: number[];
+  commits: number;
+  committer: Identity | null;
 };
 
 /// One reference drawn beside a commit. Four kinds because DESIGN §5 draws
@@ -129,8 +158,14 @@ export type Comparison = { from: Oid; to: Oid; files: FileRow[] };
 export type LibraryRow = {
   group: number;
   index: number;
+  group_name: string;
   path: string;
   name: string;
+  description: string;
+  last_opened: number | null;
+  /// The directory is gone. DESIGN §4: the row stays, struck through, and is
+  /// never silently removed — a repository on an unmounted disk comes back.
+  missing: boolean;
 };
 
 export type JournalRow = {
@@ -166,6 +201,8 @@ export const api = {
   gitStatus: () => invoke<string | null>("git_status"),
   repositories: () => invoke<LibraryRow[]>("repositories"),
   addRepository: (path: string) => invoke<RepoSummary>("add_repository", { path }),
+  forgetRepository: (path: string) => invoke<void>("forget_repository", { path }),
+  touchRepository: (path: string) => invoke<void>("touch_repository", { path }),
   summary: (path: string) => invoke<RepoSummary>("summary", { path }),
   status: (path: string) => invoke<StatusRow[]>("status", { path }),
   fileDiff: (path: string, file: string, staged: boolean) =>

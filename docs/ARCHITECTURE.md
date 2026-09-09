@@ -604,6 +604,42 @@ message and no parent to show. It also disappears when the walk that produced
 its two ends is replaced — a filter typed into a box leaves the pane pointing at
 rows nobody can see otherwise.
 
+### 2.27 The Repositories screen draws before it knows anything Git knows
+
+Board 06's list says what each repository *is* — the branch, what is modified, a
+half-finished merge — and every one of those is a status walk. Reading them
+before drawing would mean an empty window for as long as the slowest repository
+in the list takes, which is the one on a network disk. So the library arrives
+first, from the settings file alone, and the rows fill in.
+
+That is a property a test has to hold on to deliberately: with a fake that
+answers instantly, awaiting everything and awaiting nothing look identical. The
+fake holds one repository's summary open by path, and the test asserts that
+start-up finished with that row still loading — checked by putting the `await`
+back, where it times out.
+
+**A repository that is not where it was recorded keeps its row**, struck
+through, saying "introuvable sur le disque" (DESIGN §4). It is never removed on
+the app's own initiative: an unmounted disk comes back, and a list that tidied
+itself would lose an entry the user arranged. Start-up skips it when choosing
+what to open — greeting someone with an error they did not ask for is not a
+convenience — and falls through to this screen when nothing can be opened.
+
+Whether a row is missing comes from a `stat`, not from failing to open the
+repository: the second costs a `gix` open per row for a question the filesystem
+answers directly.
+
+Removing an entry asks first, and the question says the repository stays on the
+disk. That is not the usual reason for a confirmation — nothing is lost that
+Git cannot restore — but "Retirer" beside a repository name reads as though it
+might delete it, and the dialog is where that is answered.
+
+**What is not built**, and is board 06's: drag to reorder, groups created and
+renamed from the window, cloning from a URL, "Révéler dans le gestionnaire",
+and the per-repository description edited in place. The data model carries all
+of them — `Library::move_entry`, `add_group`, `Entry::description` — and each is
+an interaction surface of its own.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -779,8 +815,14 @@ window:
 
 - **A ↔ B**, on a shift-click (§2.26).
 
-Not yet ported: the Repositories screen — the sidebar lists what the library
-holds, but nothing adds to it from the window. The Linux measurement §2.20 calls unknown is
+- **The Repositories screen** (§2.27): the grouped list with a summary per row,
+  the card of board 06, adding through the platform's folder picker, and
+  removing an entry without touching the disk.
+
+The port is complete. What is left on these screens is named in §2.27 and
+§2.25 — board 06's reordering, groups and cloning; and Git's history
+simplification, which is what a path-filtered view would need to keep its
+gutter. The Linux measurement §2.20 calls unknown is
 still unknown — it needs one run of `scripts/dev.sh` there.
 
 ## 5. Risks
