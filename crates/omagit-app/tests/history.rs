@@ -170,3 +170,62 @@ fn the_keyboard_walks_the_list() {
         "and it stops at the top rather than wrapping"
     );
 }
+
+#[test]
+fn selecting_a_commit_reads_what_it_changed() {
+    let fixture = Fixture::new();
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("history"));
+    let (screen, store, mut visual) = screen(&mut cx, &fixture.path);
+
+    visual.simulate_keystrokes("j");
+    visual.run_until_parked();
+
+    let id = screen
+        .read_with(&visual, |screen, cx| screen.selected(cx))
+        .expect("the first press selects a commit");
+    let files = store.read_with(&visual, |store, _| {
+        store
+            .commit_detail(id)
+            .and_then(|state| state.value())
+            .map(|diff| {
+                diff.files
+                    .iter()
+                    .map(|file| file.path.display_lossy().into_owned())
+                    .collect::<Vec<_>>()
+            })
+    });
+
+    assert_eq!(
+        files,
+        Some(vec!["side.txt".to_owned()]),
+        "the merge's diff against its first parent brings in the branch's file"
+    );
+}
+
+#[test]
+fn a_parent_link_moves_the_selection_to_it() {
+    // SPEC §11 asks for clickable parents, and a merge is where they earn
+    // themselves: its second side is only reachable through them.
+    let fixture = Fixture::new();
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("history"));
+    let (screen, store, mut visual) = screen(&mut cx, &fixture.path);
+
+    visual.simulate_keystrokes("j");
+    visual.run_until_parked();
+
+    let merge = screen
+        .read_with(&visual, |screen, cx| screen.selected(cx))
+        .expect("the newest commit");
+    let second_parent = store.read_with(&visual, |store, _| {
+        store.history().rows[0].commit.parents[1]
+    });
+
+    screen.update(&mut visual, |screen, cx| screen.go_to(second_parent, cx));
+    visual.run_until_parked();
+
+    let now = screen
+        .read_with(&visual, |screen, cx| screen.selected(cx))
+        .expect("a selection");
+    assert_ne!(now, merge, "the selection moved");
+    assert_eq!(now, second_parent, "to the parent that was asked for");
+}

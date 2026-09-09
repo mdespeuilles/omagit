@@ -17,16 +17,16 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use gpui_kit::{AppContext, Context, Task};
-use omagit_git::diff::{FileDiff, staged_file, unstaged_file};
+use omagit_git::diff::{Diff, FileDiff, staged_file, unstaged_file};
 use omagit_git::{
     Cancel, DiffOptions, GitError, RepoPath, Repository, Status, StatusOptions, Summary, Watcher,
 };
 
-use omagit_git::Commit;
 use omagit_git::cli::Git;
 use omagit_git::graph::{Graph, Row as GraphRow};
 use omagit_git::history::{HistoryQuery, Walk};
 use omagit_git::ops::CommitOutcome;
+use omagit_git::{Commit, ObjectId};
 
 use crate::async_state::{AsyncState, Generation};
 use crate::writes::{Done, Queue, Write};
@@ -80,6 +80,11 @@ pub struct RepoStore {
     last_commit: Option<CommitOutcome>,
     /// The history, as far as it has been walked.
     history: History,
+    /// What one commit changed, for the detail panel. One entry, not a map:
+    /// the panel shows one commit at a time, and keeping the diffs of every
+    /// commit ever selected is how a long session eats memory (SPEC §12 puts
+    /// the ceiling at 250 Mo).
+    commit_detail: Option<(ObjectId, AsyncState<Diff>)>,
     /// The walk and the lane assignment, parked here between pages.
     ///
     /// `None` while a page is in flight: they are moved to the background
@@ -133,6 +138,7 @@ impl History {
 enum Key {
     Status,
     Summary,
+    CommitDetail,
     Diff(RepoPath, Side),
 }
 
@@ -159,6 +165,7 @@ impl RepoStore {
             writes: Queue::default(),
             last_commit: None,
             history: History::default(),
+            commit_detail: None,
             walk: None,
             graph: None,
         };
@@ -186,6 +193,51 @@ impl RepoStore {
     /// Whether live updates are running, and why not if they are not.
     pub fn history(&self) -> &History {
         &self.history
+    }
+
+    /// What the selected commit changed, if that commit is the one asked for.
+    pub fn commit_detail(&self, id: ObjectId) -> Option<&AsyncState<Diff>> {
+        match &self.commit_detail {
+            Some((held, state)) if *held == id => Some(state),
+            _ => None,
+        }
+    }
+
+    /// Read what a commit changed, unless it is already the one held.
+    ///
+    /// Against its first parent, which is what a commit's own diff means; a
+    /// merge's other sides are reachable through its parents, which the panel
+    /// makes clickable.
+    pub fn open_commit(&mut self, id: ObjectId, cx: &mut Context<Self>) {
+        if matches!(&self.commit_detail, Some((held, _)) if *held == id) {
+            return;
+        }
+        let generation = self.bump(Key::CommitDetail);
+        self.commit_detail = Some((id, AsyncState::Loading(None)));
+
+        let repo = self.repo.clone();
+        let cancel = self.cancel.clone();
+        cx.spawn(async move |this, cx| {
+            let read = cx
+                .background_spawn(async move {
+                    Diff::commit(&repo, id, DiffOptions::default(), &cancel)
+                })
+                .await;
+            this.update(cx, |store, cx| {
+                // Dropped if the selection moved on: a slow read landing into a
+                // panel about another commit is worse than no read at all.
+                let current = store.current(&Key::CommitDetail, generation);
+                if let Some((held, state)) = &mut store.commit_detail
+                    && *held == id
+                    && state.finish(read, generation, current)
+                {
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
+        cx.notify();
     }
 
     /// Read the next page of history, starting the walk if it has not begun.

@@ -15,14 +15,15 @@
 use gpui_kit::base::{VirtualListScrollHandle, v_virtual_list};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    App, Context, Entity, FocusHandle, Focusable, IntoElement, SharedString, Size, Subscription,
-    Window, div, px,
+    App, Context, Entity, FocusHandle, Focusable, FontWeight, IntoElement, SharedString, Size,
+    Subscription, Window, div, px,
 };
 
 use omagit_git::ObjectId;
 use omagit_ui::{ActiveFonts, ActivePalette, Fonts, Palette, hsla};
 
 use crate::actions::*;
+use crate::async_state::AsyncState;
 use crate::repo_store::{HistoryRow, RepoStore};
 use crate::time;
 
@@ -36,11 +37,17 @@ const NODE_RADIUS: f32 = 3.0;
 /// How close to the end the list gets before the next page is asked for. One
 /// screenful, so the rows arrive before the scroll reaches them.
 const PREFETCH_ROWS: usize = 60;
+/// Board 05 puts the detail panel at a third of a 1600px window.
+const DETAIL_WIDTH: f32 = 420.0;
 
 pub struct HistoryScreen {
     store: Entity<RepoStore>,
     focus: FocusHandle,
     selected: Option<usize>,
+    /// A parent that was asked for and is further back than the walk has gone.
+    /// Said out loud rather than ignored: a click that does nothing reads as a
+    /// broken link.
+    unreachable: Option<ObjectId>,
     scroll: VirtualListScrollHandle,
     landed: bool,
     _subscriptions: Vec<Subscription>,
@@ -56,6 +63,7 @@ impl HistoryScreen {
             store,
             focus,
             selected: None,
+            unreachable: None,
             scroll: VirtualListScrollHandle::new(),
             landed: false,
             _subscriptions: subscriptions,
@@ -72,6 +80,49 @@ impl HistoryScreen {
         self.store.read(cx).history().rows.len()
     }
 
+    /// Select a row and read what its commit changed.
+    fn select(&mut self, index: usize, cx: &mut Context<Self>) {
+        let Some(id) = self
+            .store
+            .read(cx)
+            .history()
+            .rows
+            .get(index)
+            .map(|row| row.commit.id)
+        else {
+            return;
+        };
+        self.selected = Some(index);
+        self.store.update(cx, |store, cx| store.open_commit(id, cx));
+        cx.notify();
+    }
+
+    /// Jump to a commit by id — what a clickable parent does.
+    ///
+    /// Only within what has been read: a parent further back than the walk has
+    /// gone has no row to scroll to yet, and loading pages until it appears
+    /// could be ninety thousand commits. It says so rather than doing that.
+    pub fn go_to(&mut self, id: ObjectId, cx: &mut Context<Self>) {
+        let found = self
+            .store
+            .read(cx)
+            .history()
+            .rows
+            .iter()
+            .position(|row| row.commit.id == id);
+        match found {
+            Some(index) => {
+                self.select(index, cx);
+                self.scroll
+                    .scroll_to_item(index, gpui_kit::ScrollStrategy::Center);
+            }
+            None => {
+                self.unreachable = Some(id);
+                cx.notify();
+            }
+        }
+    }
+
     fn move_selection(&mut self, delta: isize, cx: &mut Context<Self>) {
         let count = self.rows(cx);
         if count == 0 {
@@ -81,7 +132,7 @@ impl HistoryScreen {
             None => 0,
             Some(current) => (current as isize + delta).clamp(0, count as isize - 1) as usize,
         };
-        self.selected = Some(next);
+        self.select(next, cx);
         self.scroll
             .scroll_to_item(next, gpui_kit::ScrollStrategy::Center);
         // Walking to the end is how the next page gets asked for, so the list
@@ -127,11 +178,207 @@ impl Render for HistoryScreen {
             .font_family(fonts.ui.clone())
             .text_size(px(13.0))
             .child(self.header(&palette, &fonts, cx))
-            .child(self.list(&palette, &fonts, cx))
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .min_h_0()
+                    .child(self.list(&palette, &fonts, cx))
+                    .children(self.detail(&palette, &fonts, cx)),
+            )
     }
 }
 
 impl HistoryScreen {
+    /// Board 05's detail panel: who made the commit, what it says, what it
+    /// touched, and its parents as links.
+    fn detail(
+        &self,
+        palette: &Palette,
+        fonts: &Fonts,
+        cx: &mut Context<Self>,
+    ) -> Option<impl IntoElement> {
+        let t = palette.tokens;
+        let index = self.selected?;
+        let store = self.store.read(cx);
+        let row = store.history().rows.get(index)?;
+        let commit = row.commit.clone();
+        let detail = store.commit_detail(commit.id);
+
+        let files: gpui_kit::AnyElement = match detail {
+            None | Some(AsyncState::Idle) => placeholder("…", palette),
+            Some(AsyncState::Loading(_)) => placeholder("Lecture du diff…", palette),
+            Some(AsyncState::Failed(error)) => {
+                let text = error.to_string();
+                div()
+                    .p(px(10.0))
+                    .text_size(px(11.0))
+                    .text_color(hsla(t.danger))
+                    .child(SharedString::from(text))
+                    .into_any_element()
+            }
+            Some(AsyncState::Ready(diff, _)) => {
+                let (added, removed) = diff.files.iter().fold((0, 0), |(a, r), file| {
+                    match omagit_ui::diff_view::line_counts(&file.content) {
+                        Some((plus, minus)) => (a + plus, r + minus),
+                        None => (a, r),
+                    }
+                });
+                let count = diff.files.len();
+                div()
+                    .flex()
+                    .flex_col()
+                    .min_h_0()
+                    .flex_1()
+                    .child(
+                        div()
+                            .flex_none()
+                            .px(px(10.0))
+                            .py(px(6.0))
+                            .text_size(px(11.0))
+                            .text_color(hsla(t.text_muted))
+                            .child(SharedString::from(format!(
+                                "{count} fichier{} · +{added} −{removed}",
+                                if count > 1 { "s" } else { "" }
+                            ))),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_hidden()
+                            .children(diff.files.iter().map(|file| {
+                                let (plus, minus) =
+                                    omagit_ui::diff_view::line_counts(&file.content)
+                                        .unwrap_or((0, 0));
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(8.0))
+                                    .h(px(20.0))
+                                    .px(px(10.0))
+                                    .font_family(fonts.mono.clone())
+                                    .text_size(px(11.5))
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .min_w_0()
+                                            .truncate()
+                                            .text_ellipsis_start()
+                                            .child(SharedString::from(
+                                                file.path.display_lossy().into_owned(),
+                                            )),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_none()
+                                            .text_color(hsla(t.success))
+                                            .child(SharedString::from(format!("+{plus}"))),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_none()
+                                            .text_color(hsla(t.danger))
+                                            .child(SharedString::from(format!("−{minus}"))),
+                                    )
+                            })),
+                    )
+                    .into_any_element()
+            }
+        };
+
+        Some(
+            div()
+                .flex()
+                .flex_col()
+                .w(px(DETAIL_WIDTH))
+                .flex_none()
+                .min_h_0()
+                .border_l_1()
+                .border_color(hsla(t.border))
+                .bg(hsla(t.surface))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.0))
+                        .flex_none()
+                        .p(px(10.0))
+                        .border_b_1()
+                        .border_color(hsla(t.border))
+                        .child(
+                            div()
+                                .font_family(fonts.mono.clone())
+                                .text_size(px(12.5))
+                                .font_weight(FontWeight::MEDIUM)
+                                .child(SharedString::from(commit.summary.clone())),
+                        )
+                        .children((!commit.body.is_empty()).then(|| {
+                            div()
+                                .font_family(fonts.mono.clone())
+                                .text_size(px(11.5))
+                                .text_color(hsla(t.text_muted))
+                                .child(SharedString::from(commit.body.clone()))
+                        }))
+                        .child(field("Auteur", &commit.author.name, palette, fonts))
+                        .child(field("Adresse", &commit.author.email, palette, fonts))
+                        .child(field(
+                            "Date",
+                            &time::ago(commit.author.time.seconds),
+                            palette,
+                            fonts,
+                        ))
+                        .child(field("Hash", &commit.id.to_string(), palette, fonts))
+                        // SPEC §11: the parents are links. A merge is where
+                        // this earns itself — its other side is only reachable
+                        // through them.
+                        .children(commit.parents.iter().enumerate().map(|(nth, parent)| {
+                            let parent = *parent;
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.0))
+                                .child(
+                                    div()
+                                        .w(px(70.0))
+                                        .flex_none()
+                                        .text_size(px(11.0))
+                                        .text_color(hsla(t.text_muted))
+                                        .child(SharedString::from(if commit.parents.len() > 1 {
+                                            format!("Parent {}", nth + 1)
+                                        } else {
+                                            "Parent".to_owned()
+                                        })),
+                                )
+                                .child(
+                                    div()
+                                        .id(("parent", nth))
+                                        .font_family(fonts.mono.clone())
+                                        .text_size(px(11.5))
+                                        .text_color(hsla(t.accent))
+                                        .cursor_pointer()
+                                        .hover(|style| style.bg(hsla(t.surface_hover)))
+                                        .on_click(cx.listener(move |screen, _, _, cx| {
+                                            screen.go_to(parent, cx)
+                                        }))
+                                        .child(SharedString::from(short(&parent))),
+                                )
+                        }))
+                        .children(self.unreachable.map(|id| {
+                            div().text_size(px(11.0)).text_color(hsla(t.warning)).child(
+                                SharedString::from(format!(
+                                    "{} n'a pas encore été lu — fais défiler plus loin",
+                                    short(&id)
+                                )),
+                            )
+                        })),
+                )
+                .child(files),
+        )
+    }
+
     fn header(&self, palette: &Palette, fonts: &Fonts, cx: &mut Context<Self>) -> impl IntoElement {
         let t = palette.tokens;
         let history = self.store.read(cx).history();
@@ -228,16 +475,22 @@ impl HistoryScreen {
                     "history-rows",
                     sizes,
                     move |screen, range, _, cx| {
-                        let history = screen.store.read(cx).history();
-                        history.rows[range.clone()]
-                            .iter()
+                        // Cloned out before building anything: the elements
+                        // need a listener, which needs `cx` mutably, and the
+                        // rows are borrowed from it.
+                        let rows: Vec<HistoryRow> =
+                            screen.store.read(cx).history().rows[range.clone()].to_vec();
+                        rows.iter()
                             .enumerate()
                             .map(|(offset, row)| {
+                                let index = range.start + offset;
                                 commit_row(
                                     row,
-                                    selected == Some(range.start + offset),
+                                    index,
+                                    selected == Some(index),
                                     &palette,
                                     &fonts,
+                                    cx,
                                 )
                             })
                             .collect::<Vec<_>>()
@@ -254,21 +507,26 @@ impl HistoryScreen {
 /// One commit, with its slice of the graph beside it.
 fn commit_row(
     row: &HistoryRow,
+    index: usize,
     selected: bool,
     palette: &Palette,
     fonts: &Fonts,
+    cx: &mut Context<HistoryScreen>,
 ) -> gpui_kit::AnyElement {
     let t = palette.tokens;
     let short = row.commit.id.to_string()[..7].to_owned();
     let when = time::ago(row.commit.author.time.seconds);
 
     div()
+        .id(("commit", index))
         .flex()
         .items_center()
         .gap(px(10.0))
         .h(px(ROW_HEIGHT))
         .w_full()
         .px(px(4.0))
+        .cursor_pointer()
+        .on_click(cx.listener(move |screen, _, _, cx| screen.select(index, cx)))
         .when(selected, |element| element.bg(hsla(t.surface_raised)))
         .when(!selected, |element| {
             element.hover(|style| style.bg(hsla(t.surface_hover)))
@@ -407,4 +665,44 @@ fn gutter(row: &HistoryRow, palette: &Palette) -> gpui_kit::Div {
             .border_1()
             .border_color(colour(row.graph.lane)),
     )
+}
+
+/// A label/value line of the detail panel.
+fn field(label: &'static str, value: &str, palette: &Palette, fonts: &Fonts) -> gpui_kit::Div {
+    let t = palette.tokens;
+    div()
+        .flex()
+        .items_center()
+        .gap(px(8.0))
+        .child(
+            div()
+                .w(px(70.0))
+                .flex_none()
+                .text_size(px(11.0))
+                .text_color(hsla(t.text_muted))
+                .child(SharedString::from(label)),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .font_family(fonts.mono.clone())
+                .text_size(px(11.5))
+                .child(SharedString::from(value.to_owned())),
+        )
+}
+
+fn placeholder(text: &'static str, palette: &Palette) -> gpui_kit::AnyElement {
+    div()
+        .p(px(10.0))
+        .text_size(px(11.0))
+        .text_color(hsla(palette.tokens.text_dim))
+        .child(text)
+        .into_any_element()
+}
+
+/// The seven characters a hash is read by.
+fn short(id: &ObjectId) -> String {
+    id.to_string()[..7].to_owned()
 }
