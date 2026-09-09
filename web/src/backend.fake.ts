@@ -28,6 +28,9 @@ export type Fixture = {
   /// Set when a test is about the text rather than about the index — the
   /// refinements are Rust's byte offsets, which is the whole subtlety.
   line?: { text: string; refined: [number, number][] };
+  /// Unmerged, as `git status` names the kind: `both modified`, `deleted by
+  /// us`. What makes the row a conflict rather than a change.
+  conflict?: string;
 };
 
 import { isFiltered } from "./ipc";
@@ -46,6 +49,7 @@ import type {
   FileRow,
   Refs,
   RemoteBranchRow,
+  Sides,
   RepoSummary,
   StashRow,
   StatusRow,
@@ -125,6 +129,8 @@ export class Repository {
   /// A half-finished merge or rebase, the way `Repository::operation` reports
   /// one.
   operation: string | null = null;
+  /// What the two sides of a conflict are called while one is running.
+  sides: Sides = { ours: "main", theirs: "feature", replayed: false };
   /// Set to make the next merge or rebase stop on a conflict.
   failIntegrate: string | null = null;
   /// How many rows a page holds. Small in tests, so paging is exercised by
@@ -213,8 +219,8 @@ export class Repository {
           path: file.path,
           staged: file.staged,
           unstaged: file.unstaged,
-          conflict: null,
-          code: `${file.staged ? "M" : " "}${file.unstaged ? "M" : " "}`,
+          conflict: file.conflict ?? null,
+          code: file.conflict ? "UU" : `${file.staged ? "M" : " "}${file.unstaged ? "M" : " "}`,
         })) satisfies StatusRow[];
       case "summary": {
         const path = args["path"] as string;
@@ -290,6 +296,30 @@ export class Repository {
           throw new Error(failure);
         }
         return "Merge made by the 'ort' strategy.";
+      case "conflict_sides":
+        // Only ever asked while something is running, which is what the real
+        // one answers too.
+        return this.operation ? this.sides : null;
+      case "resolve_conflict": {
+        this.guard();
+        const file = this.find(args["file"] as string);
+        if (!file?.conflict) throw new Error(`un conflit sur ${args["file"]}`);
+        // Resolved is staged: `git checkout --ours` leaves the path unmerged,
+        // and the real one always follows it with `git add`.
+        delete file.conflict;
+        file.staged = "modified";
+        file.unstaged = null;
+        return undefined;
+      }
+      case "continue_operation": {
+        this.guard();
+        if (!this.operation) throw new Error("aucune opération n'est en cours");
+        if (this.files.some((file) => file.conflict)) {
+          throw new Error("error: you need to resolve your current index first");
+        }
+        this.operation = null;
+        return "Merge made by the 'ort' strategy.";
+      }
       case "abort_operation":
         if (!this.operation) throw new Error("aucune opération n'est en cours");
         this.operation = null;
@@ -462,12 +492,12 @@ export class Repository {
       operation: this.operation,
       tracking: this.tracking,
       counts: {
-        modified: this.files.length,
+        modified: this.files.filter((file) => !file.conflict).length,
         added: 0,
         deleted: 0,
         renamed: 0,
         untracked: 0,
-        conflicted: 0,
+        conflicted: this.files.filter((file) => file.conflict).length,
       },
       last_commit: null,
       stashes: this.stashes.length,

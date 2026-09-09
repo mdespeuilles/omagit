@@ -101,6 +101,51 @@ pub fn discard(
     }
 }
 
+/// Which version of a conflicted file to keep.
+///
+/// The wire's own copy of [`omagit_git::conflict::Side`], for the reason
+/// [`Target`] is: a serialisation format is an interface concern (SPEC §3
+/// rule 5), and the Git core keeps none.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Side {
+    Ours,
+    Theirs,
+}
+
+impl From<Side> for omagit_git::conflict::Side {
+    fn from(side: Side) -> Self {
+        match side {
+            Side::Ours => omagit_git::conflict::Side::Ours,
+            Side::Theirs => omagit_git::conflict::Side::Theirs,
+        }
+    }
+}
+
+/// Keep one side of a conflicted file whole, and mark it settled.
+///
+/// Which *kind* of conflict it is comes from the status here rather than from
+/// the caller, and that is the whole of what this function adds: half the
+/// conflicts Git can produce have no version on one of the two sides — a file
+/// we deleted and they changed has no "ours" to check out — so keeping a side
+/// is sometimes `git rm` and sometimes `git checkout`. A front end holding that
+/// answer would be holding a copy of the index, and a stale copy here restores
+/// a file the reader asked to see deleted.
+pub fn resolve(
+    git: &Git,
+    repo: &Repository,
+    path: &RepoPath,
+    side: Side,
+    cancel: &Cancel,
+) -> Result<()> {
+    let conflict = entry(repo, path, cancel)?
+        .and_then(|entry| entry.conflict)
+        .ok_or_else(|| {
+            omagit_git::GitError::NotFound(format!("un conflit sur {}", path.display_lossy()))
+        })?;
+    omagit_git::ops::conflict::take(git, repo, path, side.into(), conflict, cancel)
+}
+
 /// The diff a patch is built from: the staged side to unstage, the working
 /// tree's to stage or discard.
 pub fn file_side(
@@ -167,6 +212,18 @@ mod tests {
             panic!("a line selection")
         };
         assert_eq!(lines, vec![(0, 1), (1, 2)]);
+    }
+
+    #[test]
+    fn a_side_is_spelled_the_way_the_front_end_spells_it() {
+        assert!(matches!(
+            serde_json::from_str::<Side>(r#""ours""#).expect("the front end's shape"),
+            Side::Ours
+        ));
+        assert!(matches!(
+            serde_json::from_str::<Side>(r#""theirs""#).expect("the front end's shape"),
+            Side::Theirs
+        ));
     }
 
     #[test]

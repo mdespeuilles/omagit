@@ -12,6 +12,7 @@ import {
   app,
   discardFile,
   plural,
+  resolveConflict,
   selectFile,
   stagedCount,
   stageEverything,
@@ -67,6 +68,27 @@ function badge(row: StatusRow): { letter: string; kind: string } {
   return { letter: letters[change] ?? "•", kind: change };
 }
 
+/// What each side's button says, and what its title explains.
+///
+/// The branch, not the pronoun. `ours` and `theirs` are only honest during a
+/// merge: on a replay — a rebase, a cherry-pick — `ours` is the side already in
+/// place and `theirs` is the work being replayed, which is usually your own.
+/// Board 07 names both by their branch for exactly this reason.
+function label(side: "ours" | "theirs"): string {
+  const sides = app.sides;
+  if (!sides) return side === "ours" ? "la version en place" : "celle qui arrive";
+  return side === "ours" ? sides.ours : sides.theirs;
+}
+
+function explain(side: "ours" | "theirs"): string {
+  const sides = app.sides;
+  const what = `Garder la version de ${label(side)} (${side})`;
+  if (!sides?.replayed) return what;
+  return side === "ours"
+    ? `${what} — le côté déjà en place, sur lequel les commits sont rejoués`
+    : `${what} — le côté rejoué, celui des commits en cours de replacement`;
+}
+
 function directory(path: string): string {
   const cut = path.lastIndexOf("/");
   return cut < 0 ? "" : path.slice(0, cut + 1);
@@ -117,13 +139,28 @@ function name(path: string): string {
       >
         <!-- A button rather than an <input type=checkbox>: the third state is
              not something a checkbox can be told to draw, and this one is a
-             target with a label rather than a control with a hidden meaning. -->
+             target with a label rather than a control with a hidden meaning.
+             On a conflicted row it means something else again — `git add` on an
+             unmerged path is what marks it resolved — so it says so, rather
+             than sending the reader looking for a button that does not exist. -->
         <button
           class="check"
           :class="mark(item)"
           :disabled="!!app.busy"
-          :title="mark(item) === 'all' ? 'Désindexer ce fichier' : 'Indexer ce fichier'"
-          :aria-label="mark(item) === 'all' ? 'Désindexer ce fichier' : 'Indexer ce fichier'"
+          :title="
+            item.conflict
+              ? 'Marquer ce fichier résolu'
+              : mark(item) === 'all'
+                ? 'Désindexer ce fichier'
+                : 'Indexer ce fichier'
+          "
+          :aria-label="
+            item.conflict
+              ? 'Marquer ce fichier résolu'
+              : mark(item) === 'all'
+                ? 'Désindexer ce fichier'
+                : 'Indexer ce fichier'
+          "
           @click.stop="toggle(item)"
         >
           {{ mark(item) === "all" ? "✓" : mark(item) === "partial" ? "–" : "" }}
@@ -137,9 +174,31 @@ function name(path: string): string {
           <span class="name">{{ name(item.path) }}</span>
         </span>
 
-        <!-- Only on the row being pointed at: a discard button on every row is
-             a destructive target under every stray click. -->
+        <!-- Only on the row being pointed at: a destructive target on every
+             row is one under every stray click. A conflicted row offers the two
+             sides instead of a discard: `git checkout -- <path>` refuses an
+             unmerged path anyway, so the button would have been one that always
+             fails. -->
+        <template v-if="item.conflict">
+          <button
+            class="row-action"
+            :disabled="!!app.busy"
+            :title="explain('ours')"
+            @click.stop="resolveConflict(item, 'ours')"
+          >
+            {{ label("ours") }}
+          </button>
+          <button
+            class="row-action"
+            :disabled="!!app.busy"
+            :title="explain('theirs')"
+            @click.stop="resolveConflict(item, 'theirs')"
+          >
+            {{ label("theirs") }}
+          </button>
+        </template>
         <button
+          v-else
           class="row-action danger"
           :disabled="!!app.busy || item.unstaged === null"
           title="Rejeter les modifications non indexées"

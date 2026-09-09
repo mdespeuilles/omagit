@@ -461,6 +461,30 @@ pub fn file_row(file: &FileDiff) -> FileRow {
     }
 }
 
+/// Which two versions a conflicted file has, named.
+///
+/// `null` when no operation is running. The names matter more than the words:
+/// during a rebase `--ours` is the branch being replayed *onto* and `--theirs`
+/// is your own work, so a button labelled with the pronoun alone would ask
+/// someone to choose between two meanings they cannot see.
+#[derive(Debug, serde::Serialize)]
+pub struct Sides {
+    pub ours: String,
+    pub theirs: String,
+    /// The arriving side is being replayed — a rebase, a cherry-pick, a revert.
+    /// What tells the interface to explain the reversal rather than assume it
+    /// is understood.
+    pub replayed: bool,
+}
+
+pub fn sides(sides: &omagit_git::Sides) -> Sides {
+    Sides {
+        ours: sides.ours.clone(),
+        theirs: sides.theirs.clone(),
+        replayed: sides.replayed,
+    }
+}
+
 /// One entry of the shelf, as the Stashes list draws it.
 ///
 /// `index` is `git`'s own address — `stash@{0}` is the most recent — and it is

@@ -11,7 +11,7 @@ mod support;
 
 use omagit_git::RepoPath;
 use omagit_git::cli::Git;
-use omagit_lib::edits::{Target, discard, file_side, stage};
+use omagit_lib::edits::{Side, Target, discard, file_side, resolve, stage};
 use support::{TestRepo, never};
 
 fn git() -> Git {
@@ -258,4 +258,50 @@ fn a_file_that_has_left_the_status_is_named_rather_than_guessed_at() {
         error.to_string().contains("seed.txt"),
         "the message says which file: {error}"
     );
+}
+
+/// Resolving reads what *kind* of conflict it is from the status, not from the
+/// caller — which is the whole of what the layer adds.
+///
+/// A file we deleted and they changed has no "ours" version to check out:
+/// keeping ours there means keeping the deletion, and `git checkout --ours`
+/// answers "does not have our version". A front end holding that answer would
+/// be holding a copy of the index.
+#[test]
+fn keeping_ours_of_a_file_we_deleted_removes_it_rather_than_failing() {
+    let repo = TestRepo::new();
+    repo.commit_file("gone.txt", "original\n", "seed");
+    repo.git(&["checkout", "-b", "feature"]);
+    repo.commit_file("gone.txt", "theirs\n", "they changed it");
+    repo.git(&["checkout", "main"]);
+    repo.remove("gone.txt");
+    repo.git(&["add", "--all"]);
+    repo.git(&["commit", "--message", "we deleted it"]);
+    omagit_git::ops::merge(
+        &git(),
+        &repo.open(),
+        "feature",
+        &Default::default(),
+        &never(),
+    )
+    .expect_err("delete against modify");
+
+    resolve(&git(), &repo.open(), &at("gone.txt"), Side::Ours, &never()).expect("resolved");
+
+    assert!(!repo.path().join("gone.txt").exists());
+    assert_eq!(repo.git(&["diff", "--name-only", "--diff-filter=U"]), "");
+}
+
+/// And a file that is not in conflict is refused by name, rather than having a
+/// side taken of a version it has not got.
+#[test]
+fn a_file_in_no_conflict_has_no_side_to_take() {
+    let repo = TestRepo::new();
+    repo.commit_file("a.txt", "one\n", "seed");
+    repo.write("a.txt", "two\n");
+
+    let error = resolve(&git(), &repo.open(), &at("a.txt"), Side::Theirs, &never())
+        .expect_err("no conflict");
+
+    assert!(error.to_string().contains("conflit"), "{error}");
 }

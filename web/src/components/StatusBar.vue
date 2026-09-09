@@ -9,6 +9,8 @@
 import {
   abortOperation,
   app,
+  conflictCount,
+  continueOperation,
   dismissNotes,
   dismissWriteError,
   plural,
@@ -25,11 +27,24 @@ import {
     <span>{{ plural(stagedCount(), "indexé") }} · {{ unstagedCount() }} non indexé</span>
 
     <!-- A half-finished merge or rebase, said instead of the branch: "on main"
-         is misleading while one is stuck. The way out sits next to it, because
-         a repository left half-way with no visible exit is the state this
-         application must never put someone in. -->
+         is misleading while one is stuck. Both ways out sit next to it —
+         forward once the conflicts are settled, back at any time — because a
+         repository left half-way with no visible exit, or with only the exit
+         that throws the work away, is one somebody finishes in a terminal. -->
     <template v-if="app.summary?.operation">
       <span class="conflict">│ {{ app.summary.operation }} en cours</span>
+      <button
+        class="link"
+        :disabled="!!app.busy || conflictCount() > 0"
+        :title="
+          conflictCount() > 0
+            ? `Il reste ${conflictCount()} conflit(s) à résoudre`
+            : `Terminer ${app.summary.operation}`
+        "
+        @click="continueOperation()"
+      >
+        Poursuivre
+      </button>
       <button class="link danger" :disabled="!!app.busy" @click="abortOperation()">
         Abandonner
       </button>

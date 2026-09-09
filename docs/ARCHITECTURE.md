@@ -1002,6 +1002,62 @@ entry is an `<li>` carrying the row and its three buttons as siblings, and the
 tree's nesting is left as it is and recorded below rather than changed in a
 slice about stashes.
 
+### 2.36 M8, second slice: the two ways out of a conflict
+
+**`ours` and `theirs` are only honest during a merge.** On a rebase the commits
+being replayed are `theirs` — including the ones you wrote a minute ago — and
+`ours` is the branch you are replaying *onto*. Two buttons labelled with the
+pronouns would be asking someone to choose between two meanings they cannot
+see, so `conflict::sides` names them: `MERGE_HEAD` for a merge,
+`rebase-merge/onto` and `head-name` for a rebase, `CHERRY_PICK_HEAD` and
+`REVERT_HEAD` for the replays — each resolved to the branch, tag or short hash a
+reader would recognise. `replayed` travels with them so the interface can
+explain the reversal rather than assume it is understood. Board 07 asked for
+this in one line: *"Ours et Theirs sont nommés par leur branche et leur hash,
+pas seulement par le mot."*
+
+**Which side to keep is not always a version to check out.** Half the conflicts
+Git can produce have no content on one side: a file we deleted and they changed
+(`DU`) has no stage 2, and `git checkout --ours` answers *"does not have our
+version"* — true, and useless. Keeping ours there means keeping the *deletion*,
+which is `git rm --force`. The table lives in `ops::conflict::keeps_nothing` and
+is read off Git's own status codes; `edits::resolve` looks the kind up in the
+status rather than taking it from the front end, because a copy of the index
+held on the other side of the wire restores a file the reader asked to see
+deleted.
+
+**A resolution is two commands, never one.** `git checkout --ours` leaves the
+path unmerged in the index, so a reader would take "resolved" from the screen
+while `git merge --continue` went on refusing. `git add` follows it in the same
+function, where a call site cannot forget.
+
+**The way forward, beside the way out.** `abort` shipped in M7 as the safety
+valve; `resume` is the other half, and the two read *which* operation from the
+repository for the same reason — the front end's copy can be stale, and a stale
+copy sends `git merge --continue` to a rebase. `git` decides whether it may
+continue: with a path still unmerged it refuses and names the file, so the
+button being disabled while conflicts are counted is a courtesy rather than the
+check. The index is the truth; this side holds a copy.
+
+**A stash that conflicts on the way back has no operation at all.** No
+`MERGE_HEAD`, nothing half-finished for `Repository::operation` to report — and
+the unmerged stages are there all the same. So the sides fall back to the words
+("la version en place", "celle qui arrive") and the resolution still works,
+which is what the fallback in `StatusList` is for rather than a defensive
+`?? ""`. A test pins the case, because it is where M8's two slices meet.
+
+**Taking a side is not confirmed, and that will be revisited.** Both versions
+are in commits, so what it overwrites is the file with its markers — nothing
+that is not somewhere else. What it *would* overwrite is a resolution made by
+hand in the file, and nothing on this side can yet tell whether one was: the
+dialog that can is the next slice. Recorded here rather than left as an
+oversight.
+
+**Not built, and it is the rest of SPEC §11's conflict line:** the three
+versions shown side by side, resolution per hunk with Ours / Theirs / Both, and
+opening the file in the configured editor. Board 07 draws that dialog; it is
+M8's third slice.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

@@ -6,12 +6,14 @@
 //! because every other read has to be interpreted differently while one is
 //! running.
 //!
-//! ## Why `abort` is here and `continue` is not
+//! ## The two ways out
 //!
-//! Resolving a conflict is M8's. But an application that can *start* a rebase
-//! and cannot stop one is a trap: it leaves the user in a state they did not
-//! choose, with no way out except a terminal. `abort` is the safety valve for
-//! the thing this module adds, so it ships with it.
+//! `abort` shipped with M7 as the safety valve: an application that can *start*
+//! a rebase and cannot stop one leaves the user somewhere they did not choose,
+//! with no exit but a terminal. `resume` is M8's other half — the way *forward*,
+//! once the conflicts are settled — and the two take the same argument for the
+//! same reason: which command to send is read from the repository, never passed
+//! in by a caller whose copy may be stale.
 
 use crate::cli::Git;
 use crate::repo::Operation;
@@ -103,6 +105,58 @@ pub fn abort(git: &Git, repo: &Repository, operation: Operation, cancel: &Cancel
         .run(cancel)
         .map(drop)
 }
+
+/// Carry on with the operation, now that the conflicts are settled.
+///
+/// `git` decides whether it may: with a path still unmerged it refuses, naming
+/// the file, and that refusal is better than any check this could make first —
+/// the index is the truth, and anything read here would be a copy of it taken a
+/// moment earlier. The interface still disables the button while conflicts are
+/// counted, so the refusal is a backstop rather than the normal path.
+///
+/// No `--no-edit` beyond `GIT_EDITOR=true`, which covers every command at once
+/// (`cli.rs`): `git merge --continue` opens the message `git` prepared, and the
+/// cover is what keeps it from waiting on an editor nobody can see.
+pub fn resume(
+    git: &Git,
+    repo: &Repository,
+    operation: Operation,
+    cancel: &Cancel,
+) -> Result<String> {
+    let command = match operation {
+        Operation::Merge => "merge",
+        Operation::Rebase { .. } => "rebase",
+        Operation::CherryPick => "cherry-pick",
+        Operation::Revert => "revert",
+        Operation::ApplyMailbox => "am",
+        // `git bisect` has no `--continue`: it is driven by `good` and `bad`,
+        // and it never stops on a conflict to begin with.
+        Operation::Bisect => {
+            return Err(GitError::backend("continuing", NotResumable(operation)));
+        }
+    };
+    let invocation = super::at(git, repo)?.args([command, "--continue"]);
+    // A merge commits what is already in the index; a replay goes on rewriting
+    // commits, and can stop on the next conflict.
+    let invocation = match operation {
+        Operation::Merge => invocation,
+        _ => invocation.destructive(),
+    };
+    invocation
+        .run(cancel)
+        .map(|output| output.text().trim().to_owned())
+}
+
+#[derive(Debug)]
+struct NotResumable(Operation);
+
+impl std::fmt::Display for NotResumable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "a {} is driven by `git bisect good` and `bad`", self.0)
+    }
+}
+
+impl std::error::Error for NotResumable {}
 
 #[derive(Debug)]
 struct NotAbortable(Operation);

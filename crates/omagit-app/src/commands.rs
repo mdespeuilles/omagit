@@ -428,6 +428,51 @@ pub fn delete_branch(
     omagit_git::ops::delete(&git, &open.repo, &name, force, &state.cancel()).map_err(say)
 }
 
+// ── Conflicts (M8) ──────────────────────────────────────────────────────────
+
+/// Name the two versions a conflicted file has, or nothing when no operation is
+/// running.
+#[tauri::command(async)]
+pub fn conflict_sides(state: State<'_, AppState>, path: String) -> Answer<Option<dto::Sides>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let sides = omagit_git::conflict::sides(&open.repo).map_err(say)?;
+    Ok(sides.as_ref().map(dto::sides))
+}
+
+/// Keep one side of a conflicted file whole, and mark it settled.
+#[tauri::command(async)]
+pub fn resolve_conflict(
+    state: State<'_, AppState>,
+    path: String,
+    file: String,
+    side: edits::Side,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+
+    let _serialised = open.write_lock.lock();
+    edits::resolve(&git, &open.repo, &wanted, side, &state.cancel()).map_err(say)
+}
+
+/// Carry on with the half-finished operation.
+///
+/// Which operation is read from the repository rather than passed in, for the
+/// reason `abort_operation` gives: the front end's idea of what is running is a
+/// copy, and a stale copy sends `git merge --continue` to a rebase.
+#[tauri::command(async)]
+pub fn continue_operation(state: State<'_, AppState>, path: String) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let operation = open
+        .repo
+        .operation()
+        .ok_or("aucune opération n'est en cours")?;
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::resume(&git, &open.repo, operation, &state.cancel()).map_err(say)
+}
+
 // ── Stashes (M8) ────────────────────────────────────────────────────────────
 //
 // Reads are addressed by index, writes by commit. `git` addresses a stash by

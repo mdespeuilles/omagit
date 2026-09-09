@@ -10,6 +10,7 @@
 //! * [`repo`] — opening a repository, `HEAD`, and any half-finished operation.
 //! * [`refs`] — branches, remotes and tags, with ahead/behind.
 //! * [`status`] — the working copy: staged, unstaged, untracked, conflicted.
+//! * [`conflict`] — which side is which while an operation is stopped on one.
 //! * [`stash`] — the shelf: what is on it, and what one entry holds.
 //! * [`summary`] — the whole of one repository at a glance, in one read.
 //! * [`history`] — a resumable walk over commits.
@@ -34,6 +35,7 @@
 
 pub mod cancel;
 pub mod cli;
+pub mod conflict;
 pub mod diff;
 pub mod error;
 pub mod graph;
@@ -51,6 +53,7 @@ pub mod thread_guard;
 pub mod watch;
 
 pub use cancel::Cancel;
+pub use conflict::{Side, Sides};
 pub use diff::{Diff, DiffOptions, FileDiff, Hunk, Line, LineKind, Refinement};
 pub use error::{GitError, Result};
 pub use graph::{Graph, Row as GraphRow};

@@ -177,6 +177,14 @@ export type Refs = {
   remotes: RemoteRow[];
 };
 
+/// The two versions a conflicted file has, named.
+///
+/// The names matter more than the words: during a rebase `--ours` is the branch
+/// being replayed *onto* and `--theirs` is your own work, so a button labelled
+/// with the pronoun alone asks someone to choose between two meanings they
+/// cannot see. `replayed` is what tells the interface to explain that.
+export type Sides = { ours: string; theirs: string; replayed: boolean };
+
 /// One entry of the shelf.
 ///
 /// `index` is `git`'s own address — `stash@{0}` is the most recent — and it is
@@ -314,6 +322,14 @@ export const api = {
     invoke<void>("create_branch", { path, name, start, switch: switch_ }),
   deleteBranch: (path: string, name: string, force: boolean) =>
     invoke<void>("delete_branch", { path, name, force }),
+
+  // Conflicts (M8). The side is sent by name — the backend reads what *kind*
+  // of conflict it is from the status, because half of them have no version on
+  // one of the two sides and keeping that side means `git rm`.
+  conflictSides: (path: string) => invoke<Sides | null>("conflict_sides", { path }),
+  resolveConflict: (path: string, file: string, side: "ours" | "theirs") =>
+    invoke<void>("resolve_conflict", { path, file, side }),
+  continueOperation: (path: string) => invoke<string>("continue_operation", { path }),
 
   // The shelf (M8). Reads are addressed by index because that is what the row
   // shows; writes by commit, because the numbering moves under them.

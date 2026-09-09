@@ -20,6 +20,7 @@
 
 pub mod branch;
 pub mod commit;
+pub mod conflict;
 pub mod integrate;
 pub mod network;
 pub mod stage;
@@ -27,7 +28,7 @@ pub mod stash;
 
 pub use branch::{checkout, checkout_detached, create, delete, merged, rename};
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
-pub use integrate::{MergeOptions, abort, merge, rebase};
+pub use integrate::{MergeOptions, abort, merge, rebase, resume};
 pub use network::{
     CloneOptions, Push, PushForce, Step, clone, directory_for, fetch, pull, push, reachable,
 };

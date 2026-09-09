@@ -30,6 +30,7 @@ import {
   type Progress,
   type Refs,
   type RepoSummary,
+  type Sides,
   type StashRow,
   type StatusRow,
 } from "./ipc";
@@ -176,6 +177,11 @@ type State = {
   stashFile: string | null;
   /// The "Remiser" form, while it is open. `null` when it is not.
   stashing: StashForm | null;
+
+  /// Which two versions a conflicted file has, while an operation is stopped on
+  /// one. `null` when nothing is running — and read from the repository, never
+  /// assumed from the branch on screen.
+  sides: Sides | null;
 };
 
 /// What the Remiser form is holding.
@@ -258,6 +264,7 @@ const state = reactive<State>({
   stashFiles: idle(),
   stashFile: null,
   stashing: null,
+  sides: null,
 });
 
 export const app = readonly(state);
@@ -412,6 +419,7 @@ export async function openRepository(path: string): Promise<void> {
   state.stashFiles = idle();
   state.stashFile = null;
   state.stashing = null;
+  state.sides = null;
   // The box belongs to the repository, not to the window.
   state.message = "";
   state.amend = false;
@@ -430,6 +438,7 @@ export async function openRepository(path: string): Promise<void> {
     state.status = { status: "ready", value: rows };
     state.summary = summary;
     state.committer = committer;
+    void readSides(summary.operation);
     if (template) state.message = template;
     void refreshJournal();
     void readRefs();
@@ -1167,6 +1176,67 @@ export function deleteBranch(row: { name: string; merged: boolean }): void {
   );
 }
 
+// ── Conflicts (M8) ──────────────────────────────────────────────────────────
+
+/// Name the two sides, while an operation is stopped on a conflict.
+///
+/// Asked for only when one is running: with nothing half-finished there are no
+/// sides, and a call per settled write would be a read for an answer that is
+/// always null.
+async function readSides(operation: string | null): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  if (!operation) {
+    state.sides = null;
+    return;
+  }
+  try {
+    const sides = await api.conflictSides(path);
+    if (state.open === path) state.sides = sides;
+  } catch (error) {
+    // The buttons fall back to the words `git` uses; not knowing which branch
+    // is which is not a reason to hide the way out of a conflict.
+    void api.log("warn", `côtés du conflit illisibles : ${message(error)}`);
+  }
+}
+
+/// Keep one side of a conflicted file whole.
+///
+/// Not confirmed, and the reason is worth writing down because it will be
+/// revisited: both versions are in commits, so what this overwrites is the file
+/// with its markers — nothing that is not somewhere else. What it *would*
+/// overwrite is a resolution made by hand in the file, and nothing here can
+/// tell yet whether one was: the dialog that can is the next slice.
+export function resolveConflict(row: StatusRow, side: "ours" | "theirs"): void {
+  const path = state.open;
+  if (!path) return;
+  const named = side === "ours" ? state.sides?.ours : state.sides?.theirs;
+  void write(`Résoudre ${row.path} — ${named ?? side}`, () =>
+    api.resolveConflict(path, row.path, side),
+  );
+}
+
+/// Carry on with the half-finished operation.
+///
+/// The way *forward*, next to the way out. `git` refuses while a path is still
+/// unmerged and names it, so the button being disabled is a courtesy rather
+/// than the check — the index is the truth, and this side holds a copy.
+export function continueOperation(): void {
+  const path = state.open;
+  const operation = state.summary?.operation;
+  if (!path || !operation) return;
+  void write(`Poursuivre ${operation}`, async () => {
+    state.notes = await api.continueOperation(path);
+  });
+}
+
+/// How many conflicted paths are left, which is what the way forward waits on.
+export function conflictCount(): number {
+  return state.status.status === "ready"
+    ? state.status.value.filter((row) => row.conflict !== null).length
+    : (state.summary?.counts.conflicted ?? 0);
+}
+
 // ── The shelf (M8) ──────────────────────────────────────────────────────────
 //
 // Every write here is addressed by commit, never by the index the row shows.
@@ -1357,6 +1427,7 @@ async function settle(): Promise<void> {
     if (state.open !== path) return;
     state.status = { status: "ready", value: rows };
     state.summary = summary;
+    void readSides(summary.operation);
     void refreshJournal();
     // A checkout, a branch created or deleted: the tree is what changed.
     void readRefs();
