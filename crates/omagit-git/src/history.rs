@@ -26,7 +26,7 @@
 //! is more useful than being right in a way no other tool is.
 
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use gix::bstr::ByteSlice;
 
@@ -282,14 +282,45 @@ impl HistoryQuery {
 ///
 /// Owns everything it needs, so it can be parked in the repository store
 /// between pages and moved to whichever background thread asks for the next one.
+/// How far ahead of the emitted row the walk reads.
+///
+/// The order below only works if a commit's children are discovered before it
+/// becomes eligible, and discovery runs ahead of emission by this much. A child
+/// and its parent are neighbours in time order — that is what a commit *is* —
+/// so a thousand rows of slack is many orders of magnitude more than any real
+/// history needs, and it is what makes this exact in practice rather than only
+/// in principle.
+///
+/// Git is exact instead of approximate here, and pays for it: `--date-order`
+/// sorts the whole range before printing a line. That is the trade this design
+/// cannot make — SPEC §11 wants history paged and resumed, §12 wants the first
+/// screenful of a 100 000-commit repository immediately.
+const LOOKAHEAD: usize = 1024;
+
 pub struct Walk {
     repo: Repository,
     query: HistoryQuery,
+    /// What to read next, newest first. Reading is not the same thing as
+    /// handing out: this heap runs ahead of what is emitted.
     frontier: BinaryHeap<Front>,
     /// Commits already queued. Also the reason a walk of a 100 000-commit
     /// history costs a few megabytes: without it, a merge-heavy history is
     /// walked exponentially.
     seen: HashSet<ObjectId>,
+    /// How many discovered children each commit is still waiting for.
+    ///
+    /// This is what makes the order `git log --date-order`'s rather than merely
+    /// "newest timestamp first". Git's guarantee is *no parent before all of
+    /// its children*, and time alone does not give it: two commits made in the
+    /// same second — a scripted import, a rebase, `git commit` twice in one
+    /// second — tie, and a parent can win the tie against its own grandchild.
+    /// The graph then draws a line upwards, into a node already passed.
+    blocked: HashMap<ObjectId, usize>,
+    /// Read, and every child of it already handed out: the next row can be any
+    /// of these, and it is the newest.
+    ready: BinaryHeap<Front>,
+    /// Read, but some child of it has not been handed out yet.
+    waiting: HashMap<ObjectId, Front>,
     yielded: usize,
 }
 
@@ -301,12 +332,15 @@ impl Walk {
             query: query.clone(),
             frontier: BinaryHeap::new(),
             seen: HashSet::new(),
+            blocked: HashMap::new(),
+            ready: BinaryHeap::new(),
+            waiting: HashMap::new(),
             yielded: 0,
         };
         let gix = walk.repo.gix();
         for tip in walk.resolve_tips(&gix, &query)? {
             cancel.check()?;
-            walk.push(&gix, tip)?;
+            walk.read(&gix, tip)?;
         }
         Ok(walk)
     }
@@ -319,19 +353,15 @@ impl Walk {
         let mut page = Vec::with_capacity(limit.min(1024));
         while page.len() < limit {
             cancel.check()?;
-            let Some(front) = self.frontier.pop() else {
+            // Read ahead first, so that whatever becomes eligible below has had
+            // the chance to be blocked by a child.
+            self.explore(&gix, limit - page.len() + LOOKAHEAD, cancel)?;
+            let Some(front) = self.next() else {
                 break;
             };
-            let take = if self.query.first_parent {
-                1.min(front.commit.parents.len())
-            } else {
-                front.commit.parents.len()
-            };
-            // Collected before pushing: `push` needs `&mut self`, and the
-            // parents live in the commit this page is about to hand out.
-            let parents: Vec<_> = front.commit.parents[..take].to_vec();
-            for parent in parents {
-                self.push(&gix, parent)?;
+            // Handing this commit out releases each parent from waiting on it.
+            for parent in self.followed(&front.commit) {
+                self.release(parent);
             }
             page.push(front.commit);
         }
@@ -341,7 +371,76 @@ impl Walk {
 
     /// True once every reachable commit has been handed out.
     pub fn is_done(&self) -> bool {
-        self.frontier.is_empty()
+        self.frontier.is_empty() && self.ready.is_empty() && self.waiting.is_empty()
+    }
+
+    /// Read until `want` commits are in hand, or the history runs out.
+    fn explore(&mut self, gix: &gix::Repository, want: usize, cancel: &Cancel) -> Result<()> {
+        while self.ready.len() + self.waiting.len() < want {
+            cancel.check()?;
+            let Some(front) = self.frontier.pop() else {
+                return Ok(());
+            };
+            for parent in self.followed(&front.commit) {
+                self.read(gix, parent)?;
+            }
+            self.file(front);
+        }
+        Ok(())
+    }
+
+    /// The parents this walk follows — one for `--first-parent`, all otherwise.
+    fn followed(&self, commit: &Commit) -> Vec<ObjectId> {
+        let take = if self.query.first_parent {
+            1.min(commit.parents.len())
+        } else {
+            commit.parents.len()
+        };
+        commit.parents[..take].to_vec()
+    }
+
+    /// Put a commit that has been read into `ready` or `waiting`.
+    fn file(&mut self, front: Front) {
+        if self.blocked.get(&front.commit.id).copied().unwrap_or(0) == 0 {
+            self.ready.push(front);
+        } else {
+            self.waiting.insert(front.commit.id, front);
+        }
+    }
+
+    /// The next row: the newest commit no un-handed-out commit is waiting on.
+    fn next(&mut self) -> Option<Front> {
+        if let Some(front) = self.ready.pop() {
+            return Some(front);
+        }
+        // Nothing eligible but something held back. In a directed acyclic graph
+        // this cannot happen — every waiting commit waits on a commit that will
+        // itself be handed out. A repository where it does happen is one Git
+        // could not walk either, and stalling would look like a hang, so what
+        // was held is released and only the order suffers.
+        if self.waiting.is_empty() {
+            return None;
+        }
+        tracing::warn!(
+            held = self.waiting.len(),
+            "the history frontier deadlocked; releasing what was held back"
+        );
+        let released: Vec<_> = self.waiting.drain().map(|(_, front)| front).collect();
+        self.ready.extend(released);
+        self.ready.pop()
+    }
+
+    /// One fewer un-handed-out child for `id`; make it eligible if that was the
+    /// last one.
+    fn release(&mut self, id: ObjectId) {
+        if let Some(count) = self.blocked.get_mut(&id) {
+            *count = count.saturating_sub(1);
+            if *count == 0
+                && let Some(front) = self.waiting.remove(&id)
+            {
+                self.ready.push(front);
+            }
+        }
     }
 
     /// How many commits this walk has produced so far — the row count the
@@ -350,7 +449,7 @@ impl Walk {
         self.yielded
     }
 
-    fn push(&mut self, gix: &gix::Repository, id: ObjectId) -> Result<()> {
+    fn read(&mut self, gix: &gix::Repository, id: ObjectId) -> Result<()> {
         if !self.seen.insert(id) {
             return Ok(());
         }
@@ -359,6 +458,11 @@ impl Walk {
         // not there, exactly as `git log` would show it.
         match read_commit(gix, id) {
             Ok(commit) => {
+                // Every parent now has one more child that has been read and
+                // not handed out, so none of them may go out before this one.
+                for parent in self.followed(&commit) {
+                    *self.blocked.entry(parent).or_default() += 1;
+                }
                 self.frontier.push(Front {
                     time: commit.committer.time.seconds,
                     commit,

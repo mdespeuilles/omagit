@@ -605,6 +605,10 @@ button.link.ok {
 .diff-line.removed {
   cursor: pointer;
 }
+/* Nothing can be staged out of a commit, so nothing in it invites a click. */
+.diff-line.inert {
+  cursor: default;
+}
 
 /* The word-level highlight of DESIGN-TOKENS §5, over the hunk tint rather than
    instead of it. */
@@ -771,4 +775,189 @@ button.danger.solid {
 }
 button.danger.solid:hover {
   background: color-mix(in oklab, var(--danger) 15%, transparent);
+}
+
+/* ── The sidebar ─────────────────────────────────────────────────────────── */
+
+.sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-glyph {
+  width: 12px;
+  flex: none;
+  color: var(--text-dim);
+  text-align: center;
+}
+.sidebar-count {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+
+/* ── History ─────────────────────────────────────────────────────────────── */
+
+/* Shares the leftover width with the diff rather than taking a fixed slice:
+   both are content, and the window is not always 1600px. */
+.history {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 380px;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.commit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding-right: var(--pad);
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.commit-row:hover {
+  background: var(--surface-hover);
+}
+.commit-row.selected {
+  background: var(--surface-raised);
+}
+
+/* The gutter draws itself at whatever width the row's lanes need; it must not
+   be squeezed by the text beside it. */
+.gutter-graph {
+  flex: none;
+}
+.gutter-graph line,
+.gutter-graph path {
+  stroke-width: 1.5;
+}
+.gutter-node {
+  stroke-width: 1.5;
+}
+
+/* Last, and it takes what is left: the message is what the list is read for. */
+.commit-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.commit-author,
+.commit-when,
+.commit-hash {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.commit-author {
+  width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.commit-when {
+  width: 88px;
+}
+
+/* Four kinds, four readings (DESIGN §5). The one that says where you are is
+   the one that is filled. */
+.ref {
+  flex: none;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 15px;
+  border: 1px solid;
+}
+.ref.head {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ref.branch {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.ref.remote {
+  color: var(--info);
+  border-color: var(--info);
+}
+.ref.tag {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+/* ── The commit detail ───────────────────────────────────────────────────── */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  flex: none;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.detail-head {
+  flex: none;
+  padding: var(--pad);
+  border-bottom: 1px solid var(--border);
+}
+.detail-summary {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  user-select: text;
+}
+.detail-body {
+  margin: 8px 0 0;
+  font-size: 11px;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  user-select: text;
+}
+.detail-who,
+.detail-parents {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  flex-wrap: wrap;
+}
+.detail-who .dim,
+.detail-parents .dim {
+  color: var(--text-dim);
+}
+
+.detail-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: none;
+}
+.detail-files .file-row {
+  height: var(--row-height);
+}
+.file-count {
+  flex: none;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.file-code.renamed,
+.file-code.copied {
+  color: var(--info);
+}
+.file-code.mode-changed {
+  color: var(--text-muted);
+}
+
+.topbar-repo {
+  font-weight: 600;
+}
+.topbar-head {
+  font-size: 11px;
+  color: var(--text-muted);
 }

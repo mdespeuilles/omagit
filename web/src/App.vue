@@ -1,10 +1,17 @@
 <script setup lang="ts">
 // The shell. Chrome belongs here rather than to a screen — the mistake the
 // GPUI build made, where opening History left a window with no way out of it.
+//
+// Only the middle changes between screens. The topbar, the sidebar, the status
+// bar and the diff pane are the same elements throughout, which is also why the
+// diff pane can be one component: what it draws comes from `state.diff`, and
+// both screens put something there.
 
 import CommitBox from "./components/CommitBox.vue";
+import CommitDetail from "./components/CommitDetail.vue";
 import Confirm from "./components/Confirm.vue";
 import DiffView from "./components/DiffView.vue";
+import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
 import Sidebar from "./components/Sidebar.vue";
 import StatusBar from "./components/StatusBar.vue";
@@ -17,10 +24,16 @@ import { app } from "./state";
   <Topbar />
   <div class="shell">
     <Sidebar />
-    <section class="middle">
+
+    <template v-if="app.screen === 'history'">
+      <HistoryList />
+      <CommitDetail />
+    </template>
+    <section v-else class="middle">
       <CommitBox />
       <StatusList />
     </section>
+
     <DiffView />
     <Journal v-if="app.showJournal" />
   </div>

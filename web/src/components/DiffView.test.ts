@@ -83,6 +83,22 @@ describe("the diff", () => {
     expect(labels).not.toContain("Rejeter");
   });
 
+  it("offers nothing to stage when the diff is a commit's", async () => {
+    // Both screens draw through this component, and History's diff is a
+    // commit's: there is no index behind it, so the two sides, the hunk buttons
+    // and the line picking all name something that does not exist.
+    const { state, diff } = await drawn([modified()]);
+    state.showScreen("history");
+    await diff.vm.$nextTick();
+
+    expect(diff.findAll(".tab")).toHaveLength(0);
+    expect(diff.findAll(".hunk-actions")).toHaveLength(0);
+
+    await diff.findAll(".diff-line")[1]!.trigger("click");
+    expect(state.app.picked.size).toBe(0);
+    expect(diff.find(".picked-bar").exists()).toBe(false);
+  });
+
   it("disables the tab for a side with nothing on it", async () => {
     const { diff } = await drawn([modified({ staged: null, unstaged: "modified" })]);
 

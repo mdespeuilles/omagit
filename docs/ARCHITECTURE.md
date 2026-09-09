@@ -489,6 +489,53 @@ open repository handle, taken for the duration of every write command, and
 a third implementation of one rule, wired to nothing, is the debt §2.4 refuses
 elsewhere.
 
+### 2.24 The history walk reads ahead of what it hands out
+
+Found by looking at the History screen on a repository built by a script: a
+commit sat *below its own parent*, and the graph drew a line upwards into a node
+already passed.
+
+The walk ordered its frontier by commit time, newest first, with the hash
+breaking ties. That is `git log`'s **default** order, and Git's default has the
+same behaviour — but a graph needs `--date-order`, whose actual guarantee is
+stronger and is the whole point: **show no parent before all of its children**.
+Time alone does not give it. Two commits made in the same second tie, and a
+parent can win the tie against its own grandchild. Same-second commits are not
+exotic: a scripted import, a rebase, `git commit` twice in one second.
+
+The fix is two halves, and a test proves each is load-bearing by putting it back:
+
+* **Blocking.** Every commit counts how many of its children have been read and
+  not yet handed out; it is held out of the eligible heap until that reaches
+  zero.
+* **Reading ahead.** Blocking alone is not enough — it only counts *discovered*
+  children, and a child can be discovered after its parent has already gone out.
+  So reading runs `LOOKAHEAD` (1024) rows ahead of handing out, which is what
+  makes the count complete.
+
+**This is exact in practice, not in principle**, and the difference is worth
+naming. Git is exact: `--date-order` sorts the whole range before printing a
+line. That trade is not available here — SPEC §11 wants history paged and
+resumed, §12 wants the first screenful of a 100 000-commit repository at once. A
+child and its parent are neighbours in time order, so a thousand rows of slack
+is orders of magnitude more than any real history needs; a history that defeated
+it would need a parent and child a thousand commits apart in commit-date order.
+
+**Measured**, on a generated 100 000-commit history where *every commit shares
+one timestamp* — the worst case for both halves:
+
+| | |
+|---|---|
+| 1 000 first commits (SPEC §12 budget: < 250 ms) | **8.4 ms** |
+| The whole 100 000 | 276 ms |
+| Order over the first 2 000 | identical to `git log --date-order` |
+
+The tests assert the *property*, not Git's sequence: when several commits become
+eligible at once — which is what a tie is — any order among them is a valid
+`--date-order`, and Git's own choice comes from the order it happened to load
+them in. `walks_head_in_the_same_order_as_git` compares sequences, on a fixture
+with distinct timestamps where there is only one answer.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -649,10 +696,21 @@ window:
   runs.
 - The tests of §2.21.
 
+- **History.** The walk paged and resumed, the graph drawn from
+  `omagit_git::graph`'s lane indices as one `<svg>` per row, references drawn
+  four ways, and a commit detail with its files. The walk is parked on the open
+  repository handle rather than in a command, because it is stateful and because
+  the lane assignment has to continue with it — a graph rebuilt per page puts a
+  long-running branch in a different column every time the list scrolls.
+- Screen switching, in the sidebar rather than in a screen. That is the
+  structural fix for the GPUI bug: no screen can take the way out away, because
+  no screen draws it.
+
 Not yet ported: the Repositories screen (the sidebar lists what the library
-holds, but nothing adds to it from the window), History and its graph, and M6's
-filters and A ↔ B comparison. The Linux measurement §2.20 calls unknown is still
-unknown — it needs one run of `scripts/dev.sh` there.
+holds, but nothing adds to it from the window), and M6's filters — branch,
+author, path, date range, text — and its A ↔ B comparison, for which
+`Diff::between` already exists. The Linux measurement §2.20 calls unknown is
+still unknown — it needs one run of `scripts/dev.sh` there.
 
 ## 5. Risks
 

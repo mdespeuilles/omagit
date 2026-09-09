@@ -127,6 +127,90 @@ pub fn file_diff(
     Ok(diff.as_ref().map(dto::diff))
 }
 
+// ── History ─────────────────────────────────────────────────────────────────
+
+/// The first page of a history walk, starting a new one.
+///
+/// Always restarts. Asking for "the history" is what the screen does when it
+/// opens, when the query changes and when the repository moves underneath —
+/// all three want the walk to begin again, and a command that sometimes
+/// continued would be the one that made a scroll show two histories spliced
+/// together.
+#[tauri::command(async)]
+pub fn history(
+    state: State<'_, AppState>,
+    path: String,
+    query: crate::log::Query,
+) -> Answer<crate::log::Page> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let cancel = state.cancel();
+    let mut session = crate::log::Session::start(&open.repo, query, &cancel).map_err(say)?;
+    let page = session.next(crate::log::PAGE, &cancel).map_err(say)?;
+
+    *open
+        .history
+        .lock()
+        .expect("the history lock is not poisoned") = Some(session);
+    Ok(page)
+}
+
+/// The next page of the walk already in progress.
+///
+/// Refuses rather than silently starting one: a "load more" that answered from
+/// a fresh walk would hand back the rows the list already has, and the reader
+/// would see the history repeat itself.
+#[tauri::command(async)]
+pub fn history_more(state: State<'_, AppState>, path: String) -> Answer<crate::log::Page> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let cancel = state.cancel();
+    let mut parked = open
+        .history
+        .lock()
+        .expect("the history lock is not poisoned");
+    let session = parked
+        .as_mut()
+        .ok_or("aucun parcours d'historique en cours")?;
+    session.next(crate::log::PAGE, &cancel).map_err(say)
+}
+
+/// One commit: its message, who made it, and what it changed.
+#[tauri::command(async)]
+pub fn commit_detail(
+    state: State<'_, AppState>,
+    path: String,
+    id: String,
+) -> Answer<dto::CommitDetail> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let cancel = state.cancel();
+    let id = id.parse().map_err(say)?;
+    let commit = omagit_git::history::commit(&open.repo, id).map_err(say)?;
+    // Against the first parent, which is what `Diff::commit` does and what
+    // `git show` shows. A merge's other parents are M6's A ↔ B comparison.
+    let diff =
+        omagit_git::Diff::commit(&open.repo, id, DiffOptions::default(), &cancel).map_err(say)?;
+    Ok(dto::commit_detail(&commit, &diff))
+}
+
+/// One file of one commit, against its first parent.
+#[tauri::command(async)]
+pub fn commit_file_diff(
+    state: State<'_, AppState>,
+    path: String,
+    id: String,
+    file: String,
+) -> Answer<Option<dto::Diff>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let id = id.parse().map_err(say)?;
+    let diff = omagit_git::Diff::commit(&open.repo, id, DiffOptions::default(), &state.cancel())
+        .map_err(say)?;
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+    Ok(diff
+        .files
+        .iter()
+        .find(|file| file.path == wanted)
+        .map(dto::diff))
+}
+
 /// The operations journal (SPEC §11): the exact command, not a summary.
 #[tauri::command]
 pub fn journal(state: State<'_, AppState>) -> Vec<dto::JournalRow> {

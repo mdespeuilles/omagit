@@ -26,6 +26,13 @@ pub struct Open {
     /// Held for the length of a write. SPEC §10: two writing Git commands must
     /// never run at once on one repository.
     pub write_lock: Mutex<()>,
+    /// The history walk in progress, if the window is looking at one.
+    ///
+    /// Here rather than in a command because it is stateful: SPEC §11 wants
+    /// history paged and resumed, not re-walked, and the lane assignment is
+    /// incremental — restarting it per page would move a long-running branch
+    /// to a different column every time the list scrolled.
+    pub history: Mutex<Option<crate::log::Session>>,
 }
 
 pub struct AppState {
@@ -101,6 +108,7 @@ impl AppState {
             repo,
             path: path.clone(),
             write_lock: Mutex::new(()),
+            history: Mutex::new(None),
         });
         open.insert(path, handle.clone());
         Ok(handle)

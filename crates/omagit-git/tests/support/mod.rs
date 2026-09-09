@@ -27,6 +27,8 @@ pub struct TestRepo {
     path: PathBuf,
     /// Bumped once per commit so every commit has a distinct, ordered time.
     clock: std::cell::Cell<i64>,
+    /// When set, the clock stops and every commit shares one timestamp.
+    frozen: std::cell::Cell<bool>,
 }
 
 /// 2026-01-01T00:00:00Z — a fixed epoch, so a failure message shows the same
@@ -51,6 +53,7 @@ impl TestRepo {
             _dir: dir,
             path,
             clock: std::cell::Cell::new(EPOCH),
+            frozen: std::cell::Cell::new(false),
         };
         repo.git(args);
         repo.git(&["config", "user.name", "Test Author"]);
@@ -65,6 +68,16 @@ impl TestRepo {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// Stop the clock, so every commit made afterwards shares one timestamp.
+    ///
+    /// Distinct times are what most of these fixtures want — a failure message
+    /// reads better when the order is unambiguous. But a repository where they
+    /// are distinct is a repository that never exercises a tie, and a tie is
+    /// ordinary: a scripted import, a rebase, `git commit` twice in one second.
+    pub fn freeze_clock(&self) {
+        self.frozen.set(true);
     }
 
     /// Open it the way the app would.
@@ -166,7 +179,9 @@ impl TestRepo {
     /// needed to build a state where staged and unstaged differ.
     pub fn commit_staged(&self, message: &str) -> ObjectId {
         self.git(&["commit", "--allow-empty", "-m", message]);
-        self.clock.set(self.clock.get() + 60);
+        if !self.frozen.get() {
+            self.clock.set(self.clock.get() + 60);
+        }
         self.head()
     }
 

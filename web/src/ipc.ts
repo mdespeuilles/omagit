@@ -52,6 +52,52 @@ export type RepoSummary = {
   committer: string | null;
 };
 
+/// One reference drawn beside a commit. Four kinds because DESIGN §5 draws
+/// them four ways, and because "which branch am I on" is the question the
+/// screen is most often asked.
+export type Label = { name: string; kind: "head" | "branch" | "remote" | "tag" };
+
+export type HistoryRow = {
+  id: Oid;
+  summary: string;
+  author: string;
+  /// Seconds since the epoch. The backend has no locale; see `format.ts`.
+  when: number;
+  merge: boolean;
+  labels: Label[];
+  lane: number;
+  passing: number[];
+  incoming: number[];
+  outgoing: number[];
+  width: number;
+};
+
+export type Page = { rows: HistoryRow[]; done: boolean };
+
+export type HistoryQuery = { all: boolean; firstParent: boolean };
+
+export type Who = { name: string; email: string; when: number; offset: number };
+
+export type FileRow = {
+  path: string;
+  change: string;
+  added: number;
+  removed: number;
+  reason: string | null;
+};
+
+export type CommitDetail = {
+  id: Oid;
+  parents: Oid[];
+  author: Who;
+  /// Only when it differs from the author — a rebase, a cherry-pick, a patch
+  /// applied by someone else.
+  committer: Who | null;
+  summary: string;
+  body: string;
+  files: FileRow[];
+};
+
 export type LibraryRow = {
   group: number;
   index: number;
@@ -97,6 +143,15 @@ export const api = {
   fileDiff: (path: string, file: string, staged: boolean) =>
     invoke<Diff | null>("file_diff", { path, file, staged }),
   journal: () => invoke<JournalRow[]>("journal"),
+
+  // History. `history` always restarts the walk; `historyMore` continues the
+  // one already parked on the backend, and refuses if there is none — a "load
+  // more" answered from a fresh walk would hand back rows the list already has.
+  history: (path: string, query: HistoryQuery) => invoke<Page>("history", { path, query }),
+  historyMore: (path: string) => invoke<Page>("history_more", { path }),
+  commitDetail: (path: string, id: string) => invoke<CommitDetail>("commit_detail", { path, id }),
+  commitFileDiff: (path: string, id: string, file: string) =>
+    invoke<Diff | null>("commit_file_diff", { path, id, file }),
 
   // The writes. Each takes the repository's lock on the Rust side for its whole
   // duration, so two of these can never run at once on one repository.

@@ -124,15 +124,19 @@ pub enum DiffRow {
     },
 }
 
-pub fn diff(file: &FileDiff) -> Diff {
-    let change = match &file.change {
+fn change_name(change: &FileChange) -> &'static str {
+    match change {
         FileChange::Added => "added",
         FileChange::Deleted => "deleted",
         FileChange::Modified => "modified",
         FileChange::ModeChanged => "mode-changed",
         FileChange::Renamed { .. } => "renamed",
         FileChange::Copied { .. } => "copied",
-    };
+    }
+}
+
+pub fn diff(file: &FileDiff) -> Diff {
+    let change = change_name(&file.change);
     let path = file.path.display_lossy().into_owned();
 
     match &file.content {
@@ -267,6 +271,104 @@ pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
             .committer
             .as_ref()
             .map(|who| format!("{} <{}>", who.name, who.email)),
+    }
+}
+
+/// One commit, as the detail pane draws it.
+#[derive(Debug, serde::Serialize)]
+pub struct CommitDetail {
+    pub id: Oid,
+    pub parents: Vec<Oid>,
+    pub author: Who,
+    /// Only when it differs from the author — which is the case worth showing:
+    /// a rebase, a cherry-pick, a patch applied by someone else. Showing it
+    /// always would put the same two lines on every commit.
+    pub committer: Option<Who>,
+    pub summary: String,
+    pub body: String,
+    pub files: Vec<FileRow>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct Who {
+    pub name: String,
+    pub email: String,
+    /// Seconds since the epoch, and the author's own offset from UTC. Both,
+    /// because the detail can show the time the author saw on their own clock.
+    pub when: i64,
+    pub offset: i32,
+}
+
+/// One file in a commit or a comparison.
+///
+/// Not a [`StatusRow`]: there is no index here, so there is no staged half and
+/// no two-letter code. What a reader wants instead is how much moved, which the
+/// working copy's list does not show.
+#[derive(Debug, serde::Serialize)]
+pub struct FileRow {
+    pub path: String,
+    pub change: &'static str,
+    pub added: usize,
+    pub removed: usize,
+    /// Set when there is nothing to count: binary, oversized, a submodule.
+    pub reason: Option<String>,
+}
+
+pub fn commit_detail(
+    commit: &omagit_git::history::Commit,
+    diff: &omagit_git::Diff,
+) -> CommitDetail {
+    CommitDetail {
+        id: commit.id.into(),
+        parents: commit.parents.iter().copied().map(Oid::from).collect(),
+        author: who(&commit.author),
+        committer: (commit.committer.name != commit.author.name
+            || commit.committer.time != commit.author.time)
+            .then(|| who(&commit.committer)),
+        summary: commit.summary.clone(),
+        body: commit.body.clone(),
+        files: diff.files.iter().map(file_row).collect(),
+    }
+}
+
+fn who(signature: &omagit_git::history::Signature) -> Who {
+    Who {
+        name: signature.name.clone(),
+        email: signature.email.clone(),
+        when: signature.time.seconds,
+        offset: signature.time.offset_seconds,
+    }
+}
+
+/// A file's line in a commit's list — the counts, without its text.
+///
+/// Reads them off the content rather than going through [`diff`], which
+/// flattens every hunk into rows. A commit touching two hundred files would
+/// have built two hundred row vectors to throw them all away, and the list
+/// shows none of them until a file is opened.
+pub fn file_row(file: &FileDiff) -> FileRow {
+    let (added, removed, reason) = match &file.content {
+        DiffContent::Text { added, removed, .. } => (*added, *removed, None),
+        DiffContent::Binary {
+            old_bytes,
+            new_bytes,
+        } => (
+            0,
+            0,
+            Some(format!("binaire · {old_bytes} → {new_bytes} octets")),
+        ),
+        DiffContent::Oversized { bytes } => {
+            (0, 0, Some(format!("trop volumineux · {bytes} octets")))
+        }
+        DiffContent::Submodule { .. } => (0, 0, Some("sous-module".to_owned())),
+        DiffContent::Empty => (0, 0, None),
+    };
+    FileRow {
+        path: file.path.display_lossy().into_owned(),
+        change: change_name(&file.change),
+        added,
+        removed,
+        reason,
     }
 }
 

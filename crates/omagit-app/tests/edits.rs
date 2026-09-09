@@ -7,75 +7,12 @@
 //! of. Inverted, that produces a patch `git apply` rejects, or one it accepts
 //! against text that happens to match.
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
+mod support;
 
+use omagit_git::RepoPath;
 use omagit_git::cli::Git;
-use omagit_git::{Cancel, RepoPath, Repository};
 use omagit_lib::edits::{Target, discard, file_side, stage};
-
-/// A temporary repository, built by running the real `git` — the same choice
-/// `omagit-git`'s fixtures make, and for the same reason: the point is to check
-/// that omagit agrees with Git, not with itself.
-struct TestRepo {
-    _dir: tempfile::TempDir,
-    path: PathBuf,
-}
-
-impl TestRepo {
-    fn new() -> Self {
-        let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = dir.path().to_path_buf();
-        let repo = Self { _dir: dir, path };
-        repo.git(&["init", "--initial-branch=main"]);
-        repo.git(&["config", "user.name", "Test Author"]);
-        repo.git(&["config", "user.email", "author@omagit.test"]);
-        repo.git(&["config", "commit.gpgsign", "false"]);
-        repo
-    }
-
-    fn git(&self, args: &[&str]) -> String {
-        let output = Command::new("git")
-            .args(args)
-            .current_dir(&self.path)
-            .env("HOME", &self.path)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .output()
-            .expect("git is installed; these tests need it");
-        assert!(
-            output.status.success(),
-            "git {}\n{}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        String::from_utf8_lossy(&output.stdout)
-            .trim_end()
-            .to_owned()
-    }
-
-    fn write(&self, name: &str, contents: &str) {
-        std::fs::write(self.path.join(name), contents).expect("a writable fixture");
-    }
-
-    fn read(&self, name: &str) -> String {
-        std::fs::read_to_string(self.path.join(name)).expect("the file exists")
-    }
-
-    fn open(&self) -> Repository {
-        Repository::open(&self.path).expect("the fixture is a repository")
-    }
-
-    fn path(&self) -> &Path {
-        &self.path
-    }
-
-    /// What `git show :<path>` prints — the index's copy, which is what every
-    /// assertion about staging is really about.
-    fn indexed(&self, name: &str) -> String {
-        self.git(&["show", &format!(":{name}")])
-    }
-}
+use support::{TestRepo, never};
 
 fn git() -> Git {
     Git::detect().expect("git is installed; these tests need it")
@@ -133,7 +70,7 @@ fn one_hunk_goes_in_and_the_other_stays_out() {
         &at("file.txt"),
         &target,
         false,
-        &Cancel::new(),
+        &never(),
     )
     .expect("the first hunk stages");
 
@@ -156,7 +93,7 @@ fn unstaging_a_hunk_reads_the_staged_side_not_the_working_tree() {
     // index has one. A patch built from the wrong one names lines that are not
     // where it says they are.
     let repo = two_hunks();
-    let cancel = Cancel::new();
+    let cancel = never();
     stage(
         &git(),
         &repo.open(),
@@ -213,7 +150,7 @@ fn a_whole_file_needs_no_diff_at_all() {
         &at("gone.txt"),
         &Target::File,
         false,
-        &Cancel::new(),
+        &never(),
     )
     .expect("a deletion stages");
 
@@ -226,7 +163,7 @@ fn a_whole_file_needs_no_diff_at_all() {
 #[test]
 fn lines_are_addressed_by_hunk_and_position_inside_it() {
     let repo = two_hunks();
-    let cancel = Cancel::new();
+    let cancel = never();
     let diff = file_side(&repo.open(), &at("file.txt"), false, &cancel).expect("a diff");
 
     // The one changed line of the second hunk, found the way the front end
@@ -277,7 +214,7 @@ fn discarding_an_untracked_file_removes_it_rather_than_restoring_it() {
         &repo.open(),
         &at("new.txt"),
         &Target::File,
-        &Cancel::new(),
+        &never(),
     )
     .expect("an untracked file is discardable");
 
@@ -296,7 +233,7 @@ fn discarding_one_hunk_leaves_the_other_alone() {
         &repo.open(),
         &at("file.txt"),
         &Target::Hunks { hunks: vec![1] },
-        &Cancel::new(),
+        &never(),
     )
     .expect("the second hunk is discardable");
 
@@ -315,7 +252,7 @@ fn a_file_that_has_left_the_status_is_named_rather_than_guessed_at() {
     repo.git(&["add", "seed.txt"]);
     repo.git(&["commit", "-m", "seed"]);
 
-    let error = file_side(&repo.open(), &at("seed.txt"), false, &Cancel::new())
+    let error = file_side(&repo.open(), &at("seed.txt"), false, &never())
         .expect_err("an unmodified file has no diff");
     assert!(
         error.to_string().contains("seed.txt"),

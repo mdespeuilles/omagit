@@ -14,7 +14,10 @@
 import { reactive, readonly } from "vue";
 import {
   api,
+  type CommitDetail,
   type DiffRow,
+  type HistoryQuery,
+  type HistoryRow,
   type JournalRow,
   type LibraryRow,
   type PlatformFacts,
@@ -84,6 +87,21 @@ type State = {
   question: Question | null;
   journal: JournalRow[];
   showJournal: boolean;
+
+  /// The history list. Paged: the backend parks the walk and hands out five
+  /// hundred rows at a time, so this grows rather than being replaced.
+  history: Async<HistoryRow[]>;
+  /// True once the walk has reached the roots. What stops the list asking —
+  /// not a short page, which a filter can also produce.
+  historyDone: boolean;
+  /// A page is in flight. Without it a fast scroll asks four times for the
+  /// same page, and the rows arrive four times.
+  historyLoading: boolean;
+  query: HistoryQuery;
+  /// The commit the detail pane is about.
+  commit: Async<CommitDetail>;
+  /// Which file of that commit the diff pane shows.
+  commitFile: string | null;
 };
 
 const state = reactive<State>({
@@ -110,6 +128,13 @@ const state = reactive<State>({
   question: null,
   journal: [],
   showJournal: false,
+
+  history: idle(),
+  historyDone: false,
+  historyLoading: false,
+  query: { all: false, firstParent: false },
+  commit: idle(),
+  commitFile: null,
 });
 
 export const app = readonly(state);
@@ -141,6 +166,10 @@ export async function openRepository(path: string): Promise<void> {
   state.diff = idle();
   state.picked.clear();
   state.status = { status: "loading" };
+  state.history = idle();
+  state.historyDone = false;
+  state.commit = idle();
+  state.commitFile = null;
   // The box belongs to the repository, not to the window.
   state.message = "";
   state.amend = false;
@@ -218,8 +247,129 @@ export async function selectFile(file: string, staged: boolean): Promise<void> {
   }
 }
 
+/// Switch screens. The shell — topbar, sidebar, status bar — does not move:
+/// it belongs to `App.vue`, not to a screen, which is the fix for the GPUI bug
+/// where opening History left a window with no way out of it.
 export function showScreen(screen: Screen): void {
   state.screen = screen;
+  // History is read when it is first looked at rather than when a repository
+  // opens: a walk of a hundred thousand commits is not what someone who wanted
+  // to stage a file asked for.
+  if (screen === "history" && state.history.status === "idle") void loadHistory();
+}
+
+export async function loadHistory(): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  const query = { ...state.query };
+  state.history = { status: "loading" };
+  state.historyDone = false;
+  state.commit = idle();
+  state.commitFile = null;
+
+  const started = performance.now();
+  try {
+    const page = await api.history(path, query);
+    if (state.open !== path || !sameQuery(query, state.query)) return;
+    state.history = { status: "ready", value: page.rows };
+    state.historyDone = page.done;
+    void api.log(
+      "info",
+      `history: ${page.rows.length} lignes · IPC ${(performance.now() - started).toFixed(1)}ms`,
+    );
+    const first = page.rows[0];
+    if (first) await selectCommit(first.id.full);
+  } catch (error) {
+    state.history = { status: "failed", error: message(error) };
+  }
+}
+
+/// The next page, asked for when the list nears its end.
+export async function moreHistory(): Promise<void> {
+  const path = state.open;
+  if (!path || state.historyLoading || state.historyDone) return;
+  if (state.history.status !== "ready") return;
+  const query = { ...state.query };
+
+  state.historyLoading = true;
+  try {
+    const page = await api.historyMore(path);
+    // A query that changed while this was in flight means these rows belong to
+    // a history nobody is looking at any more.
+    if (state.open !== path || !sameQuery(query, state.query)) return;
+    if (state.history.status !== "ready") return;
+    state.history = { status: "ready", value: [...state.history.value, ...page.rows] };
+    state.historyDone = page.done;
+  } catch (error) {
+    state.history = { status: "failed", error: message(error) };
+  } finally {
+    state.historyLoading = false;
+  }
+}
+
+/// Change what the walk covers. Always restarts it: a different query is a
+/// different history, not more of this one.
+export async function setQuery(query: Partial<HistoryQuery>): Promise<void> {
+  state.query = { ...state.query, ...query };
+  await loadHistory();
+}
+
+export async function selectCommit(id: string): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  state.commit = { status: "loading" };
+  state.commitFile = null;
+  state.diff = idle();
+
+  try {
+    const detail = await api.commitDetail(path, id);
+    // The selection may have moved while this was in flight.
+    if (state.open !== path || state.commit.status !== "loading") return;
+    state.commit = { status: "ready", value: detail };
+    const first = detail.files[0];
+    if (first) await selectCommitFile(first.path);
+  } catch (error) {
+    state.commit = { status: "failed", error: message(error) };
+  }
+}
+
+export async function selectCommitFile(file: string): Promise<void> {
+  const path = state.open;
+  const id = state.commit.status === "ready" ? state.commit.value.id.full : null;
+  if (!path || !id) return;
+
+  state.commitFile = file;
+  state.diff = { status: "loading" };
+  const started = performance.now();
+  try {
+    const diff = await api.commitFileDiff(path, id, file);
+    if (state.commitFile !== file) return;
+    if (!diff) {
+      state.diff = { status: "failed", error: "ce fichier n'est pas dans ce commit" };
+      return;
+    }
+    state.diff = {
+      status: "ready",
+      value: {
+        path: diff.path,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        rows: diff.rows ?? [],
+        reason: diff.reason,
+      },
+    };
+    void api.log(
+      "info",
+      `diff ${diff.path}@${id.slice(0, 7)}: ${diff.rows?.length ?? 0} lignes · IPC ${(
+        performance.now() - started
+      ).toFixed(1)}ms`,
+    );
+  } catch (error) {
+    if (state.commitFile === file) state.diff = { status: "failed", error: message(error) };
+  }
+}
+
+function sameQuery(a: HistoryQuery, b: HistoryQuery): boolean {
+  return a.all === b.all && a.firstParent === b.firstParent;
 }
 
 export function toggleJournal(): void {

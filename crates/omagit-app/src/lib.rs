@@ -9,6 +9,7 @@
 pub mod commands;
 pub mod dto;
 pub mod edits;
+pub mod log;
 pub mod logging;
 pub mod platform;
 pub mod state;
@@ -51,6 +52,10 @@ pub fn run() {
             commands::commit_template,
             commands::commit,
             commands::head_message,
+            commands::history,
+            commands::history_more,
+            commands::commit_detail,
+            commands::commit_file_diff,
             commands::journal,
             commands::log,
         ])

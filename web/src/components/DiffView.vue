@@ -84,7 +84,7 @@ function segments(
       <!-- The two sides of the index, as the two tabs of Board 03. A side with
            nothing on it is disabled rather than hidden: a tab that appears and
            disappears as you stage moves the other one under the pointer. -->
-      <template v-if="app.selected">
+      <template v-if="app.screen === 'working-copy' && app.selected">
         <button
           class="tab"
           :class="{ on: !staged }"
@@ -124,7 +124,7 @@ function segments(
         <span class="diff-header-text">{{ item.text }}</span>
         <!-- Never fully hidden (DESIGN §3): at rest these sit at a low opacity
              so the target stays reachable by keyboard, and come up on hover. -->
-        <span class="hunk-actions">
+        <span v-if="app.screen === 'working-copy'" class="hunk-actions">
           <button :disabled="!!app.busy" @click="stageHunk(item.hunk, staged)">
             {{ staged ? "Désindexer le bloc" : "Indexer le bloc" }}
           </button>
@@ -146,8 +146,18 @@ function segments(
       <div
         v-else
         class="diff-line mono"
-        :class="[item.side, { picked: app.picked.has(lineKey(item.hunk, item.index)) }]"
-        @click="selectable(item.side) && pickLine(item.hunk, item.index, $event.shiftKey)"
+        :class="[
+          item.side,
+          {
+            picked: app.picked.has(lineKey(item.hunk, item.index)),
+            inert: app.screen !== 'working-copy',
+          },
+        ]"
+        @click="
+          app.screen === 'working-copy' &&
+          selectable(item.side) &&
+          pickLine(item.hunk, item.index, $event.shiftKey)
+        "
       >
         <span class="gutter">{{ item.old ?? "" }}</span>
         <span class="gutter">{{ item.new ?? "" }}</span>
@@ -165,7 +175,7 @@ function segments(
 
     <!-- Appears only once lines are picked, and says what it would act on
          before it acts: this is the one bar in the app whose buttons write. -->
-    <footer v-if="picked > 0" class="picked-bar">
+    <footer v-if="picked > 0 && app.screen === 'working-copy'" class="picked-bar">
       <span>{{ plural(picked, "ligne") }}</span>
       <span class="pane-head-spacer" />
       <button :disabled="!!app.busy" @click="stagePicked(staged)">

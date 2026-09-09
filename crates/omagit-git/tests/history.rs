@@ -190,3 +190,111 @@ fn a_walk_can_be_cancelled_between_pages() {
         .expect_err("a cancelled page returns");
     assert!(error.is_cancelled(), "got {error:?}");
 }
+
+/// Every commit's parents, by id — what the topological guarantee is about.
+fn parents_of(fixture: &TestRepo) -> std::collections::HashMap<ObjectId, Vec<ObjectId>> {
+    fixture
+        .git(&["log", "--all", "--format=%H %P"])
+        .lines()
+        .map(|line| {
+            let mut ids = line
+                .split_whitespace()
+                .map(|id| id.parse().expect("a hash"));
+            (ids.next().expect("a commit"), ids.collect())
+        })
+        .collect()
+}
+
+/// A history where every commit shares one timestamp, with two branches that
+/// interleave and meet — the shape that made the order wrong.
+///
+/// ```text
+///   main:    A ── B ── C ── E ── F ── M
+///                       \           /
+///   feature:             D1 ─ D2 ──
+/// ```
+fn same_second() -> TestRepo {
+    let fixture = TestRepo::new();
+    fixture.freeze_clock();
+    for n in 1..=3 {
+        fixture.commit_file("base.txt", &format!("base {n}\n"), &format!("base {n}"));
+    }
+    fixture.branch("feature");
+    for n in 1..=2 {
+        fixture.commit_file(
+            "feature.txt",
+            &format!("feature {n}\n"),
+            &format!("feature {n}"),
+        );
+    }
+    fixture.checkout("main");
+    for n in 1..=2 {
+        fixture.commit_file("main.txt", &format!("main {n}\n"), &format!("main {n}"));
+    }
+    fixture.git(&["merge", "--no-ff", "-m", "merge feature", "feature"]);
+    fixture
+}
+
+#[test]
+fn no_parent_is_walked_before_its_children_even_when_the_clock_does_not_move() {
+    // `git log --date-order`'s actual guarantee, which "newest timestamp first"
+    // is not: *show no parents before all of their children are shown*. Two
+    // commits made in the same second tie, and a heap ordered on time alone
+    // will happily hand out a grandparent before its grandchild — which draws
+    // a graph line going upwards, into a node already passed.
+    let fixture = same_second();
+    let times: std::collections::BTreeSet<String> = fixture
+        .git(&["log", "--all", "--format=%ct"])
+        .lines()
+        .map(ToOwned::to_owned)
+        .collect();
+    assert_eq!(
+        times.len(),
+        1,
+        "the fixture has to be degenerate to prove anything"
+    );
+
+    // The property, not Git's exact sequence. When several commits become
+    // eligible at once — which is what a tie *is* — any order among them is a
+    // valid `--date-order`, and Git's own choice comes from the order it
+    // happened to load them in. `walks_head_in_the_same_order_as_git` compares
+    // sequences, on a fixture whose timestamps are distinct and where there is
+    // therefore only one answer.
+    let order = walk_all(&fixture, HistoryQuery::head(), 3);
+    let parents = parents_of(&fixture);
+    let at: std::collections::HashMap<ObjectId, usize> = order
+        .iter()
+        .enumerate()
+        .map(|(index, id)| (*id, index))
+        .collect();
+
+    for (child, parents) in &parents {
+        let Some(child_at) = at.get(child) else {
+            continue;
+        };
+        for parent in parents {
+            if let Some(parent_at) = at.get(parent) {
+                assert!(
+                    parent_at > child_at,
+                    "{parent} is its child {child}'s ancestor but was walked first \
+                     ({parent_at} before {child_at})"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_tie_is_broken_the_same_way_on_every_page_size() {
+    // The order has to be a property of the history, not of how the list
+    // happened to scroll.
+    let fixture = same_second();
+    let whole = walk_all(&fixture, HistoryQuery::head(), 1000);
+    for page in [1, 2, 3, 5] {
+        assert_eq!(
+            walk_all(&fixture, HistoryQuery::head(), page),
+            whole,
+            "a page size of {page} produced a different history"
+        );
+    }
+}
