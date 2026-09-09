@@ -18,7 +18,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--text-body);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   /* The window is the app; nothing scrolls but the panes that say they do. */
@@ -126,7 +126,7 @@ button.danger:not(:disabled):active {
 /* The shortcut inside a button. */
 .hint {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 button.primary .hint {
@@ -150,7 +150,7 @@ button.primary .hint {
   height: 14px;
   flex: none;
   padding: 0;
-  font-size: 11px;
+  font-size: var(--text-meta);
   line-height: 12px;
   font-weight: 600;
   color: var(--text-dim);
@@ -183,7 +183,7 @@ button.primary .hint {
   height: 16px;
   flex: none;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-meta);
   font-weight: 600;
   color: var(--text-muted);
   border: 1px solid var(--text-muted);
@@ -288,14 +288,14 @@ button.primary .hint {
   max-width: 280px;
 }
 .topbar-repo-name {
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .topbar-repo-where {
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -307,7 +307,7 @@ button.icon {
   width: 26px;
   padding: 0;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--text-body);
   color: var(--text-muted);
 }
 
@@ -317,28 +317,36 @@ button.icon {
 
 /* The app's own name, set the way board 06 sets it. */
 .topbar-name {
-  font-size: 12.5px;
+  font-size: var(--text-mono);
   font-weight: 600;
   letter-spacing: 0.06em;
   padding-left: 4px;
 }
 .topbar-crumb {
-  font-size: 12.5px;
+  font-size: var(--text-mono);
   color: var(--text-muted);
 }
 
 .banner {
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--text-meta);
 }
 .banner.danger {
   color: var(--danger);
   border-left: 2px solid var(--danger);
 }
 
+/* How large the interface is drawn, applied once, here.
+   `--scale` is a display preference (`ui_scale` in `settings.toml`), not a
+   design token: every number in this file is the design's, and `zoom` scales
+   the lot — including the component dimensions that have no token of their
+   own — rather than letting them drift away from the tokens. Everything inside
+   keeps working in unscaled CSS pixels, which is what the virtualised lists
+   measure in. */
 #app {
   display: flex;
   flex-direction: column;
+  zoom: var(--scale, 1);
 }
 
 .shell {
@@ -380,7 +388,7 @@ button.icon {
   padding: 0 10px;
   border: 0;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--text-body);
   cursor: pointer;
 }
 /* The view you are in is filled, as board 03 fills it: this is a chooser, and
@@ -406,7 +414,7 @@ button.icon {
 .sidebar-note {
   margin: 0;
   padding: 2px 10px 8px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 
@@ -420,7 +428,7 @@ button.icon {
   padding: 0 10px;
   border: 0;
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--text-muted);
   text-align: left;
 }
@@ -429,7 +437,7 @@ button.icon {
 .tag {
   flex: none;
   padding: 0 4px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   letter-spacing: 0.04em;
   color: var(--text-dim);
   border: 1px solid var(--border);
@@ -459,7 +467,7 @@ button.icon {
   height: 26px;
   flex: none;
   padding: 0 12px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -493,7 +501,7 @@ button.icon {
   gap: 10px;
   height: 100%;
   padding: 0 12px;
-  font-size: 12.5px;
+  font-size: var(--text-mono);
   cursor: pointer;
   border-bottom: 1px solid var(--border);
 }
@@ -533,7 +541,7 @@ button.icon {
   display: flex;
   align-items: center;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   background: var(--surface);
   color: var(--text-muted);
 }
@@ -544,7 +552,7 @@ button.icon {
 .diff-line {
   display: flex;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--text-mono);
   white-space: pre;
   cursor: default;
 }
@@ -561,7 +569,7 @@ button.icon {
   text-align: right;
   padding-right: 8px;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: var(--text-meta);
 }
 .diff-line .sign {
   width: 14px;
@@ -579,7 +587,7 @@ button.icon {
   margin: 0;
   padding: 16px;
   white-space: pre-wrap;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--danger, #b4637a);
   background: var(--bg, #faf4ed);
 }
@@ -590,7 +598,7 @@ button.icon {
 .pane-error {
   margin: 0;
   padding: var(--pad);
-  font-size: 11px;
+  font-size: var(--text-meta);
 }
 .pane-empty {
   color: var(--text-dim);
@@ -639,7 +647,7 @@ button.icon {
   padding: 6px 8px;
   resize: vertical;
   background: var(--bg);
-  font-size: 12px;
+  font-size: var(--text-body);
   line-height: 1.5;
   user-select: text;
   cursor: text;
@@ -653,7 +661,7 @@ button.icon {
 .commit-count {
   position: absolute;
   top: -1px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
   pointer-events: none;
 }
@@ -672,19 +680,48 @@ button.icon {
   align-items: center;
   gap: var(--gap);
   margin-top: 6px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   white-space: nowrap;
 }
 
+/* Board 01 §05's box, everywhere. The native control renders round on
+   WKWebView and cannot be told to draw a third state, so the real input is
+   kept — it carries the focus, the keyboard and the accessibility name — and
+   moved out of sight behind a box we draw. */
 .toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  height: 24px;
   color: var(--text-muted);
   cursor: pointer;
 }
 .toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* The tick exists in the markup at every state so the box does not resize when
+   it appears; unchecked, it is simply not drawn. */
+.toggle .check {
+  color: transparent;
+  cursor: pointer;
+}
+.toggle input:checked + .check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+.toggle input:focus-visible + .check {
+  outline: 1px solid var(--border-focus);
+  outline-offset: 2px;
+}
+.toggle input:disabled + .check {
+  border-color: color-mix(in srgb, var(--border) 55%, var(--bg));
+  background: var(--surface);
 }
 
 .commit-line {
@@ -692,7 +729,7 @@ button.icon {
   align-items: baseline;
   gap: var(--gap);
   margin: 6px 0 0;
-  font-size: 10.5px;
+  font-size: var(--text-meta);
 }
 
 .commit-who {
@@ -719,12 +756,12 @@ button.icon {
 }
 .commit-actions button {
   flex: 1;
-  font-size: 11.5px;
+  font-size: var(--text-body);
 }
 
 .commit-blocked {
   margin: 6px 0 0;
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 
@@ -738,7 +775,7 @@ button.link {
   height: auto;
   padding: 0;
   border: 0;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
 }
 button.link:hover:not(:disabled) {
@@ -762,7 +799,7 @@ button.link.ok {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--text-meta);
   line-height: 1;
   color: var(--text-dim);
 }
@@ -797,7 +834,7 @@ button.link.ok {
   flex: none;
   height: 16px;
   padding: 0 4px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   opacity: 0;
 }
 .file-row:hover .row-action,
@@ -815,7 +852,7 @@ button.link.ok {
   flex: none;
   height: 24px;
   padding: 0 12px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
   border-top: 1px solid var(--border);
 }
@@ -825,7 +862,7 @@ button.link.ok {
 .tab {
   height: 18px;
   padding: 0 8px;
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
   border-color: transparent;
 }
@@ -860,7 +897,7 @@ button.link.ok {
 .hunk-actions button {
   height: 14px;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   line-height: 1;
   background: var(--bg);
 }
@@ -898,7 +935,7 @@ button.link.ok {
 
 .no-newline {
   margin-left: 8px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 
@@ -909,14 +946,14 @@ button.link.ok {
   flex: none;
   height: var(--control-height);
   padding: 0 var(--pad);
-  font-size: 11px;
+  font-size: var(--text-meta);
   background: var(--surface-raised);
   border-top: 1px solid var(--border);
 }
 .picked-bar button {
   height: 18px;
   padding: 0 8px;
-  font-size: 10.5px;
+  font-size: var(--text-meta);
 }
 .picked-bar button.danger {
   color: var(--danger);
@@ -932,7 +969,7 @@ button.link.ok {
   flex: none;
   height: 22px;
   padding: 0 var(--pad);
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -973,7 +1010,7 @@ button.link.ok {
   grid-template-columns: 16px 1fr;
   gap: 4px;
   padding: 4px var(--pad);
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   border-bottom: 1px solid var(--border);
 }
 .journal-mark {
@@ -1024,12 +1061,12 @@ button.link.ok {
 
 .dialog-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: 600;
 }
 .dialog-detail {
   margin: 8px 0 16px;
-  font-size: 11.5px;
+  font-size: var(--text-body);
   color: var(--text-muted);
 }
 .dialog-actions {
@@ -1050,13 +1087,13 @@ button.danger.solid:hover {
 .sidebar-glyph {
   width: 12px;
   flex: none;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--text-muted);
   text-align: center;
 }
 .sidebar-count {
   flex: none;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 .sidebar-count.conflict {
@@ -1082,7 +1119,7 @@ button.danger.solid:hover {
   gap: 6px;
   height: 100%;
   padding-right: var(--pad);
-  font-size: 11.5px;
+  font-size: var(--text-body);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1113,7 +1150,7 @@ button.danger.solid:hover {
 .commit-when,
 .commit-hash {
   flex: none;
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 .commit-author {
@@ -1134,7 +1171,7 @@ button.danger.solid:hover {
   flex: none;
   padding: 0 5px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-meta);
   border: 1px solid var(--border);
   color: var(--text);
 }
@@ -1171,13 +1208,13 @@ button.danger.solid:hover {
 }
 .detail-summary {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--text-mono);
   font-weight: 600;
   user-select: text;
 }
 .detail-body {
   margin: 8px 0 0;
-  font-size: 11px;
+  font-size: var(--text-meta);
   white-space: pre-wrap;
   color: var(--text-muted);
   user-select: text;
@@ -1187,7 +1224,7 @@ button.danger.solid:hover {
   display: flex;
   gap: 6px;
   margin: 8px 0 0;
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   flex-wrap: wrap;
 }
 .detail-who .dim,
@@ -1206,7 +1243,7 @@ button.danger.solid:hover {
 }
 .file-count {
   flex: none;
-  font-size: 10px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 .file-code.renamed,
@@ -1234,7 +1271,7 @@ button.danger.solid:hover {
   min-width: 0;
   height: 22px;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--text-meta);
 }
 .filter-box {
   flex: 1 1 0;
@@ -1260,7 +1297,7 @@ button.danger.solid:hover {
   margin: 0;
   padding: 4px var(--pad);
   flex: none;
-  font-size: 10px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
   border-bottom: 1px solid var(--border);
 }
@@ -1305,7 +1342,7 @@ button.danger.solid:hover {
 }
 .library-filter input {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--text-body);
 }
 
 .library-groups {
@@ -1322,12 +1359,13 @@ button.danger.solid:hover {
   height: 22px;
   padding: 0 10px;
   margin-top: 8px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .group-head .chevron {
+  /* A disclosure glyph, not type: sized to sit inside the header's 22px. */
   font-size: 9px;
 }
 
@@ -1375,7 +1413,7 @@ button.danger.solid:hover {
   white-space: nowrap;
 }
 .library-state {
-  font-size: 10.5px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1433,12 +1471,12 @@ button.danger.solid:hover {
   flex: none;
   height: 26px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--text-muted);
   border-top: 1px solid var(--border);
 }
 .library-foot .dim {
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
 }
 
@@ -1447,12 +1485,12 @@ button.danger.solid:hover {
 }
 .library-empty-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: 600;
 }
 .library-empty-text {
   margin: 8px 0 16px;
-  font-size: 11.5px;
+  font-size: var(--text-body);
   color: var(--text-muted);
 }
 
@@ -1486,11 +1524,11 @@ button.danger.solid:hover {
   gap: 10px;
 }
 .card-name {
-  font-size: 16px;
+  font-size: var(--text-title);
   font-weight: 600;
 }
 .card-note {
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--text-muted);
 }
 
@@ -1503,7 +1541,7 @@ button.danger.solid:hover {
   height: 18px;
   flex: none;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
@@ -1540,7 +1578,7 @@ button.danger.solid:hover {
   gap: 8px;
 }
 .card-window {
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1564,14 +1602,14 @@ button.danger.solid:hover {
   background: var(--accent);
 }
 .card-activity .dim {
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
 }
 
 .card-missing {
   margin: 16px 20px 0;
   padding-left: 8px;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--warning);
   border-left: 2px solid var(--warning);
 }
@@ -1589,7 +1627,7 @@ button.danger.solid:hover {
   align-items: center;
   height: 26px;
   margin-top: 14px;
-  font-size: 11px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1608,13 +1646,13 @@ button.danger.solid:hover {
 }
 .card-facts dt {
   text-align: right;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--text-muted);
 }
 .card-facts dd {
   margin: 0;
   min-width: 0;
-  font-size: 12.5px;
+  font-size: var(--text-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1667,7 +1705,7 @@ button.danger.solid:hover {
   width: 20px;
   height: 20px;
   flex: none;
-  font-size: 10px;
+  font-size: var(--text-meta);
   background: var(--surface-raised);
   border: 1px solid var(--border);
 }
@@ -1679,7 +1717,7 @@ button.danger.solid:hover {
   flex: none;
   height: 24px;
   padding: 0 20px;
-  font-size: 11.5px;
+  font-size: var(--text-body);
   color: var(--text-muted);
   background: var(--surface);
   border-top: 1px solid var(--border);

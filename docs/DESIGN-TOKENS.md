@@ -186,7 +186,10 @@ lecture.
 
 ## 7. Densité
 
-Deux modes. Les valeurs sont des tokens, pas des constantes de composant.
+Deux modes. Les valeurs sont des tokens, pas des constantes de composant. Le
+défaut est **confortable** : c'est la densité à laquelle les maquettes sont
+dessinées (board 03 l'annonce dans son cadre de référence), donc c'est ce à quoi
+le design ressemble. Compact est le choix explicite pour un bureau dense.
 
 | Token | CSS | Compact | Confortable |
 |---|---|---|---|
@@ -196,6 +199,7 @@ Deux modes. Les valeurs sont des tokens, pas des constantes de composant.
 | `pad` | `--pad` | 6px | 10px |
 | `control_height` | `--ctl` | 22px | 26px |
 | `header_height` | `--hdr` | 20px | 24px |
+| `line_height` | `--line-height` | 17px | 20px |
 
 Contrainte d'accessibilité maintenue dans les deux modes : cible cliquable ≥ 24×24px. En
 compact, `control_height` vaut 22px — la zone de clic est donc étendue au-delà du visuel.
@@ -212,6 +216,26 @@ périmètre, c'est inoffensif mais inutile — à retirer côté code.
 
 Échelle : 13px de base, 11px pour les labels secondaires, 15–16px pour les titres de panneau.
 Graisses 400 / 500 / 600 uniquement.
+
+> **Amendement (2026-09-09) — l'échelle est un token, la taille absolue en est un autre.**
+>
+> L'échelle ci-dessus était de la prose : le code portait des littéraux, et ils
+> ont dérivé vers 10,5px et 11,5px à une douzaine d'endroits — des tailles qui
+> ne sont dans aucune échelle. Elle est maintenant émise en tokens
+> (`--text-title` 16, `--text-panel` 15, `--text-body` 13, `--text-meta` 11,
+> `--text-mono` 12,5) au même titre que les couleurs, et pour la même raison :
+> un littéral dans le CSS est un bug (§1).
+>
+> S'y ajoute `ui_scale` dans `settings.toml`, **qui n'est pas un token de
+> design** : elle ne touche pas aux proportions que cette section fixe, elle dit
+> à quelle taille l'ensemble est dessiné sur un écran donné. Appliquée une seule
+> fois, à la racine, par `zoom` — donc les seize dimensions de composants qui
+> n'ont pas de token à elles suivent au lieu de s'écarter. Défaut 1,15 ; `1.0`
+> donne exactement ce que dessinent les maquettes.
+>
+> `interline` rejoint le tableau §7 : 17px en compact, 20px en confortable.
+> Board 03 énonce les deux valeurs, et un nombre que les maquettes énoncent est
+> un token, pas une constante de composant.
 
 **Usage de la monospace** : tout le Git littéral — hashes, noms de branches, chemins de
 fichiers, contenu de diff, messages de commit en vue détail, URLs de remotes.

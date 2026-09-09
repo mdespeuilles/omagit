@@ -19,11 +19,13 @@ import {
   stageHunk,
   stagePicked,
 } from "../state";
+import { lineHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
-/// Board 03's interline: 17px compact, 20px comfortable. Fixed rows are what
-/// lets the list place them without measuring any of them.
-const ROW_HEIGHT = 18;
+/// Board 03's interline, from the density: 17px compact, 20px comfortable.
+/// Fixed rows are what lets the list place them without measuring any of them —
+/// and reading the token is what makes the density actually move them.
+const ROW_HEIGHT = lineHeight();
 
 const rows = computed(() => (app.diff.status === "ready" ? app.diff.value.rows : []));
 const staged = computed(() => app.selected?.staged ?? false);

@@ -11,9 +11,10 @@ import { when, exact } from "../format";
 import { app, compareWith, markCompareFrom, moreHistory, selectCommit, setQuery } from "../state";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
+import { rowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
-const ROW_HEIGHT = 24;
+const ROW_HEIGHT = rowHeight();
 
 const rows = computed(() => (app.history.status === "ready" ? app.history.value : []));
 

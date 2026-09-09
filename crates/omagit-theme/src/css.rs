@@ -12,9 +12,9 @@
 
 use crate::color::Rgb;
 use crate::theme::Theme;
-use crate::tokens::{Density, DensityMode, Tokens, font};
+use crate::tokens::{Density, DensityMode, Tokens, font, text};
 
-/// Every token, as `--name: #rrggbb;` declarations for a `:root` block.
+/// Every token, as `--name: value;` declarations for a `:root` block.
 ///
 /// Returned as a body rather than a whole rule so the caller decides where it
 /// goes — a `<style>` element at start-up, or a `style` attribute on the root
@@ -33,10 +33,36 @@ pub fn variables(theme: &Theme, density: DensityMode) -> String {
     for (name, value) in geometry(&metrics) {
         push(&mut css, name, &format!("{value}px"));
     }
+    for (name, value) in type_scale() {
+        push(&mut css, name, &format!("{value}px"));
+    }
 
     push(&mut css, "font-ui", &stack(font::UI));
     push(&mut css, "font-mono", &stack(font::MONO));
     css
+}
+
+/// The same, plus how large to draw the whole thing.
+///
+/// The lengths are **not** multiplied. Every number here is the design's, and a
+/// token whose value depended on a display setting would stop being one — the
+/// next person reading `--text-body` would have no way to tell 13 from 15
+/// without knowing what the user had chosen.
+///
+/// Instead the factor is emitted on its own, and the front end applies it once,
+/// at the root, with `zoom`. One place, one mechanism, and every fixed pixel in
+/// the stylesheet scales with the tokens rather than drifting away from them —
+/// which is what multiplying only the tokens would have done to the sixteen
+/// component dimensions that have no token of their own.
+pub fn scaled(theme: &Theme, density: DensityMode, scale: f32) -> String {
+    let mut css = variables(theme, density);
+    push(&mut css, "scale", &format!("{}", round(scale)));
+    css
+}
+
+/// Two decimals: a scale is a preference, not a measurement.
+fn round(value: f32) -> f32 {
+    (value * 100.0).round() / 100.0
 }
 
 fn colours(t: &Tokens) -> [(&'static str, Rgb); 18] {
@@ -76,7 +102,7 @@ fn lanes(theme: &Theme) -> Vec<(String, Rgb)> {
     .collect()
 }
 
-fn geometry(d: &Density) -> [(&'static str, f32); 6] {
+fn geometry(d: &Density) -> [(&'static str, f32); 7] {
     [
         ("row-height", d.row_height),
         ("row-padding", d.row_padding),
@@ -84,6 +110,20 @@ fn geometry(d: &Density) -> [(&'static str, f32); 6] {
         ("pad", d.pad),
         ("control-height", d.control_height),
         ("header-height", d.header_height),
+        ("line-height", d.line_height),
+    ]
+}
+
+/// The type scale of DESIGN-TOKENS §8, so a stylesheet never has to name a
+/// size. It does not change with density: the two modes change how much room
+/// things have, not how big the letters are.
+fn type_scale() -> [(&'static str, f32); 5] {
+    [
+        ("text-title", text::TITLE),
+        ("text-panel", text::PANEL),
+        ("text-body", text::BODY),
+        ("text-meta", text::META),
+        ("text-mono", text::MONO),
     ]
 }
 
@@ -123,10 +163,15 @@ mod tests {
     fn every_token_reaches_the_stylesheet() {
         let css = variables(&embedded::tokyo_night(), DensityMode::Compact);
         // The eighteen colours, the eight lanes, the six metrics, two fonts.
-        assert_eq!(css.matches("--").count(), 18 + 8 + 6 + 2);
+        assert_eq!(css.matches("--").count(), 18 + 8 + 7 + 5 + 2);
         assert!(css.contains("--surface-raised: #283457;"));
         assert!(css.contains("--lane-0: #"));
         assert!(css.contains("--row-height: 26px;"));
+        assert!(css.contains("--line-height: 17px;"));
+        // The scale is the same in both modes: density changes how much room
+        // things have, not how big the letters are.
+        assert!(css.contains("--text-body: 13px;"));
+        assert!(css.contains("--text-mono: 12.5px;"));
     }
 
     #[test]
@@ -152,5 +197,47 @@ mod tests {
             css.contains("'JetBrains Mono'"),
             "an unquoted two-word family is a CSS syntax error"
         );
+    }
+}
+
+#[cfg(test)]
+mod scaling {
+    use super::*;
+    use crate::theme::Theme;
+
+    fn tokyo() -> Theme {
+        crate::embedded::catalogue()
+            .iter()
+            .find(|theme| theme.name == "Tokyo Night")
+            .expect("the catalogue has Tokyo Night")
+            .clone()
+    }
+
+    #[test]
+    fn the_tokens_are_the_designs_numbers_whatever_the_scale() {
+        // A token whose value depended on a display setting would stop being
+        // one: the next person reading `--text-body` would have no way to tell
+        // 13 from 15 without knowing what the user had chosen.
+        for scale in [1.0, 1.15, 2.0] {
+            let css = scaled(&tokyo(), DensityMode::Comfortable, scale);
+            assert!(css.contains("--text-body: 13px;"), "at {scale}: {css}");
+            assert!(css.contains("--text-mono: 12.5px;"), "at {scale}");
+            assert!(css.contains("--row-height: 32px;"), "at {scale}");
+            assert!(css.contains("--line-height: 20px;"), "at {scale}");
+        }
+    }
+
+    #[test]
+    fn the_scale_crosses_on_its_own() {
+        let css = scaled(&tokyo(), DensityMode::Comfortable, 1.15);
+        assert!(css.contains("--scale: 1.15;"), "{css}");
+        // And the colours are untouched by any of it.
+        assert!(css.contains("--surface-raised: #283457;"));
+    }
+
+    #[test]
+    fn a_scale_is_a_preference_not_a_measurement() {
+        let css = scaled(&tokyo(), DensityMode::Comfortable, 1.0 / 3.0);
+        assert!(css.contains("--scale: 0.33;"), "{css}");
     }
 }

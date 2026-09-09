@@ -18,9 +18,10 @@ import {
   stageFile,
   unstagedCount,
 } from "../state";
+import { rowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
-const ROW_HEIGHT = 24;
+const ROW_HEIGHT = rowHeight();
 
 const rows = computed(() => (app.status.status === "ready" ? app.status.value : []));
 const staged = computed(() => stagedCount());

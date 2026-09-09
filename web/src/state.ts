@@ -13,6 +13,7 @@
 
 import { reactive, readonly } from "vue";
 import { open } from "@tauri-apps/plugin-dialog";
+import { measure } from "./metrics";
 import {
   api,
   isFiltered,
@@ -181,6 +182,9 @@ export async function boot(): Promise<void> {
   // Before anything is drawn: a frame rendered without the tokens shows the
   // browser's defaults, and every rule in `style.css` reads one of them.
   document.documentElement.setAttribute("style", theme);
+  // The metrics have to be read *after* the tokens are on the element and
+  // before any list decides how many rows fit.
+  measure();
   state.platform = platform;
   state.gitUnusable = gitUnusable;
   state.repositories = repositories;

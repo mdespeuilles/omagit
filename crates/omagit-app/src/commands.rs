@@ -40,7 +40,7 @@ pub fn theme(state: State<'_, AppState>) -> String {
     // is asked for by the front end and passed back in at M6b's next step.
     let sources = omagit_theme::Sources::default();
     let resolved = sources.resolve(&settings.theme);
-    omagit_theme::css::variables(&resolved.theme, settings.density)
+    omagit_theme::css::scaled(&resolved.theme, settings.density, settings.scale())
 }
 
 /// Whether writing is possible at all, and why not when it is not.

@@ -75,6 +75,11 @@ pub struct Density {
     pub pad: f32,
     pub control_height: f32,
     pub header_height: f32,
+    /// One line of a diff. Not in DESIGN-TOKENS §7's table, which lists what
+    /// the two modes change about *rows*; board 03 states both values in its
+    /// own annotation — "interline 17px compact, 20px confortable" — and a
+    /// number the boards state is a token, not a component's constant.
+    pub line_height: f32,
 }
 
 impl Density {
@@ -85,6 +90,7 @@ impl Density {
         pad: 6.0,
         control_height: 22.0,
         header_height: 20.0,
+        line_height: 17.0,
     };
 
     pub const COMFORTABLE: Self = Self {
@@ -94,6 +100,7 @@ impl Density {
         pad: 10.0,
         control_height: 26.0,
         header_height: 24.0,
+        line_height: 20.0,
     };
 
     /// The accessibility floor held in both modes: a click target is never
@@ -105,9 +112,14 @@ impl Density {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DensityMode {
-    /// The default on Omarchy, where the app lives beside a dense terminal.
-    #[default]
+    /// Beside a dense terminal, which is where the app lives on Omarchy.
     Compact,
+    /// The default, and what the boards are drawn at: board 03's reference
+    /// frame is labelled "densité confortable", so this is what the design
+    /// *looks like*. Compact was the default here for a while on the reasoning
+    /// that Omarchy is dense — which is true of the desktop and was not a
+    /// reason to ship the tighter of the two before anyone had asked for it.
+    #[default]
     Comfortable,
 }
 
@@ -118,6 +130,29 @@ impl DensityMode {
             DensityMode::Comfortable => Density::COMFORTABLE,
         }
     }
+}
+
+/// The type scale of DESIGN-TOKENS §8 and board 01 §3.
+///
+/// Sizes are tokens for the same reason colours are: a literal in the CSS is a
+/// bug (§1). It is not a rule anybody keeps by intention — this project drifted
+/// to 10.5px and 11.5px in a dozen places, sizes that are in no scale, simply
+/// by writing whatever looked right next to the thing beside it.
+///
+/// Six entries and no more. A screen that needs a seventh size needs a reason
+/// first.
+pub mod text {
+    /// A dialog's title. 600.
+    pub const TITLE: f32 = 16.0;
+    /// A panel's title. 500.
+    pub const PANEL: f32 = 15.0;
+    /// The interface's body, and the app's base. 400, or 500 when it names
+    /// something — a file, a branch.
+    pub const BODY: f32 = 13.0;
+    /// A section header, a date, a counter. 400 or 500.
+    pub const META: f32 = 11.0;
+    /// Every Git literal: hashes, branches, paths, diff content, URLs.
+    pub const MONO: f32 = 12.5;
 }
 
 /// Typography — DESIGN-TOKENS §8. The mock-ups list `'Segoe UI Variable Text'`
