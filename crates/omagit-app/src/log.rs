@@ -18,9 +18,9 @@
 use std::collections::HashMap;
 
 use omagit_git::graph::{Graph, Row};
-use omagit_git::history::{Commit, HistoryQuery, Tips, Walk};
+use omagit_git::history::{Commit, Filter, HistoryQuery, Tips, Walk};
 use omagit_git::refs::Refs;
-use omagit_git::{Cancel, ObjectId, Repository, Result};
+use omagit_git::{Cancel, ObjectId, RepoPath, Repository, Result};
 
 /// How many commits a page holds.
 ///
@@ -32,16 +32,28 @@ use omagit_git::{Cancel, ObjectId, Repository, Result};
 pub const PAGE: usize = 500;
 
 /// What the front end asked to see.
+///
+/// Every field defaults, so the plain view is `{}` and the front end does not
+/// have to know the names of things it is not asking for.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct Query {
     /// Every branch and tag rather than just `HEAD`.
-    #[serde(default)]
     pub all: bool,
     /// Follow only the first parent of each merge — the "hide merged branches"
     /// view.
-    #[serde(default)]
     pub first_parent: bool,
+    /// SPEC §11's filters. Empty strings arrive from a text box that has been
+    /// typed into and cleared again, and mean "no filter" rather than "match
+    /// the empty string" — which every commit would.
+    pub author: String,
+    pub text: String,
+    pub path: String,
+    /// Seconds since the epoch, inclusive at both ends. Zero is "unset": no
+    /// repository's history reaches 1970, and an `Option<i64>` on the wire
+    /// would mean the front end sending `null` for a date box nobody filled in.
+    pub since: i64,
+    pub until: i64,
 }
 
 impl Query {
@@ -49,14 +61,39 @@ impl Query {
         HistoryQuery {
             tips: if self.all { Tips::All } else { Tips::Head },
             first_parent: self.first_parent,
+            filter: self.filter(),
         }
     }
+
+    fn filter(&self) -> Filter {
+        Filter {
+            author: some(&self.author),
+            text: some(&self.text),
+            path: some(&self.path).map(|path| RepoPath::from_bytes(path.into_bytes())),
+            since: (self.since > 0).then_some(self.since),
+            until: (self.until > 0).then_some(self.until),
+        }
+    }
+
+    /// Whether anything is being filtered out.
+    pub fn is_filtered(&self) -> bool {
+        !self.filter().is_empty()
+    }
+}
+
+/// A box that has been typed into and cleared again is not a filter.
+fn some(field: &str) -> Option<String> {
+    let trimmed = field.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
 /// A walk in progress, and everything that has to survive between its pages.
 pub struct Session {
     walk: Walk,
     graph: Graph,
+    /// Whether a filter is narrowing the rows, and so whether the topology
+    /// drawn beside them would be the repository's.
+    filtered: bool,
     /// Which references point at which commit, read once when the walk starts.
     ///
     /// Once, not per page: `Refs::load` computes ahead/behind for every branch,
@@ -97,6 +134,9 @@ pub struct HistoryRow {
     /// How many lanes are open across this row, so the gutter can be sized
     /// without a second pass.
     pub width: usize,
+    /// Whether the five fields above mean anything. False under a filter, where
+    /// the rows are a search result rather than a history.
+    pub graph: bool,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -115,18 +155,26 @@ impl Session {
         Ok(Self {
             walk,
             graph: Graph::new(),
+            filtered: query.is_filtered(),
             labels: labels(repo, cancel)?,
         })
     }
 
     /// The next page, with its graph rows.
+    ///
+    /// **No graph while a filter is on.** The lane algorithm places a commit
+    /// relative to the commits around it, and under a filter those are not its
+    /// parents and children — they are the next things that matched. A line
+    /// drawn between two of them would claim a relationship whose only content
+    /// is the search. A filtered history is a search result, so it is a flat
+    /// list, exactly as `git log --author=…` prints one.
     pub fn next(&mut self, limit: usize, cancel: &Cancel) -> Result<Page> {
         let commits = self.walk.next_page(limit, cancel)?;
         let rows = commits
             .iter()
             .map(|commit| {
-                let row = self.graph.push(commit);
-                self.row(commit, &row)
+                let row = (!self.filtered).then(|| self.graph.push(commit));
+                self.row(commit, row.as_ref())
             })
             .collect();
         Ok(Page {
@@ -135,7 +183,7 @@ impl Session {
         })
     }
 
-    fn row(&self, commit: &Commit, row: &Row) -> HistoryRow {
+    fn row(&self, commit: &Commit, row: Option<&Row>) -> HistoryRow {
         HistoryRow {
             id: commit.id.into(),
             summary: commit.summary.clone(),
@@ -143,11 +191,12 @@ impl Session {
             when: commit.author.time.seconds,
             merge: commit.is_merge(),
             labels: self.labels.get(&commit.id).cloned().unwrap_or_default(),
-            lane: row.lane,
-            passing: row.passing.clone(),
-            incoming: row.incoming.clone(),
-            outgoing: row.outgoing.clone(),
-            width: row.width,
+            lane: row.map_or(0, |row| row.lane),
+            passing: row.map(|row| row.passing.clone()).unwrap_or_default(),
+            incoming: row.map(|row| row.incoming.clone()).unwrap_or_default(),
+            outgoing: row.map(|row| row.outgoing.clone()).unwrap_or_default(),
+            width: row.map_or(0, |row| row.width),
+            graph: row.is_some(),
         }
     }
 }
@@ -211,13 +260,33 @@ mod tests {
 
     #[test]
     fn the_wire_shape_is_the_one_ipc_ts_sends() {
-        let query: Query = serde_json::from_str(r#"{"all":true,"firstParent":true}"#)
-            .expect("the front end's shape");
+        let query: Query = serde_json::from_str(
+            r#"{"all":true,"firstParent":true,"author":"marek","text":"","path":"src","since":1767225600,"until":0}"#,
+        )
+        .expect("the front end's shape");
         assert!(query.all && query.first_parent);
+        assert!(query.is_filtered());
 
-        // Both fields default, so the front end can ask for the plain view with
-        // an empty object rather than having to know the names.
+        // Every field defaults, so the front end can ask for the plain view
+        // with an empty object rather than having to know the names.
         let empty: Query = serde_json::from_str("{}").expect("an empty query");
         assert_eq!(empty, Query::default());
+        assert!(!empty.is_filtered());
+    }
+
+    #[test]
+    fn a_box_typed_into_and_cleared_again_is_not_a_filter() {
+        // It arrives as an empty string, and an empty substring matches every
+        // commit there is — so a cleared box would go on filtering nothing out
+        // while the screen said it was filtering.
+        let cleared: Query =
+            serde_json::from_str(r#"{"author":"","text":"   "}"#).expect("a cleared filter box");
+        assert!(!cleared.is_filtered());
+    }
+
+    #[test]
+    fn a_zero_date_is_an_unset_date() {
+        let unset: Query = serde_json::from_str(r#"{"since":0,"until":0}"#).expect("no dates");
+        assert!(!unset.is_filtered());
     }
 }

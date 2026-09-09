@@ -70,11 +70,37 @@ export type HistoryRow = {
   incoming: number[];
   outgoing: number[];
   width: number;
+  /// Whether the five fields above mean anything. False under a filter, where
+  /// the rows are a search result rather than a history.
+  graph: boolean;
 };
 
 export type Page = { rows: HistoryRow[]; done: boolean };
 
-export type HistoryQuery = { all: boolean; firstParent: boolean };
+export type HistoryQuery = {
+  all: boolean;
+  firstParent: boolean;
+  /// SPEC §11's filters. Empty means "not filtering" — a box that has been
+  /// typed into and cleared again must not go on narrowing anything.
+  author: string;
+  text: string;
+  path: string;
+  /// Seconds since the epoch, inclusive; zero is unset.
+  since: number;
+  until: number;
+};
+
+/// Whether a query narrows anything, which is also what decides whether the
+/// rows carry a graph.
+export function isFiltered(query: HistoryQuery): boolean {
+  return (
+    query.author.trim() !== "" ||
+    query.text.trim() !== "" ||
+    query.path.trim() !== "" ||
+    query.since > 0 ||
+    query.until > 0
+  );
+}
 
 export type Who = { name: string; email: string; when: number; offset: number };
 

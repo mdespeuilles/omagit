@@ -29,6 +29,11 @@ pub struct TestRepo {
     clock: std::cell::Cell<i64>,
     /// When set, the clock stops and every commit shares one timestamp.
     frozen: std::cell::Cell<bool>,
+    /// Who the next commits are by. The identity is passed in the environment
+    /// rather than through `git config`, so that a developer's own settings
+    /// cannot leak in — which also means `git config user.name` in a test does
+    /// nothing, and this is the way to change it.
+    author: std::cell::RefCell<(String, String)>,
 }
 
 /// 2026-01-01T00:00:00Z — a fixed epoch, so a failure message shows the same
@@ -54,6 +59,10 @@ impl TestRepo {
             path,
             clock: std::cell::Cell::new(EPOCH),
             frozen: std::cell::Cell::new(false),
+            author: std::cell::RefCell::new((
+                "Test Author".to_owned(),
+                "author@omagit.test".to_owned(),
+            )),
         };
         repo.git(args);
         repo.git(&["config", "user.name", "Test Author"]);
@@ -78,6 +87,11 @@ impl TestRepo {
     /// ordinary: a scripted import, a rebase, `git commit` twice in one second.
     pub fn freeze_clock(&self) {
         self.frozen.set(true);
+    }
+
+    /// Who the commits made after this are by.
+    pub fn set_author(&self, name: &str, email: &str) {
+        *self.author.borrow_mut() = (name.to_owned(), email.to_owned());
     }
 
     /// Open it the way the app would.
@@ -121,8 +135,8 @@ impl TestRepo {
             .env("XDG_CONFIG_HOME", self.path.join(".config"))
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .env("GIT_AUTHOR_NAME", "Test Author")
-            .env("GIT_AUTHOR_EMAIL", "author@omagit.test")
+            .env("GIT_AUTHOR_NAME", &self.author.borrow().0)
+            .env("GIT_AUTHOR_EMAIL", &self.author.borrow().1)
             .env("GIT_COMMITTER_NAME", "Test Committer")
             .env("GIT_COMMITTER_EMAIL", "committer@omagit.test")
             .env("GIT_AUTHOR_DATE", &time)

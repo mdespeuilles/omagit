@@ -961,3 +961,57 @@ button.danger.solid:hover {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* ── The history filters ─────────────────────────────────────────────────── */
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 4px var(--pad);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.filter-box,
+.filter-date {
+  min-width: 0;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: inherit;
+  user-select: text;
+}
+.filter-box {
+  flex: 1 1 0;
+}
+.filter-box.wide {
+  flex: 2 1 0;
+}
+.filter-box::placeholder {
+  color: var(--text-dim);
+}
+.filter-date {
+  flex: none;
+  width: 108px;
+  color: var(--text-muted);
+}
+
+.filters-note {
+  margin: 0;
+  padding: 4px var(--pad);
+  flex: none;
+  font-size: 10px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+/* A filtered row has no topology to draw, but the column still has to line up
+   with the rows that do. */
+.gutter-none {
+  width: 20px;
+  flex: none;
+}

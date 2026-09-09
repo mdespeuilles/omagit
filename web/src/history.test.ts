@@ -201,7 +201,15 @@ describe("changing the query", () => {
     expect(rows(state)).toHaveLength(3);
     const restart = backend.current.calls.filter((call) => call.command === "history");
     expect(restart).toHaveLength(2);
-    expect(restart[1]!.args["query"]).toEqual({ all: true, firstParent: false });
+    expect(restart[1]!.args["query"]).toEqual({
+      all: true,
+      firstParent: false,
+      author: "",
+      text: "",
+      path: "",
+      since: 0,
+      until: 0,
+    });
   });
 
   it("drops a page that belonged to the query before it changed", async () => {
@@ -267,5 +275,56 @@ describe("the commit detail", () => {
     await state.openRepository("/repo");
     expect(state.app.history.status).toBe("idle");
     expect(state.app.commit.status).toBe("idle");
+  });
+});
+
+describe("filtering", () => {
+  it("sends what was typed and restarts the walk", async () => {
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+
+    await state.setQuery({ author: "marek" });
+    await settled(state);
+
+    const restart = backend.current.calls.filter((call) => call.command === "history");
+    expect(restart).toHaveLength(2);
+    expect(restart[1]!.args["query"]).toMatchObject({ author: "marek" });
+    expect(state.isFilteringHistory()).toBe(true);
+  });
+
+  it("stops filtering when the box is cleared", async () => {
+    // An empty box is not a filter. If it were, clearing one would leave the
+    // screen filtering on the empty string — which matches everything, so
+    // nothing would look wrong while the graph stayed hidden.
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+
+    await state.setQuery({ text: "commit" });
+    await settled(state);
+    expect(state.isFilteringHistory()).toBe(true);
+
+    await state.setQuery({ text: "   " });
+    await settled(state);
+    expect(state.isFilteringHistory()).toBe(false);
+  });
+
+  it("clears the filters without touching which branches are walked", async () => {
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+
+    await state.setQuery({ all: true, firstParent: true, author: "marek", path: "src" });
+    await settled(state);
+
+    await state.clearFilters();
+    await settled(state);
+
+    expect(state.app.query.author).toBe("");
+    expect(state.app.query.path).toBe("");
+    // Which history to look at is a different question from what to look for.
+    expect(state.app.query.all).toBe(true);
+    expect(state.app.query.firstParent).toBe(true);
   });
 });

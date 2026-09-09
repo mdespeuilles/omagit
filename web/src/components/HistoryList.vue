@@ -10,6 +10,7 @@ import { computed } from "vue";
 import { when, exact } from "../format";
 import { app, moreHistory, selectCommit, setQuery } from "../state";
 import GraphGutter from "./GraphGutter.vue";
+import HistoryFilters from "./HistoryFilters.vue";
 import VirtualList from "./VirtualList.vue";
 
 const ROW_HEIGHT = 24;
@@ -40,6 +41,7 @@ const rows = computed(() => (app.history.status === "ready" ? app.history.value 
         Tronc
       </label>
     </header>
+    <HistoryFilters />
 
     <p v-if="app.history.status === 'idle'" class="pane-empty">Historique non chargé</p>
     <p v-else-if="app.history.status === 'loading'" class="pane-empty">Lecture de l'historique…</p>
@@ -62,7 +64,8 @@ const rows = computed(() => (app.history.status === "ready" ? app.history.value 
         }"
         @click="selectCommit(item.id.full)"
       >
-        <GraphGutter :row="item" :height="ROW_HEIGHT" />
+        <GraphGutter v-if="item.graph" :row="item" :height="ROW_HEIGHT" />
+        <span v-else class="gutter-none" />
         <span class="commit-author">{{ item.author }}</span>
         <span
           v-for="label in item.labels"

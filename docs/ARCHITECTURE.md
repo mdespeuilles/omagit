@@ -536,6 +536,52 @@ eligible at once — which is what a tie is — any order among them is a valid
 them in. `walks_head_in_the_same_order_as_git` compares sequences, on a fixture
 with distinct timestamps where there is only one answer.
 
+### 2.25 A filtered history is a search result, so it has no graph
+
+SPEC §11's filters — author, message, path, date range — narrow what is
+*shown*, never what is *walked*. The topology is the repository's and does not
+change because someone typed a name into a box, so a filtered walk visits the
+same commits in the same order and skips the ones that do not match. That is
+also why a page can come back short while the walk still has more, and why
+`is_done` rather than a short page is what says the end has been reached.
+
+**And the gutter goes away while a filter is on.** The lane algorithm places a
+commit relative to the commits around it; under a filter those are not its
+parents and children, they are the next things that matched. A line drawn
+between two of them would claim a relationship whose only content is the search.
+`git log --author=…` prints a list rather than a graph for the same reason, and
+the screen says so out loud — a gutter that vanished without an explanation
+reads as a bug.
+
+Three decisions inside the filters that are not Git's, each because a filter box
+is not a command line:
+
+* **Substrings, not regular expressions.** Git's `--author` is a regex over the
+  whole ident line. Someone typing `marek` means "commits by Marek", so the
+  match is a case-insensitive substring, over the name *and* the address,
+  because people search by both.
+* **The date range matches the author date**, which is the date the row shows.
+  Git's `--since` uses the committer date and is right to — it asks when the
+  commit entered this history — but a range that excluded a row displaying a
+  date inside it would be indefensible.
+* **An empty box is not a filter.** It arrives as an empty string, and an empty
+  substring matches every commit there is; a cleared box would go on filtering
+  nothing out while the screen said it was filtering.
+
+The path filter is TREESAME, Git's own rule: a commit is kept when the object at
+that path differs from the same path in *every* parent. Resolving one path is a
+walk down the tree's spine — a handful of object reads — rather than a full tree
+diff, which is what makes it affordable once per commit. A merge that matches
+one of its parents is dropped: it only joined two lines that had already changed
+the file, and showing it would answer "who touched this" with a commit that did
+not. `a_path_filter_keeps_what_git_log_keeps` compares against `git log -- path`
+directly.
+
+**What this does not do** is Git's history simplification — rewriting parents so
+the kept commits form a connected graph. That is what would let a path-filtered
+view keep its gutter, and it is a separate piece of work with its own
+pathological cases.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -706,10 +752,12 @@ window:
   structural fix for the GPUI bug: no screen can take the way out away, because
   no screen draws it.
 
+- **The filters of SPEC §11** — author, message, path, date range — over the
+  walk, with the graph off while one is on (§2.25).
+
 Not yet ported: the Repositories screen (the sidebar lists what the library
-holds, but nothing adds to it from the window), and M6's filters — branch,
-author, path, date range, text — and its A ↔ B comparison, for which
-`Diff::between` already exists. The Linux measurement §2.20 calls unknown is
+holds, but nothing adds to it from the window), and M6's A ↔ B comparison, for
+which `Diff::between` already exists. The Linux measurement §2.20 calls unknown is
 still unknown — it needs one run of `scripts/dev.sh` there.
 
 ## 5. Risks

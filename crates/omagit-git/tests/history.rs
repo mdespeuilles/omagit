@@ -3,7 +3,8 @@
 
 mod support;
 
-use omagit_git::{HistoryQuery, ObjectId, Walk};
+use omagit_git::history::Filter;
+use omagit_git::{HistoryQuery, ObjectId, RepoPath, Walk};
 use support::{TestRepo, never, scripted};
 
 /// What `git log` says, as the reference to compare against.
@@ -297,4 +298,210 @@ fn a_tie_is_broken_the_same_way_on_every_page_size() {
             "a page size of {page} produced a different history"
         );
     }
+}
+
+// ── Filters (SPEC §11) ──────────────────────────────────────────────────────
+
+fn filtered(fixture: &TestRepo, filter: Filter) -> Vec<String> {
+    let repo = fixture.open();
+    let mut walk =
+        Walk::new(&repo, HistoryQuery::head().filtered(filter), &never()).expect("a walk");
+    let mut summaries = Vec::new();
+    loop {
+        let page = walk.next_page(3, &never()).expect("a page");
+        if walk.is_done() {
+            summaries.extend(page.into_iter().map(|commit| commit.summary));
+            break;
+        }
+        summaries.extend(page.into_iter().map(|commit| commit.summary));
+    }
+    summaries
+}
+
+/// A history with two authors, two files and three days between the ends.
+fn mixed() -> TestRepo {
+    let fixture = TestRepo::new();
+    fixture.commit_file("README.md", "one\n", "docs: first pass");
+    fixture.commit_file("src/lib.rs", "fn one() {}\n", "core: add lib");
+    fixture.set_author("Marek Kowal", "marek@omagit.test");
+    fixture.commit_file(
+        "src/lib.rs",
+        "fn one() {}\nfn two() {}\n",
+        "core: extend lib",
+    );
+    fixture.commit_file("README.md", "one\ntwo\n", "docs: second pass");
+    fixture
+}
+
+#[test]
+fn an_author_filter_matches_the_name_or_the_address_either_case() {
+    let fixture = mixed();
+    let by_marek = |needle: &str| {
+        filtered(
+            &fixture,
+            Filter {
+                author: Some(needle.to_owned()),
+                ..Filter::default()
+            },
+        )
+    };
+
+    // The name, the address, and neither spelled the way it is stored: a filter
+    // box is not a regular-expression prompt.
+    let expected = vec![
+        "docs: second pass".to_owned(),
+        "core: extend lib".to_owned(),
+    ];
+    assert_eq!(by_marek("Marek"), expected);
+    assert_eq!(by_marek("marek"), expected);
+    assert_eq!(by_marek("marek@omagit"), expected);
+    assert_eq!(by_marek("KOWAL"), expected);
+    assert!(by_marek("nobody").is_empty());
+}
+
+#[test]
+fn a_text_filter_reaches_the_body_as_well_as_the_subject() {
+    let fixture = TestRepo::new();
+    fixture.commit_file("a.txt", "one\n", "core: something");
+    fixture.write("b.txt", "two\n");
+    fixture.add("b.txt");
+    fixture.git(&["commit", "-m", "docs: something else", "-m", "Refs #412"]);
+
+    let issue = filtered(
+        &fixture,
+        Filter {
+            text: Some("refs #412".to_owned()),
+            ..Filter::default()
+        },
+    );
+    assert_eq!(issue, vec!["docs: something else".to_owned()]);
+}
+
+#[test]
+fn a_date_range_matches_the_date_the_row_shows() {
+    // The author date, not the committer date Git's `--since` uses. A range
+    // that excluded a row displaying a date inside it would be indefensible.
+    let fixture = TestRepo::new();
+    fixture.commit_days_ago(30, "old.txt", "old\n", "a month ago");
+    fixture.commit_days_ago(2, "new.txt", "new\n", "the day before yesterday");
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("a clock set after 1970")
+        .as_secs() as i64;
+
+    let recent = filtered(
+        &fixture,
+        Filter {
+            since: Some(now - 7 * 86_400),
+            ..Filter::default()
+        },
+    );
+    assert_eq!(recent, vec!["the day before yesterday".to_owned()]);
+
+    let ancient = filtered(
+        &fixture,
+        Filter {
+            until: Some(now - 7 * 86_400),
+            ..Filter::default()
+        },
+    );
+    assert_eq!(ancient, vec!["a month ago".to_owned()]);
+}
+
+#[test]
+fn a_path_filter_keeps_what_git_log_keeps() {
+    let fixture = mixed();
+    let ours = filtered(
+        &fixture,
+        Filter {
+            path: Some(RepoPath::from_bytes(b"src/lib.rs".to_vec())),
+            ..Filter::default()
+        },
+    );
+    let theirs: Vec<String> = fixture
+        .git(&["log", "--format=%s", "--", "src/lib.rs"])
+        .lines()
+        .map(ToOwned::to_owned)
+        .collect();
+    assert_eq!(ours, theirs);
+    assert_eq!(ours, vec!["core: extend lib", "core: add lib"]);
+}
+
+#[test]
+fn a_path_filter_takes_a_directory() {
+    let fixture = mixed();
+    let ours = filtered(
+        &fixture,
+        Filter {
+            path: Some(RepoPath::from_bytes(b"src".to_vec())),
+            ..Filter::default()
+        },
+    );
+    assert_eq!(ours, vec!["core: extend lib", "core: add lib"]);
+}
+
+#[test]
+fn a_merge_that_changed_nothing_at_the_path_is_dropped() {
+    // Git calls it TREESAME: a merge that matches one of its parents at the
+    // path only joined two lines that had already changed it, and showing it
+    // would answer "who touched this file" with a commit that did not.
+    let fixture = TestRepo::new();
+    fixture.commit_file("watched.txt", "one\n", "add watched");
+    fixture.branch("feature");
+    fixture.commit_file("other.txt", "side\n", "side: unrelated");
+    fixture.checkout("main");
+    fixture.commit_file("elsewhere.txt", "main\n", "main: unrelated");
+    fixture.git(&["merge", "--no-ff", "-m", "merge feature", "feature"]);
+
+    let ours = filtered(
+        &fixture,
+        Filter {
+            path: Some(RepoPath::from_bytes(b"watched.txt".to_vec())),
+            ..Filter::default()
+        },
+    );
+    assert_eq!(ours, vec!["add watched"], "the merge touched nothing here");
+}
+
+#[test]
+fn two_filters_mean_both() {
+    let fixture = mixed();
+    let both = filtered(
+        &fixture,
+        Filter {
+            author: Some("Marek".to_owned()),
+            path: Some(RepoPath::from_bytes(b"src/lib.rs".to_vec())),
+            ..Filter::default()
+        },
+    );
+    assert_eq!(both, vec!["core: extend lib"]);
+}
+
+#[test]
+fn a_filter_narrows_what_is_shown_and_not_what_is_walked() {
+    // The page comes back short while the walk still has more, which is why
+    // `is_done` rather than a short page is what says the end has been reached.
+    let fixture = mixed();
+    let repo = fixture.open();
+    let mut walk = Walk::new(
+        &repo,
+        HistoryQuery::head().filtered(Filter {
+            author: Some("Marek".to_owned()),
+            ..Filter::default()
+        }),
+        &never(),
+    )
+    .expect("a walk");
+
+    let page = walk.next_page(3, &never()).expect("a page");
+    assert_eq!(page.len(), 2, "only two of the four commits are Marek's");
+    assert!(walk.is_done(), "and the walk saw all four");
+}
+
+#[test]
+fn an_empty_filter_changes_nothing() {
+    let fixture = mixed();
+    assert!(Filter::default().is_empty());
+    assert_eq!(filtered(&fixture, Filter::default()).len(), 4);
 }

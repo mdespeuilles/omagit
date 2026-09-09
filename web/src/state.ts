@@ -14,6 +14,7 @@
 import { reactive, readonly } from "vue";
 import {
   api,
+  isFiltered,
   type CommitDetail,
   type DiffRow,
   type HistoryQuery,
@@ -132,7 +133,7 @@ const state = reactive<State>({
   history: idle(),
   historyDone: false,
   historyLoading: false,
-  query: { all: false, firstParent: false },
+  query: { all: false, firstParent: false, author: "", text: "", path: "", since: 0, until: 0 },
   commit: idle(),
   commitFile: null,
 });
@@ -314,6 +315,19 @@ export async function setQuery(query: Partial<HistoryQuery>): Promise<void> {
   await loadHistory();
 }
 
+/// Clear every filter, leaving the two view switches alone.
+///
+/// They are different things: `all` and `firstParent` say which history to
+/// look at, the rest say what to look for in it. A "clear" that also reset the
+/// branch scope would undo a choice nobody asked to undo.
+export async function clearFilters(): Promise<void> {
+  await setQuery({ author: "", text: "", path: "", since: 0, until: 0 });
+}
+
+export function isFilteringHistory(): boolean {
+  return isFiltered(state.query);
+}
+
 export async function selectCommit(id: string): Promise<void> {
   const path = state.open;
   if (!path) return;
@@ -369,7 +383,15 @@ export async function selectCommitFile(file: string): Promise<void> {
 }
 
 function sameQuery(a: HistoryQuery, b: HistoryQuery): boolean {
-  return a.all === b.all && a.firstParent === b.firstParent;
+  return (
+    a.all === b.all &&
+    a.firstParent === b.firstParent &&
+    a.author === b.author &&
+    a.text === b.text &&
+    a.path === b.path &&
+    a.since === b.since &&
+    a.until === b.until
+  );
 }
 
 export function toggleJournal(): void {

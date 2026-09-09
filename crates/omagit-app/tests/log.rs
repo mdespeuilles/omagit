@@ -91,7 +91,7 @@ fn a_branch_keeps_its_lane_across_a_page_boundary() {
 
     let query = Query {
         all: true,
-        first_parent: false,
+        ..Query::default()
     };
     let mut paged = Session::start(&repo.open(), query.clone(), &never()).expect("a walk");
     let mut whole = Session::start(&repo.open(), query, &never()).expect("a walk");
@@ -153,8 +153,8 @@ fn first_parent_hides_what_a_merge_brought_in() {
     let trunk = Session::start(
         &repo.open(),
         Query {
-            all: false,
             first_parent: true,
+            ..Query::default()
         },
         &never(),
     )
@@ -183,7 +183,7 @@ fn all_reaches_a_branch_head_is_not_on() {
         &repo.open(),
         Query {
             all: true,
-            first_parent: false,
+            ..Query::default()
         },
         &never(),
     )
@@ -204,6 +204,89 @@ fn an_empty_repository_is_an_empty_history_not_a_failure() {
     let mut session =
         Session::start(&repo.open(), Query::default(), &never()).expect("an unborn walk starts");
     let page = session.next(10, &never()).expect("a page");
+
+    assert!(page.rows.is_empty());
+    assert!(page.done);
+}
+
+#[test]
+fn a_filtered_history_carries_no_graph() {
+    // The lane algorithm places a commit relative to the ones around it, and
+    // under a filter those are the next things that matched, not its parents
+    // and children. A line between two of them would claim a relationship whose
+    // only content is the search.
+    let repo = TestRepo::new();
+    repo.commit_file("a.txt", "one\n", "core: first");
+    repo.commit_file("b.txt", "two\n", "docs: second");
+    repo.commit_file("c.txt", "three\n", "core: third");
+
+    let plain = Session::start(&repo.open(), Query::default(), &never())
+        .expect("a walk")
+        .next(50, &never())
+        .expect("a page");
+    assert!(plain.rows.iter().all(|row| row.graph));
+
+    let searched = Session::start(
+        &repo.open(),
+        Query {
+            text: "core".to_owned(),
+            ..Query::default()
+        },
+        &never(),
+    )
+    .expect("a walk")
+    .next(50, &never())
+    .expect("a page");
+
+    assert_eq!(searched.rows.len(), 2);
+    assert!(
+        searched.rows.iter().all(|row| !row.graph),
+        "a search result is a list, not a history"
+    );
+}
+
+#[test]
+fn a_filter_can_come_back_with_less_than_a_page_and_still_be_done() {
+    let repo = TestRepo::new();
+    for n in 0..10 {
+        repo.commit_file("file.txt", &format!("{n}\n"), &format!("commit {n}"));
+    }
+
+    let page = Session::start(
+        &repo.open(),
+        Query {
+            text: "commit 7".to_owned(),
+            ..Query::default()
+        },
+        &never(),
+    )
+    .expect("a walk")
+    .next(500, &never())
+    .expect("a page");
+
+    assert_eq!(page.rows.len(), 1);
+    assert!(
+        page.done,
+        "the list stops on `done`; a short page means the filter rejected the rest"
+    );
+}
+
+#[test]
+fn a_filter_that_matches_nothing_is_an_empty_answer_not_an_error() {
+    let repo = TestRepo::new();
+    repo.commit_file("a.txt", "one\n", "only commit");
+
+    let page = Session::start(
+        &repo.open(),
+        Query {
+            author: "nobody at all".to_owned(),
+            ..Query::default()
+        },
+        &never(),
+    )
+    .expect("a walk")
+    .next(500, &never())
+    .expect("a page");
 
     assert!(page.rows.is_empty());
     assert!(page.done);

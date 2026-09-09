@@ -30,7 +30,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use gix::bstr::ByteSlice;
 
-use crate::{Cancel, GitError, ObjectId, Repository, Result, assert_off_render_thread};
+use crate::{Cancel, GitError, ObjectId, RepoPath, Repository, Result, assert_off_render_thread};
 
 /// One commit, as a history row and as the header of a commit detail.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -241,16 +241,138 @@ pub enum Tips {
 }
 
 /// What to walk.
-///
-/// The filters of SPEC §11 (author, path, date range, text) arrive with the
-/// History screen at M6; they belong here, on this struct, and not in the walk
-/// below, which is why it takes the query rather than a list of tips.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HistoryQuery {
     pub tips: Tips,
     /// Follow only the first parent of each merge — the "hide merged branches"
     /// view.
     pub first_parent: bool,
+    /// Which of the walked commits to hand out (SPEC §11).
+    pub filter: Filter,
+}
+
+/// Which commits a walk hands out.
+///
+/// A filter narrows what is *shown*, never what is *walked*: the topology is
+/// the repository's and does not change because someone typed a name into a
+/// box. So a filtered walk visits the same commits in the same order and skips
+/// the ones that do not match — which is also why a page can come back short
+/// while the walk still has more, and why `is_done` rather than a short page is
+/// what says the end has been reached.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Filter {
+    /// A substring of the author's name or address, case-insensitively.
+    ///
+    /// Git's `--author` is a regular expression over the whole ident line. A
+    /// filter box is not a regular-expression prompt, and someone typing
+    /// `marek` means "commits by Marek", so this is a substring — over the name
+    /// and the address, because people search by both.
+    pub author: Option<String>,
+    /// A substring of the message, subject and body alike, case-insensitively.
+    pub text: Option<String>,
+    /// The oldest and newest commit to keep, in seconds since the epoch,
+    /// inclusive at both ends.
+    ///
+    /// Matched against the **author** time, which is the date the row shows.
+    /// Git's `--since` uses the committer date instead, and is right to: it is
+    /// asking about when the commit entered this history. A filter box next to
+    /// a column of dates is asking about the dates in that column, and a range
+    /// that excluded a row displaying a date inside it would be indefensible.
+    pub since: Option<i64>,
+    pub until: Option<i64>,
+    /// Only commits that changed something at this path.
+    pub path: Option<RepoPath>,
+}
+
+impl Filter {
+    /// Whether this filter narrows anything at all.
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Whether `commit` is kept.
+    ///
+    /// Every clause is an `and`: a filter box with two things typed into it
+    /// means both, which is what every search anyone has used does.
+    fn keeps(&self, gix: &gix::Repository, commit: &Commit) -> Result<bool> {
+        if let Some(author) = &self.author
+            && !contains(&commit.author.name, author)
+            && !contains(&commit.author.email, author)
+        {
+            return Ok(false);
+        }
+        if let Some(text) = &self.text
+            && !contains(&commit.summary, text)
+            && !contains(&commit.body, text)
+        {
+            return Ok(false);
+        }
+        let when = commit.author.time.seconds;
+        if self.since.is_some_and(|since| when < since)
+            || self.until.is_some_and(|until| when > until)
+        {
+            return Ok(false);
+        }
+        match &self.path {
+            Some(path) => touches(gix, commit, path),
+            None => Ok(true),
+        }
+    }
+}
+
+/// Case-insensitive substring, over the whole of `haystack`.
+fn contains(haystack: &str, needle: &str) -> bool {
+    haystack.to_lowercase().contains(&needle.to_lowercase())
+}
+
+/// Whether `commit` changed what is at `path`.
+///
+/// Compares the object the path resolves to against the same path in every
+/// parent, which is what Git calls TREESAME. Resolving one path is a walk down
+/// the tree's spine — a handful of object reads — rather than a full tree diff,
+/// which is what makes this affordable once per commit.
+///
+/// A merge is kept only when it differs from *all* of its parents: a merge that
+/// matches one of them changed nothing about this path, it only joined two
+/// lines that had already changed it.
+fn touches(gix: &gix::Repository, commit: &Commit, path: &RepoPath) -> Result<bool> {
+    let here = at_path(gix, commit.id, path)?;
+    if commit.parents.is_empty() {
+        // A root commit introduces everything it contains.
+        return Ok(here.is_some());
+    }
+    for parent in &commit.parents {
+        if at_path(gix, *parent, path)? == here {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+/// The object id at `path` in a commit's tree, or `None` when nothing is there.
+fn at_path(gix: &gix::Repository, commit: ObjectId, path: &RepoPath) -> Result<Option<ObjectId>> {
+    let tree = gix
+        .find_object(commit)
+        .map_err(|error| GitError::backend("reading a commit", error))?
+        .try_into_commit()
+        .map_err(|_| GitError::NotFound(format!("commit {commit}")))?
+        .tree()
+        .map_err(|error| GitError::backend("reading a commit's tree", error))?;
+
+    let components: Vec<gix::bstr::BString> = path
+        .as_bytes()
+        .split(|byte| *byte == b'/')
+        .filter(|part| !part.is_empty())
+        .map(gix::bstr::BString::from)
+        .collect();
+    if components.is_empty() {
+        return Ok(Some(tree.id));
+    }
+
+    let found = tree
+        .lookup_entry(components)
+        .map_err(|error| GitError::backend("looking a path up in a tree", error))?;
+    Ok(found.map(|entry| entry.object_id()))
 }
 
 impl HistoryQuery {
@@ -274,6 +396,11 @@ impl HistoryQuery {
 
     pub fn first_parent(mut self) -> Self {
         self.first_parent = true;
+        self
+    }
+
+    pub fn filtered(mut self, filter: Filter) -> Self {
+        self.filter = filter;
         self
     }
 }
@@ -359,11 +486,15 @@ impl Walk {
             let Some(front) = self.next() else {
                 break;
             };
-            // Handing this commit out releases each parent from waiting on it.
+            // Released whether or not the filter keeps it: what a filter
+            // narrows is what is *shown*, and a commit nobody sees is still
+            // between its children and its parents.
             for parent in self.followed(&front.commit) {
                 self.release(parent);
             }
-            page.push(front.commit);
+            if self.query.filter.keeps(&gix, &front.commit)? {
+                page.push(front.commit);
+            }
         }
         self.yielded += page.len();
         Ok(page)
