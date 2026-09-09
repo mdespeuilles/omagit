@@ -1,3 +1,4 @@
+import vue from "@vitejs/plugin-vue";
 import { defineConfig, type Plugin } from "vite";
 
 /// Vite marks its module script and stylesheet `crossorigin`, which asks for a
@@ -13,7 +14,7 @@ function stripCrossorigin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [stripCrossorigin()],
+  plugins: [vue(), stripCrossorigin()],
   clearScreen: false,
   server: { port: 5173, strictPort: true },
   build: { target: "safari15", sourcemap: true },

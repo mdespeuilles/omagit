@@ -264,3 +264,30 @@ button:disabled {
   color: var(--danger, #b4637a);
   background: var(--bg, #faf4ed);
 }
+
+/* The four states of SPEC §10 have to look like themselves: an empty pane says
+   it is empty, a failure says what failed, and neither is a blank rectangle. */
+.pane-empty,
+.pane-error {
+  margin: 0;
+  padding: var(--pad);
+  font-size: 11px;
+}
+.pane-empty {
+  color: var(--text-dim);
+}
+.pane-error {
+  color: var(--danger);
+  white-space: pre-wrap;
+}
+
+/* Selected and focused stay distinct everywhere (DESIGN §1); this is the
+   selected half — a surface change, not a ring. */
+.file-row.selected,
+.sidebar-row.selected {
+  background: var(--surface-raised);
+}
+
+.file-row {
+  height: 100%;
+}
