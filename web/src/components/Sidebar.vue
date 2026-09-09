@@ -12,6 +12,7 @@
 
 import { computed } from "vue";
 import { app, showScreen, stagedCount, unstagedCount } from "../state";
+import BranchTree from "./BranchTree.vue";
 
 const changes = computed(() => (app.open ? unstagedCount() + stagedCount() : 0));
 const conflicts = computed(() => app.summary?.counts.conflicted ?? 0);
@@ -58,14 +59,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       <span class="tag">M9</span>
     </div>
 
-    <div class="group-head">
-      <span class="chevron">▸</span><span>Branches</span>
-      <span class="pane-head-spacer" />
-      <span class="tag">M7</span>
-    </div>
-    <p class="sidebar-note">
-      L'arbre des branches, les distants et les étiquettes arrivent avec le réseau.
-    </p>
+    <BranchTree />
 
     <span class="pane-head-spacer" />
 

@@ -25,6 +25,7 @@ import {
   type JournalRow,
   type LibraryRow,
   type PlatformFacts,
+  type Refs,
   type RepoSummary,
   type StatusRow,
 } from "./ipc";
@@ -123,6 +124,15 @@ type State = {
   library: Record<string, Async<RepoSummary>>;
   /// Which card the Repositories screen is showing.
   card: string | null;
+  /// Every reference, for the sidebar's tree.
+  ///
+  /// Read in the background when a repository opens rather than with the
+  /// status: `Refs::load` counts every branch against its upstream, which is
+  /// the one expensive read on that path — `Summary` avoids it for the same
+  /// reason.
+  refs: Async<Refs>;
+  /// Which branch prefixes are folded away, by name.
+  collapsed: Record<string, boolean>;
   /// How wide each resizable column has been dragged, in unscaled pixels.
   /// Absent means the stylesheet's own width.
   panes: Record<string, number>;
@@ -174,6 +184,8 @@ const state = reactive<State>({
   compareFrom: null,
   library: {},
   card: null,
+  refs: idle(),
+  collapsed: {},
   panes: {},
 });
 
@@ -323,6 +335,7 @@ export async function openRepository(path: string): Promise<void> {
   state.commitFile = null;
   state.compare = idle();
   state.compareFrom = null;
+  state.refs = idle();
   // The box belongs to the repository, not to the window.
   state.message = "";
   state.amend = false;
@@ -343,6 +356,7 @@ export async function openRepository(path: string): Promise<void> {
     state.committer = committer;
     if (template) state.message = template;
     void refreshJournal();
+    void readRefs();
 
     // Open on a file rather than on an empty panel: the first row is what the
     // reader is going to click anyway.
@@ -644,6 +658,65 @@ async function refreshJournal(): Promise<void> {
   state.journal = await api.journal();
 }
 
+// ── Branches (M7) ───────────────────────────────────────────────────────────
+
+export async function readRefs(): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  state.refs = { status: "loading" };
+  try {
+    const refs = await api.refs(path);
+    if (state.open !== path) return;
+    state.refs = { status: "ready", value: refs };
+  } catch (error) {
+    state.refs = { status: "failed", error: message(error) };
+  }
+}
+
+export function toggleBranchGroup(name: string): void {
+  state.collapsed[name] = !state.collapsed[name];
+}
+
+export function isCollapsed(name: string): boolean {
+  return state.collapsed[name] ?? false;
+}
+
+/// Switch to a branch. Everything on screen is about the old one.
+export function checkoutBranch(name: string): void {
+  const path = state.open;
+  if (!path) return;
+  void write(`Basculer sur ${name}`, () => api.checkout(path, name, false));
+}
+
+export function createBranch(name: string, start: string, andSwitch: boolean): void {
+  const path = state.open;
+  const trimmed = name.trim();
+  if (!path || trimmed === "") return;
+  void write(`Créer ${trimmed}`, () => api.createBranch(path, trimmed, start.trim(), andSwitch));
+}
+
+/// Delete a branch, asking the question its state deserves.
+///
+/// The two are genuinely different: removing a label costs nothing, and
+/// throwing away commits that are on no other branch leaves them reachable
+/// only through the reflog. A single wording for both would either frighten
+/// people off the harmless one or wave them through the other.
+export function deleteBranch(row: { name: string; merged: boolean }): void {
+  const path = state.open;
+  if (!path) return;
+  const force = !row.merged;
+  ask(
+    {
+      title: `Supprimer la branche ${row.name} ?`,
+      detail: force
+        ? "Ses commits ne sont sur aucune autre branche : après ça ils ne seront joignables que par le reflog."
+        : "Tous ses commits sont déjà sur la branche courante. Seule l'étiquette disparaît.",
+      verb: "Supprimer",
+    },
+    () => void write(`Supprimer ${row.name}`, () => api.deleteBranch(path, row.name, force)),
+  );
+}
+
 // ── Writing ─────────────────────────────────────────────────────────────────
 
 /// Run one write, then put the screen back in agreement with the repository.
@@ -678,6 +751,8 @@ async function settle(): Promise<void> {
     state.status = { status: "ready", value: rows };
     state.summary = summary;
     void refreshJournal();
+    // A checkout, a branch created or deleted: the tree is what changed.
+    void readRefs();
 
     const was = state.selected;
     if (!was) return;

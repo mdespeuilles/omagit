@@ -340,6 +340,89 @@ pub fn compare_file_diff(
         .map(dto::diff))
 }
 
+// ── Branches (M7) ───────────────────────────────────────────────────────────
+
+/// Every reference, for the sidebar's tree.
+#[tauri::command(async)]
+pub fn refs(state: State<'_, AppState>, path: String) -> Answer<dto::Refs> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let cancel = state.cancel();
+    let refs = omagit_git::refs::Refs::load(&open.repo, &cancel).map_err(say)?;
+
+    // Without `git` there is still a tree to draw — reads are `gix` (SPEC §8) —
+    // so a missing binary costs the merged marks and not the sidebar.
+    let merged = match state.git() {
+        Ok(git) => omagit_git::ops::merged(git, &open.repo, &cancel).unwrap_or_default(),
+        Err(_) => Default::default(),
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|since| since.as_secs() as i64)
+        .unwrap_or_default();
+
+    Ok(dto::refs(&open.repo, &refs, &merged, now))
+}
+
+/// Switch to a branch, or to a commit with `HEAD` detached.
+#[tauri::command(async)]
+pub fn checkout(
+    state: State<'_, AppState>,
+    path: String,
+    name: String,
+    detach: bool,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    if detach {
+        omagit_git::ops::checkout_detached(&git, &open.repo, &name, &state.cancel())
+    } else {
+        omagit_git::ops::checkout(&git, &open.repo, &name, &state.cancel())
+    }
+    .map_err(say)
+}
+
+/// Create a branch, and optionally switch to it.
+#[tauri::command(async)]
+pub fn create_branch(
+    state: State<'_, AppState>,
+    path: String,
+    name: String,
+    start: String,
+    switch: bool,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let start = start.trim();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::create(
+        &git,
+        &open.repo,
+        &name,
+        (!start.is_empty()).then_some(start),
+        switch,
+        &state.cancel(),
+    )
+    .map_err(say)
+}
+
+/// Delete a branch. `force` is what throws away commits that are on no other.
+#[tauri::command(async)]
+pub fn delete_branch(
+    state: State<'_, AppState>,
+    path: String,
+    name: String,
+    force: bool,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::delete(&git, &open.repo, &name, force, &state.cancel()).map_err(say)
+}
+
 /// The operations journal (SPEC §11): the exact command, not a summary.
 #[tauri::command]
 pub fn journal(state: State<'_, AppState>) -> Vec<dto::JournalRow> {

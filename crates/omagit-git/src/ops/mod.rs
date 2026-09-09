@@ -18,9 +18,11 @@
 //! so moving an operation is a change here and nowhere else. Recorded in
 //! ARCHITECTURE.md.
 
+pub mod branch;
 pub mod commit;
 pub mod stage;
 
+pub use branch::{checkout, checkout_detached, create, delete, merged, rename};
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
 pub use stage::{
     discard, discard_file, stage, stage_all, stage_file, unstage, unstage_all, unstage_file,

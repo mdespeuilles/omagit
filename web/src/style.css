@@ -1844,3 +1844,99 @@ button.danger.solid:hover {
 .card-foot .gone {
   color: var(--danger);
 }
+
+/* ── The branch tree (M7) ────────────────────────────────────────────────── */
+
+.branch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: var(--row-height);
+  padding: 0 10px;
+  border: 0;
+  text-align: left;
+  font-size: var(--text-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.branch-row.nested {
+  padding-left: 22px;
+}
+.branch-row.nested.twice {
+  padding-left: 34px;
+}
+
+.branch-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.branch-note {
+  flex: none;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+
+/* A branch nobody has merged and nobody has touched: board 03's `Merged`. */
+.ref.merged {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+/* A section header that folds. It is a `<button>` so the keyboard reaches it,
+   and it keeps the header's own type — a header is not a control. */
+.group-head.as-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.group-head.as-button:hover {
+  color: var(--text);
+}
+/* A name inside a header keeps its own case. */
+.group-name {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+}
+
+.group-head.nested {
+  padding-left: 22px;
+  margin-top: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+}
+
+.branch-row .row-action {
+  height: 16px;
+  opacity: 0;
+}
+.branch-row:hover .row-action,
+.branch-row .row-action:focus-visible {
+  opacity: 1;
+}
+
+.branch-new {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+}
+.branch-new input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-meta);
+}
+.branch-new button {
+  flex: none;
+  padding: 0 8px;
+}

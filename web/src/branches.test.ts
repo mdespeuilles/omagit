@@ -1,0 +1,201 @@
+// The branch tree, and what its rows do.
+
+import { mount } from "@vue/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Repository } from "./backend.fake";
+import type { BranchRow } from "./ipc";
+
+const backend = vi.hoisted(() => ({
+  current: null as unknown as InstanceType<typeof import("./backend.fake").Repository>,
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) =>
+    backend.current.call(command, args ?? {}),
+}));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve(null) }));
+
+function branch(name: string, over: Partial<BranchRow> = {}): BranchRow {
+  return {
+    name,
+    commit: { full: name.padEnd(40, "0"), short: name.slice(0, 7) },
+    head: false,
+    tracking: null,
+    merged: true,
+    age: 0,
+    ...over,
+  };
+}
+
+async function open(branches: BranchRow[]) {
+  backend.current = new Repository([
+    { path: "a.txt", staged: null, unstaged: "modified", hunks: 1 },
+  ]);
+  backend.current.branches = branches;
+  vi.resetModules();
+  const state = await import("./state");
+  await state.boot();
+  await state.openRepository("/repo");
+  await settled(state);
+  const BranchTree = (await import("./components/BranchTree.vue")).default;
+  return { state, tree: mount(BranchTree) };
+}
+
+async function settled(state: typeof import("./state")): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    await new Promise((resume) => setTimeout(resume, 0));
+    if (!state.app.busy && state.app.refs.status !== "loading") return;
+  }
+  throw new Error("l'arbre ne s'est jamais stabilisé");
+}
+
+const names = (tree: { findAll: (s: string) => { text: () => string }[] }) =>
+  tree.findAll(".branch-name").map((n) => n.text());
+
+beforeEach(() => {
+  backend.current = new Repository([]);
+});
+
+describe("the branch tree", () => {
+  it("groups on the first slash and leaves the rest alone", async () => {
+    // Only the first segment groups: `feature/ui/topbar` lands under
+    // `feature/` with its remaining path shown, rather than nesting three deep
+    // for a tree nobody arranged that way.
+    const { tree } = await open([
+      branch("main", { head: true }),
+      branch("feature/ui/topbar"),
+      branch("feature/theme"),
+      branch("fix/lanes"),
+    ]);
+
+    // Sorted, because the order `gix` enumerates references in is a hash map's
+    // and a tree whose rows moved between two runs would be unusable.
+    expect(names(tree)).toEqual(["main", "theme", "ui/topbar", "lanes"]);
+    const groups = tree.findAll(".group-head.as-button").map((g) => g.text());
+    expect(groups.join(" ")).toContain("feature/");
+    expect(groups.join(" ")).toContain("fix/");
+  });
+
+  it("folds a group away and back", async () => {
+    const { state, tree } = await open([branch("main", { head: true }), branch("feature/theme")]);
+    expect(names(tree)).toContain("theme");
+
+    state.toggleBranchGroup("feature/");
+    await tree.vm.$nextTick();
+    expect(names(tree)).not.toContain("theme");
+
+    state.toggleBranchGroup("feature/");
+    await tree.vm.$nextTick();
+    expect(names(tree)).toContain("theme");
+  });
+
+  it("offers no delete on the branch you are on", async () => {
+    // `git` refuses it, and a button that always fails is worse than no button.
+    const { tree } = await open([branch("main", { head: true }), branch("other")]);
+    expect(tree.findAll(".branch-row .row-action")).toHaveLength(1);
+  });
+});
+
+describe("deleting a branch", () => {
+  it("asks the question the branch's state deserves", async () => {
+    // Removing a label and throwing away commits are different acts; one
+    // wording for both would either frighten people off the harmless one or
+    // wave them through the other.
+    const { state } = await open([
+      branch("main", { head: true }),
+      branch("merged-one", { merged: true }),
+      branch("unmerged-one", { merged: false }),
+    ]);
+
+    state.deleteBranch({ name: "merged-one", merged: true });
+    expect(state.app.question?.detail).toContain("Seule l'étiquette");
+    state.answer(false);
+
+    state.deleteBranch({ name: "unmerged-one", merged: false });
+    expect(state.app.question?.detail).toContain("reflog");
+    state.answer(false);
+  });
+
+  it("forces only when the branch is not merged", async () => {
+    const { state } = await open([
+      branch("main", { head: true }),
+      branch("merged-one", { merged: true }),
+      branch("unmerged-one", { merged: false }),
+    ]);
+
+    state.deleteBranch({ name: "merged-one", merged: true });
+    state.answer(true);
+    await settled(state);
+
+    state.deleteBranch({ name: "unmerged-one", merged: false });
+    state.answer(true);
+    await settled(state);
+
+    const calls = backend.current.calls.filter((c) => c.command === "delete_branch");
+    expect(calls.map((c) => c.args["force"])).toEqual([false, true]);
+    expect(backend.current.branches.map((b) => b.name)).toEqual(["main"]);
+  });
+
+  it("does not delete while the question stands", async () => {
+    const { state } = await open([branch("main", { head: true }), branch("other")]);
+    const before = backend.current.calls.length;
+
+    state.deleteBranch({ name: "other", merged: true });
+    expect(backend.current.calls).toHaveLength(before);
+
+    state.answer(false);
+    await settled(state);
+    expect(backend.current.calls.filter((c) => c.command === "delete_branch")).toHaveLength(0);
+  });
+});
+
+describe("switching and creating", () => {
+  it("re-reads the tree after a checkout, because HEAD moved", async () => {
+    const { state } = await open([branch("main", { head: true }), branch("other")]);
+    const before = backend.current.calls.filter((c) => c.command === "refs").length;
+
+    state.checkoutBranch("other");
+    await settled(state);
+
+    expect(backend.current.head).toBe("other");
+    expect(backend.current.calls.filter((c) => c.command === "refs").length).toBeGreaterThan(
+      before,
+    );
+  });
+
+  it("creates and switches in one act", async () => {
+    const { state } = await open([branch("main", { head: true })]);
+
+    state.createBranch("  feature/new  ", "", true);
+    await settled(state);
+
+    const call = backend.current.calls.find((c) => c.command === "create_branch");
+    // Trimmed: a name with a space around it is a name someone typed, not a
+    // name they meant.
+    expect(call?.args).toMatchObject({ name: "feature/new", switch: true });
+    expect(backend.current.head).toBe("feature/new");
+  });
+
+  it("refuses an empty name without asking the backend", async () => {
+    const { state } = await open([branch("main", { head: true })]);
+
+    state.createBranch("   ", "", true);
+    await settled(state);
+
+    expect(backend.current.calls.filter((c) => c.command === "create_branch")).toHaveLength(0);
+  });
+});
+
+describe("ordering", () => {
+  it("sorts branches and groups by name, whatever order the refs arrive in", async () => {
+    const { tree } = await open([
+      branch("zebra"),
+      branch("main", { head: true }),
+      branch("fix/z"),
+      branch("fix/a"),
+      branch("alpha"),
+    ]);
+
+    expect(names(tree)).toEqual(["alpha", "main", "zebra", "a", "z"]);
+  });
+});

@@ -155,6 +155,28 @@ export type CommitDetail = {
 
 export type Comparison = { from: Oid; to: Oid; files: FileRow[] };
 
+export type BranchRow = {
+  name: string;
+  commit: Oid;
+  head: boolean;
+  tracking: Tracking | null;
+  /// Every commit of this branch is on HEAD too, so deleting it removes a
+  /// label and nothing else.
+  merged: boolean;
+  /// Seconds since its tip was authored.
+  age: number;
+};
+
+export type RemoteBranchRow = { remote: string; name: string; commit: Oid };
+export type TagRow = { name: string; commit: Oid; annotated: boolean };
+
+export type Refs = {
+  branches: BranchRow[];
+  remote_branches: RemoteBranchRow[];
+  tags: TagRow[];
+  remotes: RemoteRow[];
+};
+
 export type LibraryRow = {
   group: number;
   index: number;
@@ -210,6 +232,15 @@ export const api = {
   fileDiff: (path: string, file: string, staged: boolean) =>
     invoke<Diff | null>("file_diff", { path, file, staged }),
   journal: () => invoke<JournalRow[]>("journal"),
+
+  // Branches (M7).
+  refs: (path: string) => invoke<Refs>("refs", { path }),
+  checkout: (path: string, name: string, detach: boolean) =>
+    invoke<void>("checkout", { path, name, detach }),
+  createBranch: (path: string, name: string, start: string, switch_: boolean) =>
+    invoke<void>("create_branch", { path, name, start, switch: switch_ }),
+  deleteBranch: (path: string, name: string, force: boolean) =>
+    invoke<void>("delete_branch", { path, name, force }),
 
   // History. `history` always restarts the walk; `historyMore` continues the
   // one already parked on the backend, and refuses if there is none — a "load

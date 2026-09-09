@@ -485,6 +485,105 @@ pub struct Made {
     pub notes: String,
 }
 
+/// Every reference, for the sidebar's tree.
+///
+/// Grouping on `/` is deliberately absent: `omagit_git::refs` says in as many
+/// words that it is the sidebar's job, and it is — a tree is a rendering
+/// decision, and the crate that reads Git has no business holding one.
+#[derive(Debug, serde::Serialize)]
+pub struct Refs {
+    pub branches: Vec<BranchRow>,
+    pub remote_branches: Vec<RemoteBranchRow>,
+    pub tags: Vec<TagRow>,
+    pub remotes: Vec<RemoteRow>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct BranchRow {
+    pub name: String,
+    pub commit: Oid,
+    pub head: bool,
+    pub tracking: Option<Tracking>,
+    /// Every commit of this branch is on `HEAD` too, so deleting it removes a
+    /// label and nothing else. What tells the confirmation which of its two
+    /// questions to ask.
+    pub merged: bool,
+    /// Seconds since the tip commit was authored, for the "7 mois" a stale
+    /// branch carries in board 03.
+    pub age: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct RemoteBranchRow {
+    pub remote: String,
+    pub name: String,
+    pub commit: Oid,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct TagRow {
+    pub name: String,
+    pub commit: Oid,
+    pub annotated: bool,
+}
+
+pub fn refs(
+    repo: &omagit_git::Repository,
+    refs: &omagit_git::refs::Refs,
+    merged: &std::collections::BTreeSet<String>,
+    now: i64,
+) -> Refs {
+    Refs {
+        branches: refs
+            .branches
+            .iter()
+            .map(|branch| BranchRow {
+                name: branch.name.clone(),
+                commit: branch.commit.into(),
+                head: branch.is_head,
+                tracking: branch.tracking.as_ref().map(|tracking| Tracking {
+                    upstream: tracking.upstream.clone(),
+                    ahead: tracking.ahead,
+                    behind: tracking.behind,
+                    gone: tracking.gone,
+                }),
+                merged: merged.contains(&branch.name),
+                // A branch whose tip cannot be read is not an error worth
+                // failing the whole sidebar for — a shallow clone has them.
+                age: omagit_git::history::commit(repo, branch.commit)
+                    .map(|commit| now - commit.author.time.seconds)
+                    .unwrap_or(0),
+            })
+            .collect(),
+        remote_branches: refs
+            .remote_branches
+            .iter()
+            .map(|branch| RemoteBranchRow {
+                remote: branch.remote.clone(),
+                name: branch.name.clone(),
+                commit: branch.commit.into(),
+            })
+            .collect(),
+        tags: refs
+            .tags
+            .iter()
+            .map(|tag| TagRow {
+                name: tag.name.clone(),
+                commit: tag.commit.into(),
+                annotated: tag.annotation.is_some(),
+            })
+            .collect(),
+        remotes: refs
+            .remotes
+            .iter()
+            .map(|remote| RemoteRow {
+                name: remote.name.clone(),
+                url: remote.url.clone(),
+            })
+            .collect(),
+    }
+}
+
 /// One row of the repository list.
 ///
 /// What the library holds and nothing Git knows: reading a summary per row

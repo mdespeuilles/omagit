@@ -805,6 +805,47 @@ it protects before it is built. For now the protection is that every "selected"
 and every row hover live in one block, where a second rule for the same state is
 visible to a reader.
 
+### 2.32 M7, first slice: local branches
+
+`git switch`, not `git checkout`. The old command means two things — move
+`HEAD`, and restore paths — and tells them apart by guessing, so
+`git checkout -- feature` reads `feature` as a *pathspec* and reports that no
+file by that name is known. That is not hypothetical: it is how the first
+version of this failed, and `a_branch_whose_name_could_be_a_path_still_switches`
+pins it with a repository that has both a `docs/` folder and a `docs` branch.
+`switch` arrived in Git 2.23, comfortably under SPEC §8's floor of 2.35.
+
+**What is deliberately not refused here.** Switching away from uncommitted work,
+and deleting a branch whose commits are on no other. `git` refuses both, with a
+message that names the file or the branch in the way — better than any this
+layer could compose, and SPEC §3 rule 3 asks for Git's own words. The caller's
+job is to offer the forcing flag afterwards, not to pre-empt the refusal.
+
+**`merged` returns the whole set in one command.** The sidebar asks it of every
+row it draws; a process each would make opening a repository with forty branches
+forty processes. It is asked *before* a delete so the confirmation knows which
+of its two questions it is asking — "remove a label" or "throw away four
+commits". Those are different acts, and one wording for both would either
+frighten people off the harmless one or wave them through the other.
+
+**Grouping and sorting are the sidebar's**, which `omagit_git::refs` says in as
+many words. Only the first `/` segment groups: `feature/ui/topbar` lands under
+`feature/` showing `ui/topbar`, rather than nesting three deep for a tree nobody
+arranged that way. And the rows are sorted, because the order `gix` enumerates
+references in is a hash map's — a tree whose rows moved between two runs of the
+same repository would be unusable.
+
+A branch prefix keeps its case, against board 03, which uppercases it with the
+section headers around it. A prefix is part of a name that Git treats
+case-sensitively, and `FEATURE/` is the kind of tidiness that misleads.
+
+**Not in this slice**, and named rather than left to be found: fetch, pull, push
+with `--force-with-lease`, credential helpers and the cancellable progress
+overlay — the network half of M7 — along with merge and rebase. `ops::rename`
+exists and is tested; no command exposes it, because nothing in the window
+renames a branch yet and a registered command nobody calls is the speculative
+API SPEC §3 refuses.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

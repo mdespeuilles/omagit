@@ -32,6 +32,7 @@ export type Fixture = {
 
 import { isFiltered } from "./ipc";
 import type {
+  BranchRow,
   CommitDetail,
   Comparison,
   Diff,
@@ -42,8 +43,11 @@ import type {
   Made as Committed,
   Page,
   PlatformFacts,
+  Refs,
+  RemoteBranchRow,
   RepoSummary,
   StatusRow,
+  TagRow,
 } from "./ipc";
 
 export type Call = { command: string; args: Record<string, unknown> };
@@ -89,6 +93,19 @@ export class Repository {
   notARepository: string | null = null;
   /// The column widths the settings file remembers.
   panes: Record<string, number> = {};
+  /// The branches, in the shape the sidebar reads them.
+  branches: BranchRow[] = [
+    {
+      name: "main",
+      commit: { full: "m".repeat(40), short: "mmmmmmm" },
+      head: true,
+      tracking: null,
+      merged: true,
+      age: 0,
+    },
+  ];
+  tags: TagRow[] = [];
+  remoteBranches: RemoteBranchRow[] = [];
   /// How many rows a page holds. Small in tests, so paging is exercised by
   /// three commits rather than by fifteen hundred.
   page = 3;
@@ -185,6 +202,48 @@ export class Repository {
         return "le message précédent";
       case "journal":
         return [] satisfies JournalRow[];
+      case "refs":
+        return {
+          branches: this.branches.map((row) => ({ ...row })),
+          remote_branches: this.remoteBranches.map((row) => ({ ...row })),
+          tags: this.tags.map((row) => ({ ...row })),
+          remotes: [],
+        } satisfies Refs;
+      case "checkout": {
+        const name = args["name"] as string;
+        if (!this.branches.some((row) => row.name === name)) {
+          throw new Error(`la branche ${name} n'existe pas`);
+        }
+        for (const row of this.branches) row.head = row.name === name;
+        this.head = name;
+        return undefined;
+      }
+      case "create_branch": {
+        const name = args["name"] as string;
+        this.branches.push({
+          name,
+          commit: { full: "n".repeat(40), short: "nnnnnnn" },
+          head: false,
+          tracking: null,
+          merged: true,
+          age: 0,
+        });
+        if (args["switch"]) {
+          for (const row of this.branches) row.head = row.name === name;
+          this.head = name;
+        }
+        return undefined;
+      }
+      case "delete_branch": {
+        const name = args["name"] as string;
+        const row = this.branches.find((entry) => entry.name === name);
+        if (!row) throw new Error(`la branche ${name} n'existe pas`);
+        if (!row.merged && !args["force"]) {
+          throw new Error(`la branche ${name} n'est pas entièrement fusionnée`);
+        }
+        this.branches = this.branches.filter((entry) => entry.name !== name);
+        return undefined;
+      }
       case "panes":
         return { ...this.panes };
       case "set_pane":

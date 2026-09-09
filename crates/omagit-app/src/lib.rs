@@ -62,6 +62,10 @@ pub fn run() {
             commands::commit_file_diff,
             commands::compare,
             commands::compare_file_diff,
+            commands::refs,
+            commands::checkout,
+            commands::create_branch,
+            commands::delete_branch,
             commands::journal,
             commands::log,
         ])
