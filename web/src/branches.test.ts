@@ -89,10 +89,18 @@ describe("the branch tree", () => {
     expect(names(tree)).toContain("theme");
   });
 
-  it("offers no delete on the branch you are on", async () => {
-    // `git` refuses it, and a button that always fails is worse than no button.
+  it("offers nothing on the branch you are on", async () => {
+    // `git` refuses all three — you cannot delete, merge or rebase onto the
+    // branch you are standing on — and a button that always fails is worse
+    // than no button.
     const { tree } = await open([branch("main", { head: true }), branch("other")]);
-    expect(tree.findAll(".branch-row .row-action")).toHaveLength(1);
+    const rows = tree.findAll(".branch-row");
+    expect(rows[0]!.findAll(".row-action")).toHaveLength(0);
+    expect(rows[1]!.findAll(".row-action").map((b) => b.text())).toEqual([
+      "Fusionner",
+      "Rebaser",
+      "Suppr.",
+    ]);
   });
 });
 
@@ -197,5 +205,60 @@ describe("ordering", () => {
     ]);
 
     expect(names(tree)).toEqual(["alpha", "main", "zebra", "a", "z"]);
+  });
+});
+
+describe("integrating", () => {
+  it("asks before a merge, and says what a conflict would leave behind", async () => {
+    const { state } = await open([branch("main", { head: true }), branch("other")]);
+    const before = backend.current.calls.length;
+
+    state.mergeBranch("other");
+    expect(state.app.question?.title).toContain("other");
+    expect(state.app.question?.detail).toContain("conflit");
+    expect(backend.current.calls).toHaveLength(before);
+
+    state.answer(true);
+    await settled(state);
+    expect(backend.current.calls.find((c) => c.command === "merge")?.args).toMatchObject({
+      branch: "other",
+    });
+  });
+
+  it("says a rebase rewrites commits, because that is the part that surprises", async () => {
+    const { state } = await open([branch("main", { head: true }), branch("other")]);
+
+    state.rebaseOnto("other");
+    expect(state.app.question?.detail).toContain("reflog");
+    state.answer(false);
+
+    expect(backend.current.calls.filter((c) => c.command === "rebase")).toHaveLength(0);
+  });
+
+  it("leaves a way out when the merge stops half-way", async () => {
+    // A repository left half-finished with no visible exit is the state this
+    // application must never put someone in.
+    const { state } = await open([branch("main", { head: true }), branch("other")]);
+    backend.current.failIntegrate = "CONFLICT (content): Merge conflict in shared.txt";
+
+    state.mergeBranch("other");
+    state.answer(true);
+    await settled(state);
+
+    expect(state.app.writeError).toContain("CONFLICT");
+    expect(state.app.summary?.operation).toBe("merge");
+
+    state.abortOperation();
+    expect(state.app.question?.title).toContain("merge");
+    state.answer(true);
+    await settled(state);
+
+    expect(state.app.summary?.operation).toBeNull();
+  });
+
+  it("aborts nothing when nothing is running", async () => {
+    const { state } = await open([branch("main", { head: true })]);
+    state.abortOperation();
+    expect(state.app.question).toBeNull();
   });
 });

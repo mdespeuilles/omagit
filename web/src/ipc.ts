@@ -245,6 +245,14 @@ export const api = {
     invoke<string>("push", { path, remote, branch, force, setUpstream }),
   cancelOperation: () => invoke<string | null>("cancel_operation"),
 
+  // Integrating one branch into another (M7). Both can stop half-way on a
+  // conflict; `abortOperation` is the way out, and it reads what is running
+  // from the repository rather than being told.
+  merge: (path: string, branch: string, noFastForward: boolean, squash: boolean) =>
+    invoke<string>("merge", { path, branch, noFastForward, squash }),
+  rebase: (path: string, onto: string) => invoke<string>("rebase", { path, onto }),
+  abortOperation: (path: string) => invoke<void>("abort_operation", { path }),
+
   // Branches (M7).
   refs: (path: string) => invoke<Refs>("refs", { path }),
   checkout: (path: string, name: string, detach: boolean) =>

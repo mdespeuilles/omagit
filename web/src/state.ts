@@ -761,6 +761,69 @@ export function dismissNetworkSaid(): void {
   state.networkSaid = null;
 }
 
+// ── Integrating one branch into another (M7) ────────────────────────────────
+
+/// Merge `branch` into the current one.
+///
+/// Confirmed, because it rewrites the working tree and can stop half-way on a
+/// conflict — a state that is neither before nor after, and one the reader
+/// should have chosen to enter.
+export function mergeBranch(branch: string, noFastForward = false): void {
+  const path = state.open;
+  const into = state.summary?.head;
+  if (!path || !into) return;
+  ask(
+    {
+      title: `Fusionner ${branch} dans ${into} ?`,
+      detail:
+        "Les fichiers de la copie de travail vont changer. Si les deux branches ont touché les mêmes lignes, la fusion s'arrêtera sur un conflit et le dépôt restera à mi-chemin — l'abandon est dans la barre du bas.",
+      verb: "Fusionner",
+    },
+    () =>
+      void write(`Fusionner ${branch}`, async () => {
+        await api.merge(path, branch, noFastForward, false);
+      }),
+  );
+}
+
+/// Replay the current branch's commits on top of `onto`.
+export function rebaseOnto(onto: string): void {
+  const path = state.open;
+  const branch = state.summary?.head;
+  if (!path || !branch) return;
+  ask(
+    {
+      title: `Rebaser ${branch} sur ${onto} ?`,
+      detail:
+        "Les commits de la branche sont réécrits : ceux qu'ils remplacent ne seront joignables que par le reflog. Si une branche publiée en dépend, elle divergera.",
+      verb: "Rebaser",
+    },
+    () =>
+      void write(`Rebaser sur ${onto}`, async () => {
+        await api.rebase(path, onto);
+      }),
+  );
+}
+
+/// Put the repository back where the half-finished operation found it.
+export function abortOperation(): void {
+  const path = state.open;
+  const operation = state.summary?.operation;
+  if (!path || !operation) return;
+  ask(
+    {
+      title: `Abandonner ${operation} ?`,
+      detail:
+        "Le dépôt revient où l'opération l'a trouvé. Ce qui a été résolu jusqu'ici est perdu : personne d'autre ne l'a.",
+      verb: "Abandonner",
+    },
+    () =>
+      void write(`Abandonner ${operation}`, async () => {
+        await api.abortOperation(path);
+      }),
+  );
+}
+
 // ── Branches (M7) ───────────────────────────────────────────────────────────
 
 export async function readRefs(): Promise<void> {

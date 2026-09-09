@@ -900,6 +900,46 @@ because `git` stops when it next looks and that is not instant.
 **Still not built** in M7: merge and rebase, and clone. Board 06 draws `Cloner…`
 disabled, which is where it stays.
 
+### 2.34 M7, third slice: merge, rebase, and the way out
+
+**`GIT_EDITOR=true` and `GIT_SEQUENCE_EDITOR=true`, for every command.** `git
+merge` and `git pull` open an editor for the merge message; `git rebase` opens
+one for its todo list. `git` skips both when stdin is not a terminal, and stdin
+here is `/dev/null` — but that is a behaviour to rely on rather than a
+guarantee, and the failure if it ever changed is a `vi` on a pipe nobody can
+see, waiting forever. This is the second prompt nobody can answer, alongside
+`GIT_TERMINAL_PROMPT=0`, and it is set in the same place so it cannot be
+forgotten at a call site. It was already a latent hang in `pull`, which can
+create a merge commit; shipped in §2.33 and found here.
+
+`true` is the shell builtin: it exits 0 immediately and leaves the file
+untouched, which is exactly "keep the message git prepared".
+`a_merge_never_waits_for_an_editor` proves the cover holds even when the
+repository configures `core.editor = false`, because `GIT_EDITOR` wins.
+
+**`abort` ships with the thing it undoes.** Resolving a conflict is M8's, but an
+application that can start a rebase and cannot stop one is a trap: it leaves the
+user in a state they did not choose, with no exit but a terminal. The command
+sent depends on what is running, read from the repository rather than passed in
+— the front end's idea of what is running is a copy, and a stale copy would send
+`git merge --abort` to a rebase, whose message would be about the wrong thing.
+A bisect is refused by name, because it ends with `git bisect reset`.
+
+**A failure now carries Git's words wherever Git put them.** `git merge`
+explains a conflict on **stdout** — `CONFLICT (content): Merge conflict in
+shared.txt` — and `CommandFailed` carried only `stderr`, so a conflicting merge
+reached the user as an error with nothing in it. Found by a test that asserted
+the message rather than the exit code. SPEC §3 rule 3 asks for Git's own words;
+it does not say which pipe they arrive on.
+
+Two smaller things found in the same place: the error read `git git merge failed`
+because `command` already holds the whole line, and no merge strategy is chosen
+for `merge` in the fast-forward direction — `merge.ff` is the user's setting,
+and passing `--ff-only` would refuse merges the repository is set up to accept.
+
+**Not built:** clone, which board 06 draws disabled, and `continue` for a
+resolved conflict, which is M8's.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

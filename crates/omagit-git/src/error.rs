@@ -23,12 +23,12 @@ pub enum GitError {
     #[error("git {found} is too old; omagit needs {minimum} or newer")]
     GitTooOld { found: String, minimum: String },
 
-    #[error("git {command} failed: {stderr}")]
+    #[error("{command} failed: {stderr}")]
     CommandFailed { command: String, stderr: String },
 
     /// SPEC §8 requires every subprocess to carry a deadline. Naming the
     /// command matters: the useful next question is always *which* one hung.
-    #[error("git {command} did not finish within {seconds:.0}s")]
+    #[error("{command} did not finish within {seconds:.0}s")]
     Timeout { command: String, seconds: f32 },
 
     /// The user moved on — switched repository, closed the tab. Not a failure,

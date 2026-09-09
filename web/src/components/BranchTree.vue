@@ -13,6 +13,8 @@ import {
   createBranch,
   deleteBranch,
   isCollapsed,
+  mergeBranch,
+  rebaseOnto,
   toggleBranchGroup,
 } from "../state";
 
@@ -128,6 +130,22 @@ function submit(): void {
       <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
       <button
         v-if="!row.head"
+        class="row-action"
+        :title="`Fusionner ${row.name} dans la branche courante`"
+        @click.stop="mergeBranch(row.name)"
+      >
+        Fusionner
+      </button>
+      <button
+        v-if="!row.head"
+        class="row-action"
+        :title="`Rebaser la branche courante sur ${row.name}`"
+        @click.stop="rebaseOnto(row.name)"
+      >
+        Rebaser
+      </button>
+      <button
+        v-if="!row.head"
         class="row-action danger"
         title="Supprimer cette branche"
         @click.stop="deleteBranch(row)"
@@ -161,6 +179,22 @@ function submit(): void {
           <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
           <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
           <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
+          <button
+            v-if="!row.head"
+            class="row-action"
+            :title="`Fusionner ${row.name} dans la branche courante`"
+            @click.stop="mergeBranch(row.name)"
+          >
+            Fusionner
+          </button>
+          <button
+            v-if="!row.head"
+            class="row-action"
+            :title="`Rebaser la branche courante sur ${row.name}`"
+            @click.stop="rebaseOnto(row.name)"
+          >
+            Rebaser
+          </button>
           <button
             v-if="!row.head"
             class="row-action danger"

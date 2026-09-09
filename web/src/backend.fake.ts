@@ -117,6 +117,11 @@ export class Repository {
   /// What the current branch tracks, which is what decides where a push goes
   /// and whether it has to set an upstream.
   tracking: Tracking | null = null;
+  /// A half-finished merge or rebase, the way `Repository::operation` reports
+  /// one.
+  operation: string | null = null;
+  /// Set to make the next merge or rebase stop on a conflict.
+  failIntegrate: string | null = null;
   /// How many rows a page holds. Small in tests, so paging is exercised by
   /// three commits rather than by fifteen hundred.
   page = 3;
@@ -222,6 +227,19 @@ export class Repository {
         if (failure) throw new Error(failure);
         return this.networkSays;
       }
+      case "merge":
+      case "rebase":
+        if (this.failIntegrate) {
+          const failure = this.failIntegrate;
+          this.failIntegrate = null;
+          this.operation = command === "merge" ? "merge" : "rebase";
+          throw new Error(failure);
+        }
+        return "Merge made by the 'ort' strategy.";
+      case "abort_operation":
+        if (!this.operation) throw new Error("aucune opération n'est en cours");
+        this.operation = null;
+        return undefined;
       case "cancel_operation":
         this.cancelled += 1;
         return "Fetch";
@@ -328,7 +346,7 @@ export class Repository {
       path,
       name: row?.name ?? "repo",
       head: this.head,
-      operation: null,
+      operation: this.operation,
       tracking: this.tracking,
       counts: {
         modified: this.files.length,

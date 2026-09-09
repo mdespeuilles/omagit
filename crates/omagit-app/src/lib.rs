@@ -70,6 +70,9 @@ pub fn run() {
             commands::pull,
             commands::push,
             commands::cancel_operation,
+            commands::merge,
+            commands::rebase,
+            commands::abort_operation,
             commands::journal,
             commands::log,
         ])

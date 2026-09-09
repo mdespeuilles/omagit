@@ -544,6 +544,60 @@ pub fn cancel_operation(state: State<'_, AppState>) -> Option<String> {
     state.cancel_network()
 }
 
+/// Merge a branch into the current one.
+#[tauri::command(async)]
+pub fn merge(
+    state: State<'_, AppState>,
+    path: String,
+    branch: String,
+    no_fast_forward: bool,
+    squash: bool,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::merge(
+        &git,
+        &open.repo,
+        &branch,
+        &omagit_git::ops::MergeOptions {
+            no_fast_forward,
+            squash,
+        },
+        &state.cancel(),
+    )
+    .map_err(say)
+}
+
+/// Replay the current branch on top of another.
+#[tauri::command(async)]
+pub fn rebase(state: State<'_, AppState>, path: String, onto: String) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::rebase(&git, &open.repo, &onto, &state.cancel()).map_err(say)
+}
+
+/// Put the repository back where the half-finished operation found it.
+///
+/// Which operation is read from the repository rather than passed in: the
+/// front end's idea of what is running is a copy, and a copy that had gone
+/// stale would send `git merge --abort` to a rebase.
+#[tauri::command(async)]
+pub fn abort_operation(state: State<'_, AppState>, path: String) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let operation = open
+        .repo
+        .operation()
+        .ok_or("aucune opération n'est en cours")?;
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::abort(&git, &open.repo, operation, &state.cancel()).map_err(say)
+}
+
 /// The operations journal (SPEC §11): the exact command, not a summary.
 #[tauri::command]
 pub fn journal(state: State<'_, AppState>) -> Vec<dto::JournalRow> {

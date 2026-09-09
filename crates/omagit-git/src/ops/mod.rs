@@ -20,11 +20,13 @@
 
 pub mod branch;
 pub mod commit;
+pub mod integrate;
 pub mod network;
 pub mod stage;
 
 pub use branch::{checkout, checkout_detached, create, delete, merged, rename};
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
+pub use integrate::{MergeOptions, abort, merge, rebase};
 pub use network::{Push, PushForce, Step, fetch, pull, push};
 pub use stage::{
     discard, discard_file, stage, stage_all, stage_file, unstage, unstage_all, unstage_file,

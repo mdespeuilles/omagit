@@ -7,6 +7,7 @@
 // covering the screen would hide the very list the user is deciding from.
 
 import {
+  abortOperation,
   app,
   dismissNotes,
   dismissWriteError,
@@ -24,8 +25,15 @@ import {
     <span>{{ plural(stagedCount(), "indexé") }} · {{ unstagedCount() }} non indexé</span>
 
     <!-- A half-finished merge or rebase, said instead of the branch: "on main"
-         is misleading while one is stuck. -->
-    <span v-if="app.summary?.operation" class="conflict">│ {{ app.summary.operation }}</span>
+         is misleading while one is stuck. The way out sits next to it, because
+         a repository left half-way with no visible exit is the state this
+         application must never put someone in. -->
+    <template v-if="app.summary?.operation">
+      <span class="conflict">│ {{ app.summary.operation }} en cours</span>
+      <button class="link danger" :disabled="!!app.busy" @click="abortOperation()">
+        Abandonner
+      </button>
+    </template>
     <span v-if="app.summary && app.summary.counts.conflicted > 0" class="conflict">
       │ {{ plural(app.summary.counts.conflicted, "conflit") }}
     </span>

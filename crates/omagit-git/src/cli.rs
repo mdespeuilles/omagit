@@ -383,9 +383,18 @@ fn execute(spawn: Spawn<'_>, cancel: &Cancel) -> Result<Output> {
     if status.success() {
         Ok(Output { stdout, stderr })
     } else {
+        // SPEC §3 rule 3 wants Git's own words, and Git does not always put
+        // them on `stderr`: a merge that conflicts explains itself on `stdout`
+        // — "CONFLICT (content): Merge conflict in shared.txt" — and reporting
+        // only `stderr` would hand the user an error with nothing in it.
+        let said = if stderr.is_empty() {
+            String::from_utf8_lossy(&stdout).trim().to_owned()
+        } else {
+            stderr
+        };
         Err(GitError::CommandFailed {
             command: command_line.to_owned(),
-            stderr,
+            stderr: said,
         })
     }
 }
@@ -466,7 +475,18 @@ fn scrub_environment(command: &mut Command) {
         .env("GIT_OPTIONAL_LOCKS", "0")
         // Colour is for humans; every format read here is machine-readable.
         .env("GIT_PAGER", "cat")
-        .env("NO_COLOR", "1");
+        .env("NO_COLOR", "1")
+        // The other prompt nobody can answer. `git merge` and `git pull` open
+        // an editor for the merge message, and `git rebase` opens one for its
+        // todo list. `git` skips both when stdin is not a terminal, and stdin
+        // here is `/dev/null` — but that is a behaviour to rely on rather than
+        // a guarantee, and the failure mode if it ever changed is a `vi` on a
+        // pipe nobody can see, waiting forever.
+        //
+        // `true` is the shell builtin: it exits 0 immediately and leaves the
+        // file untouched, which is exactly "keep the message git prepared".
+        .env("GIT_EDITOR", "true")
+        .env("GIT_SEQUENCE_EDITOR", "true");
     // An inherited `GIT_DIR` (from a hook, or from a terminal the app was
     // launched from) silently redirects the command at another repository.
     for variable in [
@@ -624,6 +644,9 @@ mod tests {
         for (name, expected) in [
             ("GIT_TERMINAL_PROMPT", true),
             ("GIT_OPTIONAL_LOCKS", true),
+            // The other prompt nobody can answer: a `vi` on a pipe.
+            ("GIT_EDITOR", true),
+            ("GIT_SEQUENCE_EDITOR", true),
             // An inherited GIT_DIR would point the command at another
             // repository than the one asked for.
             ("GIT_DIR", false),
