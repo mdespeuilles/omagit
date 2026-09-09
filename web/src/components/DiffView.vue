@@ -40,6 +40,15 @@ const entry = computed(() => {
 
 const picked = computed(() => app.picked.size);
 
+/// A conflicted file is read here and settled elsewhere.
+///
+/// Staging a hunk of an unmerged path cannot work — there is no side of the
+/// index to build the patch from — and `git checkout -- <path>` refuses one
+/// outright, so "Rejeter" would be a button that always fails. Both are hidden
+/// rather than disabled: the row and the dialog (§2.37) are where a conflict is
+/// answered, and a control that is never usable teaches nothing by staying.
+const conflicted = computed(() => !!entry.value?.conflict);
+
 // Takes the side rather than the row: `readonly()` makes the state deeply
 // immutable, and a parameter typed as the mutable row would not accept one.
 function sign(side: "context" | "added" | "removed"): string {
@@ -132,7 +141,7 @@ function segments(
         <span class="diff-header-text">{{ item.text }}</span>
         <!-- Never fully hidden (DESIGN §3): at rest these sit at a low opacity
              so the target stays reachable by keyboard, and come up on hover. -->
-        <span v-if="app.screen === 'working-copy'" class="hunk-actions">
+        <span v-if="app.screen === 'working-copy' && !conflicted" class="hunk-actions">
           <button :disabled="!!app.busy" @click="stageHunk(item.hunk, staged)">
             {{ staged ? "Désindexer le bloc" : "Indexer le bloc" }}
           </button>
@@ -158,11 +167,12 @@ function segments(
           item.side,
           {
             picked: app.picked.has(lineKey(item.hunk, item.index)),
-            inert: app.screen !== 'working-copy',
+            inert: app.screen !== 'working-copy' || conflicted,
           },
         ]"
         @click="
           app.screen === 'working-copy' &&
+          !conflicted &&
           selectable(item.side) &&
           pickLine(item.hunk, item.index, $event.shiftKey)
         "
@@ -183,7 +193,7 @@ function segments(
 
     <!-- Appears only once lines are picked, and says what it would act on
          before it acts: this is the one bar in the app whose buttons write. -->
-    <footer v-if="picked > 0 && app.screen === 'working-copy'" class="picked-bar">
+    <footer v-if="picked > 0 && app.screen === 'working-copy' && !conflicted" class="picked-bar">
       <span>{{ plural(picked, "ligne") }}</span>
       <span class="pane-head-spacer" />
       <button :disabled="!!app.busy" @click="stagePicked(staged)">

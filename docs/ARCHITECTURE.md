@@ -1137,6 +1137,14 @@ third thing to read, and the two sides side by side are already the dialog's job
 and they changed — and then the comparison is against nothing, which reads as
 the whole file arriving, because that is what it is.
 
+Its staging controls went too, and for a sharper reason than tidiness: "Indexer
+le bloc" builds a patch from a side of the index that does not exist, and
+"Rejeter" is `git checkout -- <path>`, which refuses an unmerged path by name.
+Both were buttons that could only ever fail. Hidden rather than disabled — a
+control that is never usable on this kind of file teaches nothing by staying —
+and line-picking is inert there for the same reason. A conflict is answered on
+the row or in the dialog.
+
 The pane's two tabs went with it: a file with no side of the index to be on had
 "Non indexé" and "Indexé" over it, two controls that would have done the same
 thing. It says `En conflit` instead.

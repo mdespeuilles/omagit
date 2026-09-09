@@ -132,6 +132,22 @@ describe("a repository stopped on a conflict", () => {
     expect(list.findAll(".row-action.danger")).toHaveLength(0);
   });
 
+  it("offers nothing to stage in the diff of a conflicted file", async () => {
+    // There is no side of the index to build a patch from, and
+    // `git checkout -- <path>` refuses an unmerged path, so both buttons would
+    // have been ones that always fail. The row and the dialog are where a
+    // conflict is answered.
+    const state = await stopped();
+    const DiffView = (await import("./components/DiffView.vue")).default;
+
+    const diff = mount(DiffView);
+    expect(state.app.diff.status).toBe("ready");
+    expect(diff.findAll(".hunk-actions")).toHaveLength(0);
+    // And the pane says which one file it is looking at, rather than offering
+    // two tabs that would do the same thing.
+    expect(diff.find(".tab").text()).toBe("En conflit");
+  });
+
   it("holds the way forward shut until the conflicts are settled", async () => {
     const state = await stopped();
     const StatusBar = (await import("./components/StatusBar.vue")).default;
