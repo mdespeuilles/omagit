@@ -673,6 +673,22 @@ now runs in `npm run check`, which is the gate. A dead CSS rule is invisible in
 review and invisible in tests, and it is exactly how an interface drifts from
 its design without anyone changing anything.
 
+**The topbar's shape follows the screen, not the open repository.** Board 06
+labels its frame "topbar réduite à 40px · pas de dépôt ouvert", so which topbar
+to draw is a question about the screen. Keying it on `app.open` instead — on the
+reasoning that the block says which repository the window is *in* — left the
+repository's name and its Fetch / Pull / Push sitting on the Dépôts screen, and
+going back there looked as though it had not worked. Reported, and it was right
+to be: the window is not in a repository when it is showing the list of them.
+The repository stays loaded, because you may be going back to switch and return.
+
+That is the third bug of one kind in this project — chrome belonging to the
+wrong thing. The GPUI build let History take the window over; a screen once drew
+the way back to itself; this one let a screen keep a header it had left.
+`Topbar.test.ts` mounts `App.vue` rather than the topbar, because the bug is
+about the two moving together: a topbar test that set the screen by hand would
+agree with any routing at all.
+
 **What is still not board-accurate**, and is named rather than left to be
 discovered: board 05's month separators and its All Branches / Remotes / Tags
 segmented control; board 03's branch tree, which is M7's; board 06's drag to

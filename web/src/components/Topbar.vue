@@ -1,10 +1,17 @@
 <script setup lang="ts">
 // Boards 02 and 06's topbar.
 //
-// Two shapes, because the app has two situations. With a repository open it is
-// board 02's: the window controls, the repository named on two lines, then the
-// network actions and the search. With none, it is board 06's: the app's name,
-// and the actions that make a repository appear.
+// Two shapes, because the app has two situations, and the situation is **which
+// screen you are on** — not which repository happens to still be loaded. Inside
+// a repository it is board 02's: the window controls, the repository named on
+// two lines, then the network actions and the search. On Dépôts it is board
+// 06's, which that board labels "topbar réduite à 40px · pas de dépôt ouvert":
+// the app's name, and the actions that make a repository appear.
+//
+// Keyed on the open repository for a while instead, on the reasoning that the
+// block says which repository the window is *in*. It does not: on Dépôts the
+// window is not in one, and leaving the block there made going back look like
+// it had not worked.
 //
 // The platform reserves are spacers rather than padding (DESIGN-TOKENS §9), so
 // nothing else shifts when the platform does — a control placed 12px from the
@@ -19,6 +26,10 @@ import { addRepository, app, showScreen } from "../state";
 import { tildify } from "../format";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
+
+/// Whether the window is looking *into* a repository, which is what decides the
+/// topbar's whole shape.
+const inRepository = computed(() => app.screen !== "repositories" && app.open !== null);
 
 /// The second line of the repository block: where it is, and where HEAD is.
 const where = computed(() => {
@@ -42,14 +53,14 @@ const where = computed(() => {
 </script>
 
 <template>
-  <header class="topbar" :class="{ compact: !app.open }">
+  <header class="topbar" :class="{ compact: !inRepository }">
     <span
       v-if="app.platform && app.platform.reserve.leading > 0"
       class="reserve"
       :style="{ width: `${app.platform.reserve.leading}px` }"
     />
 
-    <template v-if="app.open && app.summary">
+    <template v-if="inRepository && app.summary">
       <!-- Board 02: the repository, named on two lines. -->
       <button
         class="icon"
@@ -78,10 +89,7 @@ const where = computed(() => {
       git indisponible — {{ app.gitUnusable }}
     </span>
 
-    <!-- The block on the left says which repository the window is in; the
-         actions on the right belong to the screen. Both are true at once on
-         Dépôts with a repository open, and they answer different questions. -->
-    <template v-if="app.screen !== 'repositories'">
+    <template v-if="inRepository">
       <!-- M7's network actions. Drawn now, disabled, because board 02 fixes
            what the topbar contains and an action that will exist reads better
            as not-yet than as absent. -->
