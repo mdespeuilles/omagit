@@ -44,6 +44,25 @@ payé d'avance.
 aucun trait spéculatif, aucune abstraction « au cas où ». Une abstraction sans deuxième
 implémentation réelle est une dette, pas une préparation.
 
+> **Amendement, entre M6 et M7 (2026-09-09) — Windows n'est plus exclu par
+> construction, et n'est pas pour autant supporté.**
+>
+> Cette section excluait Windows en partie parce que le rendre possible aurait
+> coûté des compromis d'architecture. Avec Tauri (§4) il n'en coûte plus aucun :
+> le runtime y tourne. Deux choses restent distinctes, et les confondre serait
+> exactement le genre de dette que cette section interdit :
+>
+> * **« Ça tournerait »** — vrai, gratuit, et une propriété du runtime.
+> * **« C'est supporté »** — rouvre la variante Windows de la maquette 02 (les
+>   boutons caption 46×48, la réserve de 138px, la zone `HTMAXBUTTON` pour les
+>   Snap Layouts), le packaging, les tests, une troisième cible de CI.
+>
+> **Le second n'est pas décidé.** Tant qu'il ne l'est pas, la règle de cette
+> section tient sous une forme plus faible : aucun compromis n'est fait *pour*
+> Windows, rien n'est testé ni packagé pour lui, et un bug qui ne s'y produit que
+> là n'est pas un bug de ce projet. Le jour où quelqu'un décide de le supporter,
+> c'est un jalon, pas une case à cocher.
+
 ## 3. Règles de travail non négociables
 
 Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque commit.
@@ -108,6 +127,24 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 9. **Écris les tests avec le code.** Chaque commande Git implémentée arrive avec au moins un
    test d'intégration sur un dépôt temporaire.
 
+> **Amendement, entre M6 et M7 (2026-09-09) — les deux règles qui nomment GPUI.**
+>
+> La **règle 1** cite `gpui-kit` et `gpui-omarchy` comme les dépendances dont les
+> versions bougent vite. Elles sortent du projet (§4) ; la règle vaut désormais
+> pour **Tauri, son webview et `gitoxide`**. Elle n'a rien perdu de sa force :
+> c'est en l'appliquant qu'on a découvert que `gpui-omarchy` était vieux de deux
+> jours et maintenu par une personne, et qu'on l'a vendorisé avant qu'il ne
+> coûte cher.
+>
+> La **règle 5** dit que le cœur Git ne dépend ni de `gpui` ni de
+> `gpui-omarchy`. Elle devient : il ne dépend **d'aucune couche d'interface**,
+> Tauri compris. C'est la règle qui a rendu ce changement de pile envisageable —
+> 8 300 lignes et 3 959 lignes de tests traversent intactes. Le prix de la tenir
+> était nul ; le prix de ne pas l'avoir tenue aurait été le projet.
+>
+> Les règles 2, 3, 4, 6, 7, 8 et 9 sont inchangées. La règle 2 (aucun blocage du
+> thread UI) change seulement de thread à ne pas bloquer.
+
 ## 4. Pile technique
 
 | Couche | Choix | Note |
@@ -140,7 +177,53 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 >
 > Détail dans `docs/ARCHITECTURE.md` §2.18 et `docs/notes/gpui-kit-capabilities.md`.
 
-## 5. Vendorer `gpui-omarchy` dès M0
+> **Amendement, entre M6 et M7 (2026-09-09) — l'UI passe de GPUI à Tauri.**
+>
+> La ligne « UI » de ce tableau devient :
+>
+> | Couche | Choix | Note |
+> |---|---|---|
+> | UI | **Tauri 2** — backend Rust, interface web | remplace `gpui-kit` et `gpui-omarchy` |
+> | Design system | **le nôtre, en CSS** | les maquettes livrées sont déjà du HTML |
+> | Async | **l'executor de Tauri** | toujours **pas** de runtime Tokio global exposé aux crates métier |
+>
+> Tout le reste du tableau est inchangé : `gix`, le binaire `git`, `notify`,
+> `imara-diff`, `palette`, `thiserror`, `tracing`, `serde`. Le cœur Git ne
+> dépendait d'aucun d'entre eux (§3 règle 5), et c'est précisément ce qui rend
+> ce changement supportable.
+>
+> **La raison, et elle est unique.** GPUI n'est pas un produit destiné à des
+> tiers : il existe pour servir Zed. Son API bouge quand Zed a besoin qu'elle
+> bouge — le préfixe `gpui-pre-*` le dit à voix haute — et chaque refactor de
+> Zed serait notre migration, sans qu'ils nous doivent rien. Tauri existe pour
+> que des tiers construisent dessus ; ses ruptures sont annoncées et
+> documentées. Sur un projet de plusieurs mois, c'est la différence entre une
+> dépendance et un pari.
+>
+> **Ce qui n'a *pas* motivé la décision**, parce qu'on l'a mesuré et que c'était
+> faux : le coût de la frontière IPC. Sur un dépôt réel de 739 commits, une page
+> d'historique complète avec son graphe pèse 0,55 Mo et traverse en 17 ms, les
+> 60 lignes visibles en 1,5 ms, le plus gros diff du dépôt en 4 ms. Face aux
+> budgets de §12 c'est moins de 10 %. L'argument performance ne tenait pas.
+>
+> **Tauri plutôt qu'Electron**, malgré les trois moteurs de rendu : le backend
+> d'une app Tauri *est* du Rust, donc `omagit-git` — 8 300 lignes sans
+> dépendance UI et 3 959 lignes de tests — reste tel quel. Electron obligerait à
+> le réécrire ou à ajouter une frontière de processus.
+>
+> **Ce que ça coûte, sans l'enjoliver.** Environ 10 000 lignes d'interface à
+> réécrire, et surtout la perte du harnais de tests d'interaction de GPUI
+> (`TestAppContext`, `VisualTestContext`), qui pilote le vrai arbre de widgets
+> et a attrapé quatre bugs réels en une session. Il faudra le remplacer, et rien
+> côté web n'est aussi direct.
+>
+> **Ce qui reste inconnu et que le spike doit trancher** : Tauri utilise le
+> webview du système, donc **WebKitGTK sur Linux** — la cible de conception
+> (§1), et le plus faible des trois moteurs. Le spike rend 1 000 lignes de diff
+> virtualisées avec coloration syntaxique et la gouttière du graphe, **sur
+> Linux**. Si ça tient là, ça tient partout.
+
+## 5. ~~Vendorer `gpui-omarchy` dès M0~~ *(caduc — voir l'amendement en fin de section)*
 
 `gpui-omarchy` est en 0.1.0, maintenu par une seule personne, avec `gpui-kit = "=0.6.0"`
 épinglé en dur, et son README indique explicitement que le framework n'est pas complet.
@@ -155,6 +238,15 @@ produit en local.
 
 Vérifie aussi dès M0 qu'il se comporte correctement **sur macOS** : absence totale d'Omarchy →
 repli sur thème embarqué, sans panique ni chemin Linux codé en dur.
+
+> **Amendement, entre M6 et M7 (2026-09-09) — cette section est caduque.**
+>
+> `gpui-omarchy` disparaît avec GPUI (§4), et avec lui `vendor/` et
+> `scripts/sync-vendor.sh`. La section est conservée pour ce qu'elle a montré :
+> le vendoring a fonctionné exactement comme prévu — un upstream d'une personne
+> et de deux jours n'a jamais bloqué le projet, et son remplacement complet du
+> système de thème a coûté une session, pas un jalon. Le raisonnement reste
+> valable pour la prochaine dépendance fragile qu'on rencontrera.
 
 ## 6. Le système de thème — spécification complète
 
@@ -241,6 +333,18 @@ Les six tests qui font foi sont listés en §10 de `DESIGN-TOKENS.md`. Ils viven
 embarqué, toute paire texte/fond utilisée dans l'UI atteint un contraste ≥ 4.5:1**. C'est le
 seul moyen de tenir la promesse d'accessibilité sur des palettes qu'on ne contrôle pas.
 
+> **Amendement, entre M6 et M7 (2026-09-09) — le système de thème survit intact.**
+>
+> `omagit-theme` n'a aucune dépendance UI (§3 règle 5), donc rien de cette
+> section ne change : les quatre sources, la dérivation OKLCH, la correction de
+> contraste, les lanes, le catalogue et les six tests qui font foi restent tels
+> quels. Seule sa *projection* change de cible : au lieu de remplir la structure
+> de thème de `gpui-omarchy`, elle émettra des variables CSS.
+>
+> C'est même le sens de la marche : `DESIGN-TOKENS.md` décrit ses tokens avec une
+> colonne « CSS maquettes » (`--fg`, `--ac`, `--raised`) présentée comme un
+> instantané de livraison. Elle redevient la représentation réelle.
+
 ## 7. Organisation du workspace
 
 ```
@@ -285,6 +389,23 @@ layers/
 │   └── notes/                    # vérifications de capacités de crates
 └── tests/fixtures/
 ```
+
+> **Amendement, entre M6 et M7 (2026-09-09) — ce que devient le workspace.**
+>
+> Survivent tels quels, parce qu'aucun ne dépend de l'UI : `omagit-git`,
+> `omagit-theme`, `omagit-settings`, et `omagit-git-cli`.
+>
+> Disparaissent : `omagit-ui` et les écrans de `omagit-app`, soit environ 10 000
+> lignes. `vendor/` disparaît avec eux.
+>
+> Apparaissent : une interface web sous `web/` — les maquettes livrées sont déjà
+> du HTML — et `omagit-app` devient le binaire Tauri, qui expose le cœur Git aux
+> commandes et garde la couche `platform/`, dont la raison d'être (Linux et
+> macOS divergent) n'a pas changé.
+>
+> Ce qui vaut d'être noté : cette liste est courte parce que la règle 5 de §3 a
+> été tenue. Un cœur Git qui aurait connu l'UI aurait rendu ce changement
+> impossible à envisager.
 
 ## 8. Stratégie Git : hybride assumée
 
@@ -447,6 +568,20 @@ Benchmarks reproductibles dans `benches/`, sur dépôts générés, mesurés sur
 hunk à la demande, cache LRU des objets Git, coloration syntaxique sur la plage visible
 uniquement, graphe recalculé en différentiel.
 
+> **Amendement, entre M6 et M7 (2026-09-09) — les cibles tiennent, deux sont à
+> re-mesurer.**
+>
+> Les sept objectifs restent les objectifs : ils décrivent le produit voulu, pas
+> la technologie. La mesure IPC (§4) montre que la frontière en consomme moins de
+> 10 %. Deux lignes sont à re-mesurer une fois le spike fait, parce qu'un webview
+> a un coût de base que GPUI n'avait pas :
+>
+> * **Mémoire au repos < 250 Mo** — WebKitGTK et WKWebView partent plus haut que zéro.
+> * **Démarrage à froid < 250 ms** — l'initialisation du webview s'ajoute.
+>
+> Si l'une des deux ne tient pas, c'est la cible qu'on rediscute en la nommant,
+> pas le chiffre qu'on oublie.
+
 ## 13. Tests
 
 - **Unitaires** dans `layers-git` : parsing de sortie `git`, calcul de lanes, découpage en
@@ -463,6 +598,24 @@ uniquement, graphe recalculé en différentiel.
   clavier de la palette) avec le support de test de GPUI.
 - **Snapshots** de rendu de diff, pour détecter les régressions visuelles.
 - **CI Linux et macOS** : `fmt` + `clippy -D warnings` + `test` + `cargo deny` + build release.
+
+> **Amendement, entre M6 et M7 (2026-09-09) — le harnais d'interaction est à
+> refaire.**
+>
+> Les tests unitaires, d'intégration et les cas limites de cette section ne
+> bougent pas : ils vivent dans `omagit-git` et `omagit-theme`, qui ne changent
+> pas.
+>
+> La ligne « **UI** : tests d'interaction sur les composants critiques avec le
+> support de test de GPUI » perd son outil. `TestAppContext` et
+> `VisualTestContext` pilotaient le vrai arbre de widgets — frappes, clics,
+> bornes mesurées — et ont attrapé quatre bugs réels en une session. Rien côté
+> web n'est aussi direct ; il faudra choisir un remplaçant (WebDriver, Playwright)
+> et le choisir tôt, parce que c'est par ce trou que sont passés tous les bugs
+> d'interface de ce projet.
+>
+> Les **snapshots de rendu de diff** deviennent plus faciles, en revanche : du
+> DOM se compare mieux qu'une liste d'éléments.
 
 ## 14. Jalons
 
@@ -495,6 +648,24 @@ Un jalon à la fois, chacun terminé par `scripts/check.sh` vert et poussé sur 
 - **M10 — Distribution.** Bundle macOS signé et notarisé + DMG, archive Linux + PKGBUILD AUR,
   mise à jour in-app optionnelle, pipeline de release GitHub Actions avec attestation.
 
+> **Amendement, entre M6 et M7 (2026-09-09) — un jalon s'insère, M6 est
+> interrompu.**
+>
+> **M6 s'arrête où il en est** : le graphe, la liste virtualisée et le détail de
+> commit sont faits ; les filtres et la comparaison A ↔ B ne seront **pas**
+> écrits en GPUI. Les écrire pour les jeter n'a aucun sens, et le travail déjà
+> fait ne doit pas peser dans la balance — c'est ce qui a fondé la décision.
+>
+> **M6b — Portage.** Un spike Tauri d'abord, sur Linux et WebKitGTK, qui répond
+> à la seule question ouverte : 1 000 lignes de diff virtualisées avec
+> coloration, et la gouttière du graphe. S'il tient, le portage de M3 à M6 ;
+> sinon on rouvre la décision avec une mesure en main plutôt qu'un avis.
+>
+> M6 se termine ensuite dans la nouvelle interface — les filtres et A ↔ B — et
+> M7 à M10 sont inchangés dans leur contenu. La seule ligne qui bouge est celle
+> de M10 : le packaging devient celui de Tauri, et Windows y entrerait *si* et
+> seulement si quelqu'un décide de le supporter (§2).
+
 ## 15. Risques à surveiller
 
 Consigne-les dans `docs/ARCHITECTURE.md` et réévalue-les à chaque jalon.
@@ -503,7 +674,15 @@ Consigne-les dans `docs/ARCHITECTURE.md` et réévalue-les à chaque jalon.
    assertion en debug qui panique si une opération Git est appelée depuis le thread UI.
 2. **Le partage `gix` / CLI mal placé.** Si `gix` ne couvre pas un cas de lecture (renommages,
    sous-modules, `.gitattributes`), bascule sur la CLI plutôt que de bricoler, et documente-le.
-3. **`gpui-omarchy` incomplet.** Certains composants n'existent pas encore. Compose directement
+3. **~~`gpui-omarchy` incomplet~~ — remplacé (2026-09-09).** Ce risque s'est réalisé et a été
+   traité comme prévu : vendoring, puis remplacement complet du système de thème. Il est
+   remplacé par **le webview de Tauri** : trois moteurs au lieu d'un, dont WebKitGTK sur la
+   cible de conception. C'est le risque que le spike de M6b existe pour chiffrer. À sa suite,
+   deux autres à surveiller : la frontière IPC sur les gros diffs — mesurée à moins de 10 % du
+   budget, à re-mesurer sur un vrai rendu — et la disparition du harnais de tests d'interaction,
+   par lequel sont passés tous les bugs d'interface de ce projet.
+
+   *(Texte d'origine, conservé.)* Certains composants n'existent pas encore. Compose directement
    avec `gpui_kit::base` et remonte le manque en amont. Le vendoring (§5) existe pour ça.
 4. **Le graphe de commits.** L'algorithme le plus difficile du projet. Isole-le, teste-le sur
    des historiques pathologiques, ne le couple jamais au rendu.

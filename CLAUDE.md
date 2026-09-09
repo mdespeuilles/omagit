@@ -22,5 +22,17 @@ projet, ou quand le projet sera assez avancé pour que ça protège quelque chos
 D'ici là, proposer ce genre d'outillage est du bruit : avant de construire de
 l'infrastructure, nommer qui elle protège.
 
+## Changement de pile en cours (2026-09-09)
+
+L'interface passe de GPUI à **Tauri 2** : backend Rust, frontend web. La raison
+est dans `docs/SPEC.md` §4 (amendement) et `docs/ARCHITECTURE.md` §2.20 — GPUI
+existe pour servir Zed, pas des tiers.
+
+Ce qui ne change pas : `omagit-git`, `omagit-theme`, `omagit-settings`,
+`omagit-git-cli`. Ce qui disparaît : `omagit-ui`, les écrans, `vendor/`.
+
+M6 est **interrompu** : ses filtres et sa comparaison A ↔ B ne seront pas écrits
+en GPUI. Le prochain travail est le spike de M6b, sur Linux et WebKitGTK.
+
 Le reste — architecture, décisions, risques — est dans `docs/SPEC.md`,
 `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/DESIGN-TOKENS.md`.

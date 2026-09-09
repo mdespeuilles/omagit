@@ -3,9 +3,13 @@
 Maintained as the project goes (SPEC §7). It records the decisions that are
 expensive to reverse and the risks that have to be re-read at each milestone.
 
-**Status: M4 — the Working Copy, in read.** What exists is listed under "What is
-built"; everything else here is the shape later milestones fill in, not code
-that is present.
+**Status: M6, interrupted — the UI is moving from GPUI to Tauri (2026-09-09).**
+
+The Git core, the theme system and the settings are unaffected and stay where
+they are. `omagit-ui` and the screens will be rewritten. What is written below
+about them describes what exists today, not what will exist; the decision and
+its reasoning are in §2.20, and SPEC §4's amendment carries the same in the
+brief's own terms.
 
 ---
 
@@ -383,6 +387,45 @@ than a gap: DESIGN §1's first rule is that hierarchy never rests on hue.
 that way: it is what lets `scripts/sync-vendor.sh` tell an upstream change from
 one of ours. Clippy is silenced from the vendored manifest rather than from the
 sources. Details and the divergence list in `vendor/README.md`.
+
+### 2.20 The UI leaves GPUI for Tauri
+
+Decided between M6 and M7, on one argument: **GPUI is not a product for third
+parties.** It exists to serve Zed. Its API moves when Zed needs it to — the
+`gpui-pre-*` naming says so out loud — and every Zed refactor would be our
+migration, with nothing owed to us. Tauri exists so that other people build on
+it; its breaking changes are announced and documented. Over a project of months
+that is the difference between a dependency and a bet.
+
+Three things did **not** decide it, and saying so matters because two of them
+were mine:
+
+* **Performance across the IPC boundary.** Measured on a real 739-commit
+  repository: a full page of history with its graph is 0.55 MB and crosses in
+  17ms; the 60 rows a virtualised list actually shows, 1.5ms; the largest diff
+  in the repository, 4ms. Against SPEC §12's budgets that is under 10%. I had
+  argued the opposite before measuring, and I was wrong.
+* **The work already done.** Sunk cost, and it was right to be told so.
+* **Ecosystem size, or the curved graph lanes.** Real gains, not decisive ones.
+
+**Tauri rather than Electron**, despite Tauri's three rendering engines against
+Electron's one: a Tauri backend *is* Rust, so `omagit-git` — 8,300 lines with no
+UI dependency and 3,959 lines of tests — stays as it is. Electron would mean
+rewriting it or adding a process boundary.
+
+**What it costs, unvarnished.** About 10,000 lines of interface, and the loss of
+GPUI's interaction test harness, which drove the real widget tree and caught
+four real bugs in one session. Nothing on the web side is as direct.
+
+**What is still unknown.** Tauri uses the system webview, so WebKitGTK on Linux
+— the design target, and the weakest of the three. That is what M6b's spike
+exists to answer, on Linux, before anything is ported.
+
+**Why the list of what survives is short.** SPEC §3 rules 5 and 6 — the Git core
+knows nothing about the UI, no `cfg(target_os)` in the UI layer — were held from
+M0. A core that had known about the UI would have made this change impossible to
+consider, which is the argument for those rules stated as a cost avoided rather
+than as a principle.
 
 ## 3. Data flow (from M2 onwards)
 

@@ -64,6 +64,13 @@ and a reserve is a flex spacer, never a conditional padding.
 Windows is out of scope (SPEC §2). Board 02's Windows variant is documentation,
 not a target.
 
+> **Amendment (2026-09-09).** With the move to Tauri, Windows is no longer
+> excluded by construction — the runtime runs there. It is still not supported,
+> and board 02's Windows variant is still documentation: supporting it means the
+> caption buttons, the 138px reserve, the `HTMAXBUTTON` region for Snap Layouts,
+> packaging and testing. That is a milestone nobody has decided on (SPEC §2's
+> amendment).
+
 Linux caption buttons, when drawn, are the app's own: 16px linear glyphs at
 1.5px stroke, 38×48 each, square. Minimise and maximise hover to
 `surface_raised`, close to full `danger`. Order and side follow
