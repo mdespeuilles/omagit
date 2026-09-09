@@ -122,12 +122,29 @@ impl Shell {
                     .child("omagit"),
             )
             .child(separator(palette))
-            .child(
-                div()
+            // The trail reads as a trail, so it has to behave like one: with a
+            // repository open this is the way back to the list, and it was
+            // inert — the only visible affordance for "go back" did nothing,
+            // and the ones that worked were Escape and a row pinned to the
+            // bottom of the sidebar. Neither is something you find by looking.
+            .child({
+                let crumb = div()
+                    .px(px(4.0))
                     .text_size(px(12.5))
-                    .text_color(hsla(t.text_muted))
-                    .child("Dépôts"),
-            )
+                    .text_color(hsla(if open.is_some() { t.text_muted } else { t.text }));
+                match open.is_some() {
+                    false => crumb.child("Dépôts").into_any_element(),
+                    true => crumb
+                        .id("back-to-repositories")
+                        .cursor_pointer()
+                        .hover(|style| style.bg(hsla(t.surface_hover)).text_color(hsla(t.text)))
+                        .on_click(|_, window, cx| {
+                            window.dispatch_action(Box::new(ShowRepositories), cx);
+                        })
+                        .child("Dépôts")
+                        .into_any_element(),
+                }
+            })
             .children(open.map(|name| {
                 div()
                     .flex()
@@ -140,6 +157,16 @@ impl Shell {
                             .text_size(px(12.5))
                             .text_color(hsla(t.text))
                             .child(SharedString::from(name)),
+                    )
+                    // The keyboard way back, named where the pointer way back
+                    // is. Board 02 puts a shortcut next to the action it
+                    // belongs to; this is the same idea one level up.
+                    .child(
+                        div()
+                            .font_family(fonts.mono.clone())
+                            .text_size(px(11.0))
+                            .text_color(hsla(t.text_dim))
+                            .child("Esc"),
                     )
             }))
             .child(div().flex_1())
