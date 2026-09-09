@@ -640,6 +640,45 @@ and the per-repository description edited in place. The data model carries all
 of them — `Library::move_entry`, `add_group`, `Entry::description` — and each is
 an interaction surface of its own.
 
+### 2.28 The interface was built from the mock-ups' text, not from the mock-ups
+
+Told that the interface did not resemble the boards "ni sur le fond ni sur la
+forme", and it did not. The cause is worth writing down because it was a method
+error, not a series of small mistakes: **every screen so far was built from a
+flattened text extraction of `docs/design/*.dc.html`** — a script that stripped
+the tags and printed the words. That yields the content of a board and none of
+its form. Every dimension, weight, colour rôle, border and state was invented to
+fit the words.
+
+The boards are HTML with inline styles. Reading them tells you that a button is
+26 high with 12 of padding and comes in three kinds and five states; that a
+status badge is a letter *and* a colour so it survives greyscale; that a section
+header is 11px uppercase with 0.08em of letter-spacing; that a repository row is
+two lines and 36 high with a status square. None of that survives the flattening,
+and all of it is what "la forme" means.
+
+**On the substance**, one thing was plainly wrong: the window opened straight
+into a repository, so the Repositories screen — the first of the three the
+product is made of (SPEC §1), and what §12 measures cold start against — was
+something you could only reach by going backwards. Board 06 is drawn "pas de
+dépôt ouvert". It opens there now, and `showScreen` refuses a repository screen
+when none is open, so the broken shell that state produced cannot be reached.
+
+**And a stylesheet that grew by appending had started lying.** `button.primary`
+was defined twice, the later one — left over from the commit box — winning and
+turning the primary button into an outline. Worse, a bad slice had duplicated
+230 lines, so the *old* repository card was overriding the new one: the screen
+was drawing code I had already replaced. `stylelint`'s `no-duplicate-selectors`
+now runs in `npm run check`, which is the gate. A dead CSS rule is invisible in
+review and invisible in tests, and it is exactly how an interface drifts from
+its design without anyone changing anything.
+
+**What is still not board-accurate**, and is named rather than left to be
+discovered: board 05's month separators and its All Branches / Remotes / Tags
+segmented control; board 03's branch tree, which is M7's; board 06's drag to
+reorder and its group editing, which are §2.27's; and the two-line topbar's
+back / forward history navigation.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

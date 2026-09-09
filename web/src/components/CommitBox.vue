@@ -85,7 +85,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
           type="checkbox"
           :checked="app.amend"
           @change="setAmend(($event.target as HTMLInputElement).checked)"
-        />
+        /><span class="check" aria-hidden="true">✓</span>
         Amend
       </label>
       <label class="toggle">
@@ -93,7 +93,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
           type="checkbox"
           :checked="app.signOff"
           @change="setSignOff(($event.target as HTMLInputElement).checked)"
-        />
+        /><span class="check" aria-hidden="true">✓</span>
         Sign off
       </label>
       <label class="toggle" title="Ignore les hooks pre-commit et commit-msg">
@@ -101,7 +101,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
           type="checkbox"
           :checked="app.noVerify"
           @change="setNoVerify(($event.target as HTMLInputElement).checked)"
-        />
+        /><span class="check" aria-hidden="true">✓</span>
         No verify
       </label>
     </div>

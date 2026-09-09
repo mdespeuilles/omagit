@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "no-duplicate-selectors": true,
+    "declaration-block-no-duplicate-properties": true,
+    "no-descending-specificity": null
+  }
+}

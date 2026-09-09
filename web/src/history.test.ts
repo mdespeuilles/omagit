@@ -40,6 +40,7 @@ async function open(commits: Made[]) {
   vi.resetModules();
   const state = await import("./state");
   await state.boot();
+  await state.openRepository("/repo");
   return state;
 }
 

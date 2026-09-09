@@ -8,7 +8,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "test": "vitest run",
     "format": "prettier --write .",
-    "check": "prettier --check . && vue-tsc --noEmit && vitest run"
+    "check": "prettier --check . && stylelint src/**/*.css && vue-tsc --noEmit && vitest run",
+    "lint:css": "stylelint src/**/*.css"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
@@ -21,6 +22,7 @@
     "@vue/test-utils": "^2.5.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
+    "stylelint": "^17.15.0",
     "typescript": "^5.9.0",
     "vite": "^8.2.2",
     "vitest": "^3.2.7",

@@ -29,6 +29,7 @@ async function drawn() {
   vi.resetModules();
   const state = await import("../state");
   await state.boot();
+  await state.openRepository("/repo");
   state.showScreen("history");
   await settle(state);
 

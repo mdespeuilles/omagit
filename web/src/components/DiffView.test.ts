@@ -18,6 +18,7 @@ async function drawn(files: Fixture[]) {
   vi.resetModules();
   const state = await import("../state");
   await state.boot();
+  await state.openRepository("/repo");
   const DiffView = (await import("./DiffView.vue")).default;
   return { state, diff: mount(DiffView) };
 }

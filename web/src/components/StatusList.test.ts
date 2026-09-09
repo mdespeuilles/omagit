@@ -23,6 +23,7 @@ async function drawn(files: Fixture[]) {
   vi.resetModules();
   const state = await import("../state");
   await state.boot();
+  await state.openRepository("/repo");
   const StatusList = (await import("./StatusList.vue")).default;
   return { state, list: mount(StatusList) };
 }
@@ -38,7 +39,7 @@ describe("the file list", () => {
       { path: "out.txt", staged: null, unstaged: "modified", hunks: 1 },
     ]);
 
-    const boxes = list.findAll(".stage-box");
+    const boxes = list.findAll(".check");
     expect(boxes).toHaveLength(3);
     expect(boxes[0]!.classes()).toContain("all");
     expect(boxes[0]!.text()).toBe("✓");
@@ -92,7 +93,7 @@ describe("the file list", () => {
       { path: "half.txt", staged: "modified", unstaged: "modified", hunks: 2 },
     ]);
 
-    await list.find(".stage-box").trigger("click");
+    await list.find(".check").trigger("click");
 
     const write = backend.current.calls.find((call) => call.command === "stage");
     expect(write?.args["unstage"]).toBe(false);

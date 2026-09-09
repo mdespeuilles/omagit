@@ -38,6 +38,7 @@ body {
 button,
 input[type="text"],
 input[type="search"],
+input[type="date"],
 textarea {
   border-radius: 0;
   font: inherit;
@@ -46,32 +47,175 @@ textarea {
   border: 1px solid var(--border);
 }
 
-/* Left native, deliberately: styling a checkbox means reimplementing its
-   states, and the one restyled here came out round. `accent-color` is the
-   whole of what a token has to say about it. */
-input[type="checkbox"] {
-  accent-color: var(--accent);
-  cursor: pointer;
+/* Board 01 §04. A field holding Git text is monospaced, and its ground is
+   `--bg` rather than the surface it sits on: an input is a hole, not a tile. */
+input[type="text"],
+input[type="search"],
+input[type="date"] {
+  height: 26px;
+}
+input[type="text"],
+input[type="search"],
+input[type="date"],
+textarea {
+  padding: 0 8px;
+  background: var(--bg);
+  color: var(--text);
+  user-select: text;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-dim);
+}
+input:focus,
+textarea:focus {
+  border-color: var(--border-focus);
 }
 
+/* Board 01 §01–§03. Every button is 26 high with 12 of padding, and a keyboard
+   hint sits inside it in mono at three-quarter opacity. */
 button {
-  height: var(--control-height);
-  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-  background: var(--surface-hover);
+  background: var(--surface-raised);
 }
 
+/* Disabled is a fainter border as well as fainter text: a control that is off
+   should not read as one that is merely empty. */
 button:disabled {
   color: var(--text-dim);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--bg));
   cursor: default;
+}
+
+/* Primary: the one action the screen is for. */
+button.primary:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 500;
+}
+button.primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent) 84%, var(--text));
+  border-color: color-mix(in srgb, var(--accent) 84%, var(--text));
+}
+
+/* Destructive: never colour alone (board 01 §03) — the border carries it too,
+   and the fill only arrives on the press. */
+button.danger:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 500;
+}
+button.danger:not(:disabled):hover {
+  background: color-mix(in srgb, var(--danger) 16%, var(--bg));
+}
+button.danger:not(:disabled):active {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+/* The shortcut inside a button. */
+.hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+button.primary .hint {
+  color: inherit;
+  opacity: 0.75;
 }
 
 :focus-visible {
   outline: 1px solid var(--border-focus);
   outline-offset: 2px;
+}
+
+/* Board 01 §05. Not a native checkbox: the third state — a half-staged file —
+   is not something a native one can be told to draw, and restyling one came out
+   round. 14px of box inside a 24px target. */
+.check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  padding: 0;
+  font-size: 11px;
+  line-height: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.check.all {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+/* Half in, drawn as half: the accent on the border and the bar, not a filled
+   box — a filled box is what "wholly staged" means one row above. */
+.check.partial {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.check:disabled {
+  border-color: color-mix(in srgb, var(--border) 55%, var(--bg));
+  background: var(--surface);
+}
+
+/* Board 01 §06. A status badge is a letter *and* a colour, never a colour
+   alone — the whole point is that it survives greyscale. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--text-muted);
+}
+.badge.modified {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.badge.added {
+  color: var(--success);
+  border-color: var(--success);
+}
+.badge.deleted {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.badge.renamed,
+.badge.copied {
+  color: var(--info);
+  border-color: var(--info);
+}
+.badge.untracked,
+.badge.ignored {
+  color: var(--text-dim);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--bg));
+}
+/* A conflict is the one that is filled: it is the state that has to be
+   resolved before any of the others matter. */
+.badge.conflict {
+  color: var(--bg);
+  background: var(--danger);
+  border-color: var(--danger);
 }
 
 .mono {
@@ -103,32 +247,87 @@ button:disabled {
   contain: strict;
 }
 
-/* The shell: a topbar, then three columns. Board 03's widths. */
+/* The shell: a topbar, then the columns. Board 03's widths. */
+/* Board 02: 48 high with a repository open, because the repository block is two
+   lines. Board 06: 40, because it is one. */
 .topbar {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  height: 40px;
+  gap: 8px;
+  height: 48px;
   flex: none;
-  padding: 0 var(--pad);
+  padding: 0 8px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+.topbar.compact {
+  height: 40px;
+}
+
+.topbar-spacer {
+  flex: 1;
+  min-width: 24px;
+}
+
+/* A hairline, not a character: `│` inherits the font's own metrics and lands
+   at a different height on every platform. */
+.topbar-rule {
+  width: 1px;
+  height: 20px;
+  flex: none;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.topbar-repo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: none;
+  min-width: 0;
+  max-width: 280px;
+}
+.topbar-repo-name {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-repo-where {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A square button with a glyph in it. */
+button.icon {
+  width: 26px;
+  padding: 0;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .reserve {
   flex: none;
 }
 
+/* The app's own name, set the way board 06 sets it. */
 .topbar-name {
+  font-size: 12.5px;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  padding-left: 4px;
 }
-.topbar-sep,
 .topbar-crumb {
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
 .banner {
-  margin-left: auto;
   padding: 2px 8px;
   font-size: 11px;
 }
@@ -159,22 +358,81 @@ button:disabled {
   border-right: 1px solid var(--border);
 }
 
+/* Board 03: 260px, on the surface. */
 .sidebar {
   display: flex;
   flex-direction: column;
   width: 260px;
   flex: none;
+  min-height: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
 }
 
 .sidebar-row {
-  border: 0;
-  text-align: left;
-  padding: 0 var(--pad);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
   height: var(--row-height);
   flex: none;
+  padding: 0 10px;
+  border: 0;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* The view you are in is filled, as board 03 fills it: this is a chooser, and
+   the row is the answer. */
+.sidebar-row.selected {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 500;
+}
+.sidebar-row.selected .sidebar-glyph,
+.sidebar-row.selected .sidebar-count {
+  color: inherit;
+}
+/* Drawn, dimmed, and labelled with the milestone it waits for. */
+.sidebar-row.deferred {
+  color: var(--text-dim);
+  cursor: default;
+}
+.sidebar-row.deferred:hover {
+  background: transparent;
+}
+
+.sidebar-note {
+  margin: 0;
+  padding: 2px 10px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  flex: none;
+  padding: 0 10px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+/* A milestone label. Board 03 draws `DIFFÉRÉ` this way. */
+.tag {
+  flex: none;
+  padding: 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
 }
 
 .files {
@@ -192,37 +450,62 @@ button:disabled {
   min-height: 0;
 }
 
+/* Board 01 §09: 11px, uppercase, letter-spaced. The count sits at the right in
+   mono, without the letter-spacing — a spaced number reads as a code. */
 .pane-head {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  height: var(--header-height);
+  gap: 6px;
+  height: 26px;
   flex: none;
-  padding: 0 var(--pad);
+  padding: 0 12px;
   font-size: 11px;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   overflow: hidden;
+}
+.pane-head-count {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+/* A title inside a header is content, not a label: it keeps its own case, and
+   it is what gives way when the header runs out of room. */
+.pane-head-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
 }
 
+/* Board 01 §08. Full height because it sits inside a virtualised slot that
+   already has the row's height. */
 .file-row {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  padding: 0 var(--pad);
-  font-size: 11.5px;
+  gap: 10px;
+  height: 100%;
+  padding: 0 12px;
+  font-size: 12.5px;
   cursor: pointer;
+  border-bottom: 1px solid var(--border);
 }
 .file-row:hover {
   background: var(--surface-hover);
 }
-.file-code {
-  width: 22px;
-  flex: none;
-  color: var(--text-muted);
+/* A conflict tints its whole row: it is not one status among others, it is the
+   one that stops everything else. */
+.file-row.conflict {
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg));
 }
+
 /* The filename is what is read; the directory is what gives way. Laid out as
    a flex row rather than one ellipsised string, because `direction: rtl` — the
    usual trick for eliding the front of a path — reorders the two. */
@@ -263,6 +546,7 @@ button:disabled {
   align-items: center;
   font-size: 12px;
   white-space: pre;
+  cursor: default;
 }
 .diff-line.added {
   background: var(--diff-added);
@@ -316,15 +600,20 @@ button:disabled {
   white-space: pre-wrap;
 }
 
-/* Selected and focused stay distinct everywhere (DESIGN §1); this is the
-   selected half — a surface change, not a ring. */
+/* Selected and focused stay distinct everywhere (DESIGN §1): selected is a
+   surface change, focus is a ring drawn *inside* the row so it cannot be
+   clipped by the virtualised container. */
 .file-row.selected,
-.sidebar-row.selected {
+.sidebar-row.selected,
+.library-row.selected,
+.commit-row.selected {
   background: var(--surface-raised);
 }
-
-.file-row {
-  height: 100%;
+.file-row:focus-visible,
+.library-row:focus-visible,
+.commit-row:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 1px var(--border-focus);
 }
 
 /* ── The commit box ──────────────────────────────────────────────────────── */
@@ -433,14 +722,6 @@ button:disabled {
   font-size: 11.5px;
 }
 
-button.primary:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-button.primary:not(:disabled):hover {
-  background: var(--surface-hover);
-}
-
 .commit-blocked {
   margin: 6px 0 0;
   font-size: 10.5px;
@@ -451,16 +732,6 @@ button.primary:not(:disabled):hover {
 
 .pane-head-spacer {
   flex: 1;
-}
-.pane-head-count {
-  color: var(--text-dim);
-}
-.pane-head-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 button.link {
@@ -539,12 +810,12 @@ button.link.ok {
 }
 
 .files-foot {
-  flex: none;
-  padding: 0 var(--pad);
-  height: var(--header-height);
   display: flex;
   align-items: center;
-  font-size: 10.5px;
+  flex: none;
+  height: 24px;
+  padding: 0 12px;
+  font-size: 11px;
   color: var(--text-dim);
   border-top: 1px solid var(--border);
 }
@@ -598,9 +869,6 @@ button.link.ok {
   border-color: var(--danger);
 }
 
-.diff-line {
-  cursor: default;
-}
 .diff-line.added,
 .diff-line.removed {
   cursor: pointer;
@@ -779,21 +1047,20 @@ button.danger.solid:hover {
 
 /* ── The sidebar ─────────────────────────────────────────────────────────── */
 
-.sidebar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 .sidebar-glyph {
   width: 12px;
   flex: none;
-  color: var(--text-dim);
+  font-size: 12px;
+  color: var(--text-muted);
   text-align: center;
 }
 .sidebar-count {
-  margin-left: auto;
+  flex: none;
+  font-size: 11px;
   color: var(--text-dim);
-  font-size: 10.5px;
+}
+.sidebar-count.conflict {
+  color: var(--danger);
 }
 
 /* ── History ─────────────────────────────────────────────────────────────── */
@@ -822,10 +1089,6 @@ button.danger.solid:hover {
 .commit-row:hover {
   background: var(--surface-hover);
 }
-.commit-row.selected {
-  background: var(--surface-raised);
-}
-
 /* The gutter draws itself at whatever width the row's lanes need; it must not
    be squeezed by the text beside it. */
 .gutter-graph {
@@ -862,22 +1125,22 @@ button.danger.solid:hover {
   width: 88px;
 }
 
-/* Four kinds, four readings (DESIGN §5). The one that says where you are is
-   the one that is filled. */
+/* Board 01 §06. Four kinds, four readings (DESIGN §5); the one that says where
+   you are is the only filled one. */
 .ref {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
   flex: none;
   padding: 0 5px;
-  font-size: 10px;
-  line-height: 15px;
-  border: 1px solid;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 .ref.head {
   color: var(--bg);
   background: var(--accent);
-  border-color: var(--accent);
-}
-.ref.branch {
-  color: var(--accent);
   border-color: var(--accent);
 }
 .ref.remote {
@@ -954,14 +1217,6 @@ button.danger.solid:hover {
   color: var(--text-muted);
 }
 
-.topbar-repo {
-  font-weight: 600;
-}
-.topbar-head {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
 /* ── The history filters ─────────────────────────────────────────────────── */
 
 .filters {
@@ -977,13 +1232,9 @@ button.danger.solid:hover {
 .filter-box,
 .filter-date {
   min-width: 0;
-  height: 20px;
-  padding: 0 5px;
-  font-size: 10.5px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: inherit;
-  user-select: text;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
 }
 .filter-box {
   flex: 1 1 0;
@@ -994,10 +1245,15 @@ button.danger.solid:hover {
 .filter-box::placeholder {
   color: var(--text-dim);
 }
+/* An empty date box renders the current date as a placeholder on WKWebView,
+   which reads as a value. Dimmed, it reads as the placeholder it is. */
 .filter-date {
   flex: none;
   width: 108px;
   color: var(--text-muted);
+}
+.filter-date:not(:valid) {
+  color: var(--text-dim);
 }
 
 .filters-note {
@@ -1018,6 +1274,9 @@ button.danger.solid:hover {
 
 /* The two ends of a comparison, marked in the list so a reader who scrolled
    away from one of them can still see which rows it is about. */
+/* Both ends of a comparison keep a mark, so a reader who has scrolled away
+   from one can still see which rows it is about; the far end also takes the
+   selected surface, because it is the one the pane is showing. */
 .commit-row.compare-from,
 .commit-row.compare-to {
   box-shadow: inset 2px 0 0 var(--accent);
@@ -1028,13 +1287,25 @@ button.danger.solid:hover {
 
 /* ── The repository list ─────────────────────────────────────────────────── */
 
+/* Board 06: 300px, on the surface, with the list between a filter and a
+   footer. */
 .library {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
-  min-width: 320px;
+  width: 300px;
+  flex: none;
   min-height: 0;
+  background: var(--surface);
   border-right: 1px solid var(--border);
+}
+
+.library-filter {
+  flex: none;
+  padding: 8px;
+}
+.library-filter input {
+  width: 100%;
+  font-size: 12px;
 }
 
 .library-groups {
@@ -1043,63 +1314,136 @@ button.danger.solid:hover {
   min-height: 0;
 }
 
+/* Board 01 §09, inside a list rather than at the head of a pane. */
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.group-head .chevron {
+  font-size: 9px;
+}
+
+/* Two lines and 36 high: the name, and what the repository is now. */
 .library-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: var(--row-height);
-  padding: 0 var(--pad);
-  font-size: 11.5px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  text-align: left;
   cursor: pointer;
-  white-space: nowrap;
 }
 .library-row:hover {
   background: var(--surface-hover);
 }
+/* Board 06 fills the selected row with the accent. It is the only full-bleed
+   accent in the app, and it is here because this list is a chooser: the row is
+   the answer to the question the screen is asking. */
 .library-row.selected {
-  background: var(--surface-raised);
+  background: var(--accent);
+  color: var(--bg);
 }
-/* The one currently open, so switching back to this screen says where you were. */
-.library-row.open .library-name {
-  color: var(--accent);
+.library-row.selected .library-state,
+.library-row.selected .library-icon {
+  color: inherit;
+  opacity: 0.8;
 }
 
-.library-glyph {
+.library-icon {
   flex: none;
-  color: var(--text-dim);
-}
-.library-name {
-  flex: none;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* DESIGN §4: a repository that has moved keeps its row, struck through. */
-.library-glyph.missing,
-.library-name.missing {
-  text-decoration: line-through;
-  color: var(--text-dim);
-}
-.library-state {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 10.5px;
-  color: var(--text-dim);
-}
-.library-ahead {
-  flex: none;
-  font-size: 10.5px;
   color: var(--text-muted);
 }
+.library-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.library-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-state {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-state.changed {
+  color: var(--warning);
+}
+.library-state.conflict,
+.library-state.gone {
+  color: var(--danger);
+}
+
+/* The square repeats the second line at a glance. Hollow for a detached HEAD:
+   not a problem, but not on a branch either. */
+.library-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  background: var(--success);
+}
+.library-dot.changed {
+  background: var(--warning);
+}
+.library-dot.conflict,
+.library-dot.gone {
+  background: var(--danger);
+}
+.library-dot.detached {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+}
+
+/* DESIGN §4: a repository that has moved keeps its row, struck through. */
+.library-row.gone {
+  color: var(--text-dim);
+}
+.library-row.gone .library-name {
+  text-decoration: line-through;
+}
+
 .library-row .row-action {
   height: 16px;
+  opacity: 0;
+}
+.library-row:hover .row-action,
+.library-row .row-action:focus-visible {
+  opacity: 1;
+}
+
+.library-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.library-foot .dim {
+  font-size: 11px;
+  color: var(--text-dim);
 }
 
 .library-empty {
-  padding: 24px var(--pad);
-  max-width: 380px;
+  padding: 16px 10px;
 }
 .library-empty-title {
   margin: 0;
@@ -1112,111 +1456,240 @@ button.danger.solid:hover {
   color: var(--text-muted);
 }
 
-/* ── The repository card ─────────────────────────────────────────────────── */
+/* ── The repository card ───────────────────────────────────────────────── */
 
 .card {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
-  min-width: 360px;
+  flex: 1;
+  min-width: 480px;
   min-height: 0;
-  overflow-y: auto;
 }
 
 .card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
   flex: none;
-  padding: var(--pad);
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
+.card-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .card-name {
-  margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 .card-note {
-  margin: 6px 0 0;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-muted);
 }
-.card-path {
-  margin: 6px 0 0;
-  font-size: 10.5px;
-  color: var(--text-dim);
-  user-select: text;
-  word-break: break-all;
-}
-.card-missing {
-  margin: 10px 0 0;
-  padding-left: 8px;
+
+/* A chip states one fact about the repository, bordered in the colour of the
+   thing it is about — never the colour alone (board 01 §03). */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  flex: none;
+  padding: 0 6px;
   font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.chip-dot {
+  width: 6px;
+  height: 6px;
+  background: currentcolor;
+}
+.chip.changed {
   color: var(--warning);
-  border-left: 2px solid var(--warning);
+  border-color: var(--warning);
+}
+.chip.conflict {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: none;
 }
 .card-actions {
   display: flex;
-  gap: var(--gap);
-  margin-top: 12px;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Label and value, so the card reads as a list of facts rather than prose. */
-.card-facts {
-  display: grid;
-  grid-template-columns: 116px 1fr;
-  gap: 6px var(--gap);
-  margin: 0;
-  padding: var(--pad);
-  font-size: 11.5px;
+.card-activity {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.card-window {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.card-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 30px;
+}
+.spark-bar {
+  width: 5px;
+  flex: none;
+  background: var(--border);
+}
+.spark-bar.past {
+  background: var(--text-muted);
+}
+/* The last three buckets are the ones the question is about. */
+.spark-bar.now {
+  background: var(--accent);
+}
+.card-activity .dim {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.card-missing {
+  margin: 16px 20px 0;
+  padding-left: 8px;
+  font-size: 12px;
+  color: var(--warning);
+  border-left: 2px solid var(--warning);
+}
+
+.card-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 20px;
+}
+
+/* Board 01 §09 again, as a rule across the card. */
+.card-section {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   border-bottom: 1px solid var(--border);
 }
+
+/* Labels right-aligned against their values: the eye follows one edge down the
+   column instead of hunting for where each label ends. */
+.card-facts {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 5px 16px;
+  align-items: baseline;
+  margin: 0;
+  padding: 10px 0 14px;
+}
 .card-facts dt {
-  color: var(--text-dim);
-  font-size: 10.5px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .card-facts dd {
   margin: 0;
   min-width: 0;
-  word-break: break-word;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   user-select: text;
 }
 .card-facts .dim {
   color: var(--text-dim);
 }
 
-.card-count {
-  margin-right: 8px;
+.card-commit,
+.card-who,
+.card-branch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.card-commit-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.card-status .changed {
+  color: var(--warning);
+}
+.card-status .added {
+  color: var(--success);
+}
+.card-status .deleted,
+.card-status .conflict {
+  color: var(--danger);
+}
+.card-status .renamed {
+  color: var(--info);
+}
+.card-status .untracked {
+  color: var(--text-dim);
 }
 
-.card-avatar {
+.avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-right: 4px;
-  font-size: 9px;
-  vertical-align: -4px;
-  color: var(--bg);
-  background: var(--accent);
+  width: 20px;
+  height: 20px;
+  flex: none;
+  font-size: 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
 }
 
-/* The sparkline: a bar per bucket, scaled to the busiest one, because the shape
-   is the point and an absolute scale flattens every quiet repository. */
-.card-spark {
+.card-foot {
   display: flex;
-  align-items: flex-end;
-  gap: 1px;
-  height: 24px;
-}
-.spark-bar {
-  width: 3px;
+  align-items: center;
+  gap: 14px;
   flex: none;
-  background: var(--accent);
+  height: 24px;
+  padding: 0 20px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
-.spark-bar.empty {
-  background: var(--surface-raised);
+.card-foot .rule {
+  color: var(--border);
 }
-.card-spark .dim {
-  align-self: center;
-  margin-left: 8px;
-  font-size: 10.5px;
+.card-foot .dim {
+  color: var(--text-dim);
+}
+.card-foot .gone {
+  color: var(--danger);
 }

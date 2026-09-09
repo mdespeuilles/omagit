@@ -85,10 +85,10 @@ describe("reading the library", () => {
     const state = await import("./state");
     await state.boot();
 
-    // Start-up is over — the rows are drawn and the first repository is open —
-    // while the second row's summary is still in flight.
+    // Start-up is over — the rows are drawn — while a summary is still in
+    // flight.
     expect(state.app.repositories).toHaveLength(2);
-    expect(state.app.open).toBe("/one");
+    expect(state.app.screen).toBe("repositories");
     expect(state.app.library["/two"]?.status).toBe("loading");
 
     release();
@@ -105,17 +105,17 @@ describe("reading the library", () => {
     expect(gone?.status === "failed" && gone.error).toContain("introuvable");
   });
 
-  it("does not open a missing repository at start-up", async () => {
-    // Opening the first row is a convenience; opening one that is not there
-    // would greet the user with an error they did not ask for.
-    const state = await open([entry("/gone", { missing: true }), entry("/here")]);
-    expect(state.app.open).toBe("/here");
-  });
+  it("opens on the Repositories screen and opens nothing by itself", async () => {
+    // SPEC §12 measures cold start "jusqu'à l'écran Repositories", and board 06
+    // is drawn with no repository open. Choosing which one to work in is the
+    // first thing the product asks; picking one on the user's behalf also means
+    // the first thing they see is a status walk they did not ask for.
+    const state = await open([entry("/one"), entry("/two")]);
 
-  it("shows the Repositories screen when none can be opened", async () => {
-    const state = await open([entry("/gone", { missing: true })]);
-    expect(state.app.open).toBeNull();
     expect(state.app.screen).toBe("repositories");
+    expect(state.app.open).toBeNull();
+    expect(state.app.status.status).toBe("idle");
+    expect(backend.current.calls.filter((call) => call.command === "status")).toHaveLength(0);
   });
 
   it("shows the Repositories screen when the library is empty", async () => {

@@ -25,25 +25,29 @@ import { app } from "./state";
 <template>
   <Topbar />
   <div class="shell">
-    <Sidebar />
-
+    <!-- Board 06 has no workspace sidebar: with no repository open there is no
+         workspace to be in, and the repository list *is* the left column. -->
     <template v-if="app.screen === 'repositories'">
       <RepositoryList />
       <RepositoryCard />
     </template>
-    <template v-else-if="app.screen === 'history'">
-      <HistoryList />
-      <CommitDetail />
-      <DiffView />
-    </template>
+
     <template v-else>
-      <section class="middle">
-        <CommitBox />
-        <StatusList />
-      </section>
-      <DiffView />
+      <Sidebar />
+      <template v-if="app.screen === 'history'">
+        <HistoryList />
+        <CommitDetail />
+        <DiffView />
+      </template>
+      <template v-else>
+        <section class="middle">
+          <CommitBox />
+          <StatusList />
+        </section>
+        <DiffView />
+      </template>
+      <Journal v-if="app.showJournal" />
     </template>
-    <Journal v-if="app.showJournal" />
   </div>
   <StatusBar />
   <Confirm v-if="app.question" />

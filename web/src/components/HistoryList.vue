@@ -43,7 +43,7 @@ function open(id: string, extend: boolean): void {
           type="checkbox"
           :checked="app.query.all"
           @change="setQuery({ all: ($event.target as HTMLInputElement).checked })"
-        />
+        /><span class="check" aria-hidden="true">✓</span>
         Toutes les branches
       </label>
       <label class="toggle" title="Ne suivre que le premier parent de chaque fusion">
@@ -51,7 +51,7 @@ function open(id: string, extend: boolean): void {
           type="checkbox"
           :checked="app.query.firstParent"
           @change="setQuery({ firstParent: ($event.target as HTMLInputElement).checked })"
-        />
+        /><span class="check" aria-hidden="true">✓</span>
         Tronc
       </label>
     </header>

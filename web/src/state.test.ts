@@ -33,6 +33,9 @@ async function open(files: Fixture[]): Promise<typeof import("./state")> {
   vi.resetModules();
   const state = await import("./state");
   await state.boot();
+  // Start-up stops at the Repositories screen (SPEC §12); these tests are about
+  // what a repository's screens do once one is open.
+  await state.openRepository("/repo");
   return state;
 }
 
@@ -72,6 +75,7 @@ describe("opening", () => {
     vi.resetModules();
     const state = await import("./state");
     await state.boot();
+    await state.openRepository("/repo");
     expect(state.app.message).toBe("# le gabarit\n");
   });
 });
@@ -276,6 +280,7 @@ describe("the commit box", () => {
     vi.resetModules();
     const state = await import("./state");
     await state.boot();
+    await state.openRepository("/repo");
 
     state.setMessage("un message");
     expect(state.canCommit()).toBe(false);

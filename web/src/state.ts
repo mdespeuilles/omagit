@@ -190,12 +190,13 @@ export async function boot(): Promise<void> {
   // repository.
   void readLibrary();
 
-  // Straight into the first repository that is actually there. A missing one
-  // would greet the reader with an error they did not ask for, and a library
-  // with nothing openable in it belongs on the Repositories screen.
-  const first = repositories.find((row) => !row.missing);
-  if (first) await openRepository(first.path);
-  else state.screen = "repositories";
+  // The window opens on Repositories, always. SPEC §12 measures cold start
+  // "jusqu'à l'écran Repositories" and board 06 is drawn "pas de dépôt ouvert":
+  // choosing which repository to work in is the first thing the product asks,
+  // not something it decides for you. Opening the most recent one on your
+  // behalf also means the first thing you see is a status walk you did not ask
+  // for, on whichever repository happened to be first.
+  state.screen = "repositories";
 }
 
 /// Re-read the library, and a summary for each row that is still on disk.
@@ -362,6 +363,15 @@ export async function selectFile(file: string, staged: boolean): Promise<void> {
 /// it belongs to `App.vue`, not to a screen, which is the fix for the GPUI bug
 /// where opening History left a window with no way out of it.
 export function showScreen(screen: Screen): void {
+  // Working Copy and History are views *of a repository*. With none open they
+  // would draw a shell around nothing — a sidebar counting a working copy that
+  // does not exist, a history that cannot load. Reachable only through the
+  // sidebar, which is only drawn when one is open; the guard makes that a
+  // property of the state rather than of the routing.
+  if (screen !== "repositories" && !state.open) {
+    state.screen = "repositories";
+    return;
+  }
   state.screen = screen;
   // History is read when it is first looked at rather than when a repository
   // opens: a walk of a hundred thousand commits is not what someone who wanted

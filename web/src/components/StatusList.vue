@@ -45,6 +45,27 @@ function open(row: StatusRow): void {
   void selectFile(row.path, row.staged !== null);
 }
 
+/// The letter a status badge shows, and the class that colours it.
+///
+/// Board 01 §06: a letter *and* a colour, never a colour alone — the badge has
+/// to survive greyscale, and "which of these is the deletion" is a question a
+/// hue cannot answer for everyone.
+function badge(row: StatusRow): { letter: string; kind: string } {
+  if (row.conflict) return { letter: "U", kind: "conflict" };
+  const change = row.unstaged ?? row.staged ?? "";
+  const letters: Record<string, string> = {
+    modified: "M",
+    added: "A",
+    deleted: "D",
+    renamed: "R",
+    copied: "C",
+    "type-changed": "T",
+    untracked: "?",
+    ignored: "!",
+  };
+  return { letter: letters[change] ?? "•", kind: change };
+}
+
 function directory(path: string): string {
   const cut = path.lastIndexOf("/");
   return cut < 0 ? "" : path.slice(0, cut + 1);
@@ -97,7 +118,7 @@ function name(path: string): string {
              not something a checkbox can be told to draw, and this one is a
              target with a label rather than a control with a hidden meaning. -->
         <button
-          class="stage-box"
+          class="check"
           :class="mark(item)"
           :disabled="!!app.busy"
           :title="mark(item) === 'all' ? 'Désindexer ce fichier' : 'Indexer ce fichier'"
@@ -107,11 +128,8 @@ function name(path: string): string {
           {{ mark(item) === "all" ? "✓" : mark(item) === "partial" ? "–" : "" }}
         </button>
 
-        <span
-          class="file-code mono"
-          :class="item.conflict ? 'conflict' : (item.unstaged ?? item.staged ?? '')"
-        >
-          {{ item.code }}
+        <span class="badge" :class="badge(item).kind" :title="item.code">
+          {{ badge(item).letter }}
         </span>
         <span class="file-path mono">
           <span class="dir">{{ directory(item.path) }}</span>

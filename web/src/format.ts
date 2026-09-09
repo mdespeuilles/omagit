@@ -61,3 +61,15 @@ function midnights(then: Date, now: Date): number {
 function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
+
+/// `/Users/maxence/src/layers` → `~/src/layers`.
+///
+/// The topbar shows where a repository is, and an absolute path under the home
+/// directory spends thirty characters saying something the reader knows. The
+/// Rust side does the same for its own log lines; this is the browser's copy,
+/// which cannot ask the operating system what `$HOME` is and infers it from the
+/// shape instead.
+export function tildify(path: string): string {
+  const home = /^(\/(?:Users|home)\/[^/]+)(\/|$)/.exec(path);
+  return home ? `~${path.slice(home[1]!.length)}` : path;
+}

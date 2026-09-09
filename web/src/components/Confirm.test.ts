@@ -45,6 +45,7 @@ async function running() {
   vi.resetModules();
   const state = await import("../state");
   await state.boot();
+  await state.openRepository("/repo");
   const App = (await import("../App.vue")).default;
   const app = mount(App, { attachTo: document.body });
   await app.vm.$nextTick();
