@@ -377,3 +377,41 @@ fn a_key_stages_every_unstaged_file_at_once() {
         "and so is the untracked one, which is what `git add` is for"
     );
 }
+
+#[test]
+fn a_commit_template_fills_the_empty_message_box() {
+    // SPEC §11. The reader was written and never called; this is what says it
+    // is called.
+    let fixture = Fixture::new();
+    fixture.write(".gitmessage", "# Pourquoi, pas quoi.\n");
+    fixture.git(&["config", "commit.template", ".gitmessage"]);
+
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("writes"));
+    let (screen, mut visual) = screen(&mut cx, &fixture.path);
+    visual.run_until_parked();
+    // The template lands on the render after the read, so force the frame.
+    visual.refresh().expect("a frame");
+    visual.run_until_parked();
+
+    assert_eq!(
+        screen.read_with(&visual, |screen, cx| screen.message_for_test(cx)),
+        "# Pourquoi, pas quoi.\n",
+        "the template has to reach the box"
+    );
+}
+
+#[test]
+fn no_template_leaves_the_box_empty() {
+    let fixture = Fixture::new();
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("writes"));
+    let (screen, mut visual) = screen(&mut cx, &fixture.path);
+    visual.run_until_parked();
+    visual.refresh().expect("a frame");
+    visual.run_until_parked();
+
+    assert_eq!(
+        screen.read_with(&visual, |screen, cx| screen.message_for_test(cx)),
+        "",
+        "a repository without a template gets nothing put in its box"
+    );
+}

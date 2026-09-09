@@ -74,6 +74,10 @@ pub struct WorkingCopyScreen {
     confirming: Option<Write>,
     /// Whether the operations journal is showing.
     journal_open: bool,
+    /// A `commit.template` that has been read and not yet put in the box.
+    /// Applied on the next render, which is where a `Window` exists — the
+    /// editor needs one to take a value, and the background read has none.
+    pending_template: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -102,6 +106,7 @@ impl WorkingCopyScreen {
             options: CommitOptions::default(),
             confirming: None,
             journal_open: false,
+            pending_template: None,
             _subscriptions: subscriptions,
         }
     }
@@ -229,6 +234,44 @@ impl WorkingCopyScreen {
     fn cancel_write(&mut self, cx: &mut Context<Self>) {
         self.confirming = None;
         cx.notify();
+    }
+
+    /// Fill an empty message box from `commit.template`, if the repository
+    /// configures one (SPEC §11).
+    ///
+    /// Once, when the box is built, and only while it is empty: a template that
+    /// overwrote something already typed would be worse than no template. The
+    /// read is a `git config` and a file, so it goes to the background executor
+    /// like every other Git call.
+    fn load_template(&mut self, cx: &mut Context<Self>) {
+        let Some(git) = cx.git_runtime().git().cloned() else {
+            return;
+        };
+        let repo = self.store.read(cx).repository().clone();
+
+        cx.spawn(async move |screen, cx| {
+            let template = cx
+                .background_spawn(async move {
+                    omagit_git::ops::template(&git, &repo, &omagit_git::Cancel::new())
+                })
+                .await;
+            let Ok(Some(text)) = template else {
+                return;
+            };
+            screen
+                .update(cx, |screen, cx| {
+                    screen.pending_template = Some(text);
+                    cx.notify();
+                })
+                .ok();
+        })
+        .detach();
+    }
+
+    /// What is in the message box. For the tests, which have no other way to
+    /// see it.
+    pub fn message_for_test(&self, cx: &App) -> String {
+        self.message(cx)
     }
 
     /// What is in the message box, or nothing if it has not been built yet.
@@ -410,6 +453,16 @@ impl Render for WorkingCopyScreen {
                 TextareaState::new(window, cx).placeholder(SharedString::from("Message du commit"))
             });
             self.commit = Some(box_state);
+            self.load_template(cx);
+        }
+        if let Some(text) = self.pending_template.take()
+            && let Some(state) = self.commit.clone()
+            // Still empty? The read took a moment, and the user may have
+            // started typing. A template that overwrote that would be worse
+            // than no template.
+            && state.read(cx).value().is_empty()
+        {
+            state.update(cx, |state, cx| state.set_value(text, window, cx));
         }
         if self.selected.is_none() {
             self.reconcile(cx);
@@ -585,6 +638,7 @@ impl WorkingCopyScreen {
                     .border_color(hsla(t.border))
                     .children(self.commit.clone()),
             )
+            .children(subject_counter(&self.message(cx), palette, fonts))
             .child(
                 div()
                     .flex()
@@ -1251,6 +1305,29 @@ fn hint_owned(text: String, palette: &Palette, color: Rgb) -> impl IntoElement {
         .text_size(px(12.0))
         .text_color(hsla(color))
         .child(SharedString::from(text))
+}
+
+/// The subject length, once it is worth saying.
+///
+/// Board 03: it appears only past 50 characters, in `text_dim`, and turns
+/// `warning` past 72. Silent below 50 on purpose — a counter that is always
+/// there is a counter nobody reads.
+fn subject_counter(message: &str, palette: &Palette, fonts: &Fonts) -> Option<gpui_kit::Div> {
+    let t = palette.tokens;
+    let subject = message.lines().next().unwrap_or_default();
+    let length = subject.chars().count();
+    if length <= 50 {
+        return None;
+    }
+    Some(
+        div()
+            .flex()
+            .justify_end()
+            .font_family(fonts.mono.clone())
+            .text_size(px(11.0))
+            .text_color(hsla(if length > 72 { t.warning } else { t.text_dim }))
+            .child(SharedString::from(format!("{length} / 72"))),
+    )
 }
 
 /// A one-line warning above the message box.
