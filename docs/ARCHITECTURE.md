@@ -1119,6 +1119,36 @@ reassignable and `docs/KEYMAP.md` is still about the GPUI build; a dialog on
 screen answering three keys of its own is not what that file is for, and is
 recorded here instead.
 
+### 2.39 A conflicted file had no diff at all
+
+The Working Copy drew **"ce fichier n'est plus dans le statut"** over a file
+sitting in the list two panes to its left. Not a stale read: an unmerged path
+has no stage-0 entry in the index — that is precisely what unmerged *means* —
+and both `staged_file` and `unstaged_file` look the path up there and answer
+`None` when it is missing. The two sides of the index cannot describe a file
+that is on neither.
+
+`diff::conflicted_file` compares **stage 2 — ours, the version we had before the
+operation began — against what is on disk now**, so the reader sees exactly what
+the merge did to their file: the markers, and the other side's lines, as
+additions. `git diff` gives a combined diff against both stages here; that is a
+third thing to read, and the two sides side by side are already the dialog's job
+(§2.37). Half the kinds of conflict have no stage 2 at all — a file we deleted
+and they changed — and then the comparison is against nothing, which reads as
+the whole file arriving, because that is what it is.
+
+The pane's two tabs went with it: a file with no side of the index to be on had
+"Non indexé" and "Indexé" over it, two controls that would have done the same
+thing. It says `En conflit` instead.
+
+Two smaller ones in the dialog, both from the same screenshot. `.dialog-head`
+had no `gap` — the clone dialog puts one thing in that row and the conflict
+dialog puts four, so they printed against each other ("Résoudre un
+conflitsrc/merge.rs"). And the side bands showed the name twice — "Theirs —
+feature/theme-runtime feature/theme-runtime" — because the label `git` writes
+into the file is, on that side, the branch the operation already resolved. It is
+shown only when it says something the name does not.
+
 ### 2.38 Three things the fixture found on screen in five minutes
 
 All three were invisible to both suites, and all three are the same shape: a

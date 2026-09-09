@@ -436,6 +436,63 @@ pub fn unstaged_file(
     }))
 }
 
+/// A conflicted file: what is on disk now, against the version we had.
+///
+/// Neither [`staged_file`] nor [`unstaged_file`] can answer for one, and not by
+/// oversight: an unmerged path has *no* stage-0 entry in the index — that is
+/// what "unmerged" means — so the ordinary lookup finds nothing and both return
+/// `None`. The Working Copy then drew "ce fichier n'est plus dans le statut"
+/// over a file that was very much in it, which is how this was found.
+///
+/// The comparison is stage 2 — ours, the version we had before the merge began
+/// — against the file `git` has since written the markers into. So the reader
+/// sees exactly what the operation did to their file: the markers, and the
+/// other side's lines, as additions. `git diff` answers a combined diff against
+/// both stages here; this is the half a person is actually deciding about, and
+/// the two sides side by side are the conflict dialog's job (§2.37).
+///
+/// Half the kinds of conflict have no stage 2 at all — a file we deleted and
+/// they changed — and then the comparison is against nothing, which reads as
+/// the whole file arriving. That is what it is.
+pub fn conflicted_file(
+    repo: &Repository,
+    entry: &StatusEntry,
+    options: DiffOptions,
+) -> Result<Option<FileDiff>> {
+    assert_off_render_thread();
+    if entry.conflict.is_none() {
+        return Ok(None);
+    }
+    let gix = repo.gix();
+    let index = gix
+        .index_or_empty()
+        .map_err(|error| GitError::backend("reading the index", error))?;
+
+    let ours =
+        match index.entry_by_path_and_stage(entry.path.as_bstr(), gix::index::entry::Stage::Ours) {
+            Some(found) => read_blob(&gix, found.id)?,
+            None => None,
+        };
+    let now = worktree_blob(repo, &gix, &index, &entry.path)?;
+
+    let change = match (&ours, &now) {
+        // Both sides deleted it, or theirs did and we took that: nothing is
+        // there, and nothing is what the pane should say.
+        (None, None) => return Ok(None),
+        (None, Some(_)) => FileChange::Added,
+        (Some(_), None) => FileChange::Deleted,
+        (Some(_), Some(_)) => FileChange::Modified,
+    };
+
+    let mode = worktree_mode(repo, &entry.path).unwrap_or(MODE_FILE);
+    Ok(Some(FileDiff {
+        path: entry.path.clone(),
+        change,
+        content: content_of(ours, now, false, options),
+        mode,
+    }))
+}
+
 /// The mode the index records for a path.
 fn index_mode(index: &gix::index::State, path: &RepoPath) -> Option<u32> {
     index

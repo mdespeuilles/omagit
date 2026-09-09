@@ -214,7 +214,13 @@ pub fn file_diff(
         return Ok(None);
     };
 
-    let diff = if staged {
+    // A conflicted path has no stage-0 entry in the index — that is what
+    // unmerged means — so neither side of the index can answer for it. The
+    // pane asked for one all the same and was told "no diff", which it drew as
+    // "this file is no longer in the status" over a file plainly in it.
+    let diff = if entry.conflict.is_some() {
+        omagit_git::diff::conflicted_file(&open.repo, entry, DiffOptions::default())
+    } else if staged {
         staged_file(&open.repo, entry, DiffOptions::default())
     } else {
         unstaged_file(&open.repo, entry, DiffOptions::default())

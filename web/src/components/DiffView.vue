@@ -86,7 +86,13 @@ function segments(
       <!-- The two sides of the index, as the two tabs of Board 03. A side with
            nothing on it is disabled rather than hidden: a tab that appears and
            disappears as you stage moves the other one under the pointer. -->
-      <template v-if="app.screen === 'working-copy' && app.selected">
+      <!-- A conflicted path has no side of the index to be on: it has no
+           stage-0 entry at all. Two tabs where there is one answer would be two
+           controls that do the same thing, so it says what it is instead. -->
+      <span v-if="app.screen === 'working-copy' && entry?.conflict" class="tab on conflict">
+        En conflit
+      </span>
+      <template v-else-if="app.screen === 'working-copy' && app.selected">
         <button
           class="tab"
           :class="{ on: !staged }"

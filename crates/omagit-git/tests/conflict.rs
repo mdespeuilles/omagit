@@ -589,3 +589,86 @@ fn a_resolution_gives_back_the_line_endings_it_was_given() {
 
     assert_eq!(repo.read("crlf.txt"), b"one\r\nOURS\r\nthree");
 }
+
+#[test]
+fn a_conflicted_file_has_a_diff_of_its_own() {
+    // Neither side of the index can answer for an unmerged path: there is no
+    // stage 0. Both `staged_file` and `unstaged_file` returned nothing, and the
+    // Working Copy drew "ce fichier n'est plus dans le statut" over a file that
+    // was right there in the list.
+    use omagit_git::diff::{DiffOptions, conflicted_file, staged_file, unstaged_file};
+
+    let repo = stopped_merge();
+    let status = status(&repo);
+    let entry = status
+        .entries
+        .iter()
+        .find(|entry| entry.path.display_lossy() == "shared.txt")
+        .expect("the conflicted file");
+
+    assert!(
+        staged_file(&repo.open(), entry, DiffOptions::default())
+            .expect("read")
+            .is_none()
+            && unstaged_file(&repo.open(), entry, DiffOptions::default())
+                .expect("read")
+                .is_none(),
+        "the two ordinary sides have nothing to say about an unmerged path"
+    );
+
+    let diff = conflicted_file(&repo.open(), entry, DiffOptions::default())
+        .expect("read")
+        .expect("a conflicted file has a diff");
+
+    // Ours, against the file git has written the markers into: the reader sees
+    // what the merge did to their own version.
+    let text = match &diff.content {
+        omagit_git::diff::DiffContent::Text { hunks, .. } => hunks
+            .iter()
+            .flat_map(|hunk| hunk.lines.iter())
+            .map(|line| line.text_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("\n"),
+        other => panic!("the fixture is text, not {other:?}"),
+    };
+    assert!(
+        text.contains("<<<<<<<"),
+        "the markers are the point: {text}"
+    );
+    assert!(
+        text.contains("theirs"),
+        "and the other side's lines: {text}"
+    );
+}
+
+#[test]
+fn a_file_we_deleted_and_they_changed_reads_as_theirs_arriving() {
+    // No stage 2 at all, so the comparison is against nothing — which is what
+    // "we do not have this file" looks like as a diff.
+    use omagit_git::diff::{DiffOptions, conflicted_file};
+
+    let repo = TestRepo::new();
+    repo.commit_file("gone.txt", "original\n", "seed");
+    repo.branch("feature");
+    repo.commit_file("gone.txt", "theirs\n", "they changed it");
+    repo.checkout("main");
+    repo.remove("gone.txt");
+    repo.add_all();
+    repo.commit_staged("we deleted it");
+    integrate::merge(
+        &git(),
+        &repo.open(),
+        "feature",
+        &Default::default(),
+        &never(),
+    )
+    .expect_err("delete against modify");
+
+    let status = status(&repo);
+    let entry = status.conflicts().next().expect("a conflict");
+    let diff = conflicted_file(&repo.open(), entry, DiffOptions::default())
+        .expect("read")
+        .expect("a diff");
+
+    assert_eq!(diff.change, omagit_git::diff::FileChange::Added);
+}

@@ -37,6 +37,17 @@ function name(side: "ours" | "theirs", label: string): string {
   return named ?? (label === "HEAD" ? "la version en place" : label);
 }
 
+/// The label `git` wrote into the file, when it adds anything to the name.
+///
+/// It usually does not: on our side it writes `HEAD`, which the band already
+/// says better, and on theirs it writes the branch — the very name resolved
+/// above it. Printed anyway, the band read "Theirs — feature/theme-runtime
+/// feature/theme-runtime".
+function marker(side: "ours" | "theirs", label: string): string {
+  if (label === "" || label === "HEAD") return "";
+  return label === name(side, label) ? "" : label;
+}
+
 function chosen(index: number): string | null {
   return app.resolving?.choices[index] ?? null;
 }
@@ -136,7 +147,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             <div class="conflict-side">
               <span class="conflict-side-name">
                 Ours — {{ name("ours", segment.ours_label) }}
-                <span class="mono dim">{{ segment.ours_label }}</span>
+                <span v-if="marker('ours', segment.ours_label)" class="mono dim">
+                  {{ marker("ours", segment.ours_label) }}
+                </span>
               </span>
             </div>
             <div
@@ -166,7 +179,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             <div class="conflict-side">
               <span class="conflict-side-name">
                 Theirs — {{ name("theirs", segment.theirs_label) }}
-                <span class="mono dim">{{ segment.theirs_label }}</span>
+                <span v-if="marker('theirs', segment.theirs_label)" class="mono dim">
+                  {{ marker("theirs", segment.theirs_label) }}
+                </span>
               </span>
             </div>
             <div

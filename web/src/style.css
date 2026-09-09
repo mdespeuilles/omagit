@@ -1309,14 +1309,24 @@ button.danger.solid:hover {
   width: 520px;
   padding: 0;
 }
+/* `gap`, because the head holds more than a title now: the clone dialog puts
+   one thing in it, the conflict dialog puts four — a title, a path, a count and
+   a way to the next one — and without it they were printed against each other
+   ("Résoudre un conflitsrc/merge.rs"). */
 .dialog-head {
   display: flex;
   align-items: center;
+  gap: 10px;
   height: 32px;
   padding: 0 12px;
   border-bottom: 1px solid var(--border);
   font-size: var(--text-panel);
   font-weight: 600;
+}
+/* Only the title is a title. The rest of that row is context. */
+.dialog-head .dim,
+.dialog-head .link {
+  font-weight: 400;
 }
 .dialog-body {
   display: grid;
@@ -2469,6 +2479,12 @@ select:focus {
   height: 20px;
   padding: 0 8px;
   font-size: var(--text-meta);
+}
+
+/* The tab that is not a tab: a conflicted file has one version to look at. */
+.tab.conflict {
+  color: var(--danger);
+  border-bottom-color: var(--danger);
 }
 
 /* The band that says whose version follows. Board 07: the identity goes on the
