@@ -46,6 +46,10 @@ use crate::{ActiveFonts, ActivePalette, Fonts, Palette, hsla};
 /// Fixed rather than derived from density: DESIGN §3 fixes the mono face at
 /// 12.5px, and a virtual list wants a height it can multiply. 18px is that text
 /// with the leading the mock-up draws.
+/// The header never lets the path shrink below this: a file viewer whose
+/// header does not name the file has stopped being one.
+const PATH_MIN_WIDTH: f32 = 120.0;
+
 const LINE_HEIGHT: f32 = 18.0;
 
 /// The gutter's two number columns.
@@ -599,35 +603,62 @@ impl DiffView {
             .flex_none()
             .h(px(32.0))
             .px(px(12.0))
+            // The last defence: whatever the widths work out to, the header
+            // clips rather than letting its children be drawn over each other.
+            .overflow_hidden()
             .border_b_1()
             .border_color(hsla(t.border))
             .child(
                 div()
+                    .flex_none()
                     .font_family(fonts.mono.clone())
                     .text_size(px(11.0))
                     .text_color(hsla(t.text_muted))
                     .child(SharedString::from(change_letter(&file.change).to_string())),
             )
+            // The path is the only thing here that may shrink, so it takes the
+            // spare room and gives it back when there is none. It used to be a
+            // fixed-size child next to a `flex_1` spacer, and its directory
+            // segment could not shrink at all — so on a narrow window the path
+            // ran past the controls to its right and they were drawn on top of
+            // it.
             .child(
                 div()
+                    .id("diff-header-path")
+                    .debug_selector(|| "diff-header-path".to_owned())
                     .flex()
+                    .flex_1()
                     .items_baseline()
-                    .min_w_0()
+                    // A floor rather than `min_w_0`: with the controls to its
+                    // right refusing to shrink, a path that may collapse to
+                    // nothing does, and the header of a file viewer stops
+                    // naming its file. Below this the header clips its right
+                    // edge instead, which is the lesser loss.
+                    .min_w(px(PATH_MIN_WIDTH))
+                    .overflow_hidden()
                     .font_family(fonts.mono.clone())
                     .text_size(px(12.5))
+                    // The directory loses its head, not its tail: `…/src/ui/`
+                    // still says where the file is, `crates/omagit…` does not.
                     .child(
                         div()
+                            .min_w_0()
+                            .truncate()
+                            .text_ellipsis_start()
                             .text_color(hsla(t.text_muted))
                             .child(SharedString::from(directory)),
                     )
-                    .child(div().truncate().child(SharedString::from(name))),
+                    // The file name is the one part worth keeping whole.
+                    .child(div().flex_none().truncate().child(SharedString::from(name))),
             )
-            .child(div().flex_1())
             // The two views of the same hunks. A button group rather than a
             // menu: it is a two-way switch used constantly.
             .child(
                 div()
+                    .id("diff-header-mode")
+                    .debug_selector(|| "diff-header-mode".to_owned())
                     .flex()
+                    .flex_none()
                     .border_1()
                     .border_color(hsla(t.border))
                     .children([Mode::Unified, Mode::SideBySide].map(|mode| {
@@ -651,16 +682,23 @@ impl DiffView {
                             .child(mode.label())
                     })),
             )
+            // The counts and the file's facts are the first thing to lose:
+            // they are the least of what the header says, and clipping them
+            // costs less than clipping the path or the view switch.
             .child(
                 div()
+                    .id("diff-header-stats")
+                    .debug_selector(|| "diff-header-stats".to_owned())
                     .flex()
                     .items_center()
                     .gap(px(10.0))
-                    .flex_none()
+                    .min_w_0()
+                    .overflow_hidden()
                     .font_family(fonts.mono.clone())
                     .text_size(px(11.0))
                     .child(
                         div()
+                            .flex_none()
                             .text_color(hsla(t.text_dim))
                             .child(SharedString::from(format!("{chunks} chunks"))),
                     )

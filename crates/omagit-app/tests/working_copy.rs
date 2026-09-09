@@ -415,3 +415,61 @@ fn no_template_leaves_the_box_empty() {
         "a repository without a template gets nothing put in its box"
     );
 }
+
+#[test]
+fn the_diff_header_never_draws_its_controls_over_the_path() {
+    // The bug: the path's directory segment could not shrink, so on a narrow
+    // window it ran past the mode switch and the switch was drawn on top of it.
+    // Measured rather than eyeballed — this is what a layout regression looks
+    // like from the outside.
+    let fixture = Fixture::new();
+    // A path long enough that it cannot fit beside the controls at any of the
+    // widths below.
+    fixture.git(&["reset", "--hard", "HEAD"]);
+    std::fs::create_dir_all(fixture.path.join("crates/omagit-app/src/screens"))
+        .expect("a deep directory");
+    fixture.write(
+        "crates/omagit-app/src/screens/a_rather_long_file_name.rs",
+        "fn one() {}\n",
+    );
+    fixture.git(&["add", "-A"]);
+    fixture.git(&["commit", "-m", "deep"]);
+    fixture.write(
+        "crates/omagit-app/src/screens/a_rather_long_file_name.rs",
+        "fn one() { println!() }\n",
+    );
+
+    let mut cx = TestAppContext::build(TestDispatcher::new(0), Some("layout"));
+    let (_screen, mut visual) = screen(&mut cx, &fixture.path);
+    visual.run_until_parked();
+
+    for width in [1600.0, 1100.0, 900.0, 700.0] {
+        visual.simulate_resize(gpui_kit::size(gpui_kit::px(width), gpui_kit::px(800.0)));
+        visual.run_until_parked();
+        visual.refresh().expect("a frame");
+        visual.run_until_parked();
+
+        let (Some(path), Some(mode)) = (
+            visual.debug_bounds("diff-header-path"),
+            visual.debug_bounds("diff-header-mode"),
+        ) else {
+            panic!("the diff header is not on screen at {width}px");
+        };
+
+        // The path keeps a floor. Without one it collapsed to nothing under
+        // pressure — the header of a file viewer no longer naming its file —
+        // and its text spilled out over the controls beside it, because a box
+        // of zero width does not clip what it was given to draw.
+        assert!(
+            path.right() - path.left() >= gpui_kit::px(100.0),
+            "at {width}px the path box is {:?} wide — it has collapsed",
+            path.right() - path.left()
+        );
+        assert!(
+            path.right() <= mode.left(),
+            "at {width}px the path runs to {:?} and the mode switch starts at {:?} — they overlap",
+            path.right(),
+            mode.left()
+        );
+    }
+}

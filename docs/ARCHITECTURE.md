@@ -540,10 +540,14 @@ step that gives a new file an index entry, which is what staging *part* of a new
 file requires. The bug is in `omagit-git/status.rs`, in what it does with the
 gix status items for an intent-to-add entry, not in the diff or the patch.
 
-**The diff header overlaps at narrow widths.** In the Working Copy, the
-unified/side-by-side control is drawn over the file path. DESIGN §4 says that
-below 1100px of usable width the detail panel becomes a tab; either that
-collapse is missing or the header does not handle the width.
+**The three-column Working Copy does not fit below ~1100px.** The sidebar and
+the file column are fixed widths and the diff panel has a floor, so under that
+the diff header's right-hand content falls outside the window and is clipped.
+DESIGN §4's answer is that below 1100px of usable width the detail panel becomes
+a tab; that collapse is not built. What *was* a bug — the header's controls
+drawn on top of the file path — is fixed: the path could not shrink and had no
+clip, so its text spilled over them. It now keeps a floor and the stats clip
+first (`tests/working_copy.rs`).
 
 A seventh, found while building M0 and worth watching: `block 0.1.6`, deep under
 `gpui-pre-apple`, emits a future-incompatibility warning. Not actionable from
