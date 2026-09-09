@@ -109,7 +109,7 @@ function open(id: string, extend: boolean): void {
       v-slot="{ item }"
     >
       <div
-        class="commit-row"
+        class="row commit-row"
         :class="{
           selected: app.commit.status === 'ready' && app.commit.value.id.full === item.id.full,
           'compare-from': app.compareFrom === item.id.full && app.compare.status !== 'idle',

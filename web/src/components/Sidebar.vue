@@ -23,7 +23,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
     <div class="group-head"><span class="chevron">▾</span><span>Workspace</span></div>
 
     <button
-      class="sidebar-row"
+      class="row sidebar-row"
       :class="{ selected: app.screen === 'working-copy' }"
       @click="showScreen('working-copy')"
     >
@@ -35,7 +35,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
     </button>
 
     <button
-      class="sidebar-row"
+      class="row sidebar-row"
       :class="{ selected: app.screen === 'history' }"
       @click="showScreen('history')"
     >
@@ -43,7 +43,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       <span>History</span>
     </button>
 
-    <div class="sidebar-row deferred" title="Jalon M8">
+    <div class="row sidebar-row deferred" title="Jalon M8">
       <span class="sidebar-glyph mono">⌥</span>
       <span>Stashes</span>
       <span class="pane-head-spacer" />
@@ -51,7 +51,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       <span class="tag">M8</span>
     </div>
 
-    <div class="sidebar-row deferred" title="Jalon M9">
+    <div class="row sidebar-row deferred" title="Jalon M9">
       <span class="sidebar-glyph mono">⚙</span>
       <span>Settings</span>
       <span class="pane-head-spacer" />

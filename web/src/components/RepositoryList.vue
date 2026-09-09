@@ -97,7 +97,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
         <button
           v-for="row in group.rows"
           :key="row.path"
-          class="library-row"
+          class="row library-row"
           :class="{ selected: app.card === row.path, gone: row.missing }"
           @click="showCard(row.path)"
           @dblclick="openRepository(row.path)"

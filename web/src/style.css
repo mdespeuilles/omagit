@@ -84,7 +84,13 @@ button {
   cursor: pointer;
 }
 
-button:hover:not(:disabled) {
+/* `.row` is excluded on purpose. A list row is a `<button>` so the keyboard can
+   reach it, not because it is a control that looks like one — and this rule is
+   more specific than any `.some-row:hover`, so without the exclusion it takes
+   the background from every list in the app. It did: a *selected* row lost its
+   accent fill on hover while keeping the text colour chosen for that fill,
+   which is dark on dark. Rows draw their own hover, with their list's rules. */
+button:hover:not(:disabled, .row) {
   background: var(--surface-raised);
 }
 
@@ -537,9 +543,6 @@ button.icon {
   cursor: pointer;
   border-bottom: 1px solid var(--border);
 }
-.file-row:hover {
-  background: var(--surface-hover);
-}
 /* A conflict tints its whole row: it is not one status among others, it is the
    one that stops everything else. */
 .file-row.conflict {
@@ -666,6 +669,24 @@ button.icon {
   background: var(--accent);
   color: var(--on-accent);
   font-weight: 500;
+}
+
+/* Hover, for every kind of row, here rather than beside each list — the same
+   reason "selected" is here. A filled row keeps its fill and lifts; an unfilled
+   one takes the hover surface. Neither ever changes its text colour, which is
+   what made a hovered selection unreadable. */
+.row:hover,
+.file-row:hover {
+  background: var(--surface-hover);
+}
+.sidebar-row.selected:hover,
+.library-row.selected:hover {
+  background: color-mix(in srgb, var(--accent) 84%, var(--text));
+  color: var(--on-accent);
+}
+.file-row.selected:hover,
+.commit-row.selected:hover {
+  background: var(--surface-raised);
 }
 .file-row:focus-visible,
 .library-row:focus-visible,
@@ -1230,9 +1251,6 @@ button.danger.solid:hover {
   font-size: var(--text-meta);
   color: var(--text-muted);
 }
-.commit-row:hover {
-  background: var(--surface-hover);
-}
 /* The gutter draws itself at whatever width the row's lanes need; it must not
    be squeezed by the text beside it. */
 .gutter-graph {
@@ -1482,9 +1500,6 @@ button.danger.solid:hover {
   border: 0;
   text-align: left;
   cursor: pointer;
-}
-.library-row:hover {
-  background: var(--surface-hover);
 }
 /* Board 06 fills the selected row with the accent, because this list is a
    chooser: the row is the answer to the question the screen is asking. The fill

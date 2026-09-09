@@ -775,6 +775,36 @@ differ. What does see it is keeping every "selected" in one block, which is
 where they now are, and the contrast token means the remaining pairing cannot
 go wrong per theme.
 
+### 2.31 A row is a button for the keyboard, not a control that looks like one
+
+The hovered version of §2.30's bug, reported straight after it.
+`button:hover:not(:disabled)` is `(0,2,1)`; `.sidebar-row.selected` is `(0,2,0)`.
+So hovering a selected row took the generic background — `--surface-raised` —
+while keeping the text colour chosen for the accent fill it no longer had.
+Measured in a real engine: **1.4:1**, against 7.3:1 once fixed.
+
+The same rule was quietly taking the background from `.library-row:hover` and
+`.commit-row:hover` too, which had been writing `--surface-hover` into rules
+that never applied.
+
+The fix names the thing: a list row is a `<button>` so the keyboard can reach
+it, not because it is a control that looks like one, so it carries `.row` and
+the generic hover excludes it. Every row's hover and selected state is defined
+in one block with the others.
+
+**No gate we have can see this class of bug**, and that is worth stating rather
+than discovering a third time. `stylelint`'s `no-duplicate-selectors` needs the
+selector *lists* to match, and these differ. jsdom has no cascade, so a Vitest
+component test reads the class list and not the colour that results from it.
+The verification here was a probe page in Chrome — the real stylesheet, the real
+tokens as `omagit-theme` emits them, `getComputedStyle` on a row with the hover
+rules re-applied as a class — and it produced the reported 1.4:1 from the old
+cascade and 7.3:1 from the new one. That is a technique, not a gate: putting a
+headless browser in `scripts/check.sh` is infrastructure, and CLAUDE.md asks who
+it protects before it is built. For now the protection is that every "selected"
+and every row hover live in one block, where a second rule for the same state is
+visible to a reader.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
