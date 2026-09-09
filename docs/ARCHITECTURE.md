@@ -107,34 +107,29 @@ debug and costs one relaxed atomic load in release. SPEC §15 names a blocked UI
 thread as the most likely failure mode; a panic pointing at the offending call
 site is much easier to diagnose than a frozen window.
 
-### 2.6 Hybrid Git backend — decided, not yet built
+### 2.6 Hybrid Git backend — built, and without a trait
 
-`gix` for reads, the `git` binary for writes and the network, behind a
-`GitBackend` trait with a `HybridBackend` routing between them (SPEC §8). Three
-reasons, all about not corrupting data: merge/rebase semantics are subtle
+`gix` reads, the `git` binary writes and talks to the network (SPEC §8). Three
+reasons, all about not corrupting data: merge and rebase semantics are subtle
 (hooks, strategies, `rerere`, user config); the user's hooks must run, or team
-workflows break; and existing credential helpers (`libsecret`, `osxkeychain`)
-then work with nothing reimplemented.
+workflows break; and existing credential helpers then work with nothing
+reimplemented.
 
-**Measured at M2, and the answer moved the trait.** The six questions are
-answered with a test each in `crates/omagit-git/tests/capabilities.rs`, and the
-numbers are in `docs/notes/gitoxide-capabilities.md`: `gix` covers every read
-M2 needs — status with renames, ignored files, conflicts, submodules,
-`.gitattributes` conversions, non-UTF-8 names — at roughly a tenth of the
-budget SPEC §12 sets.
+**No `GitBackend` trait.** SPEC §8 describes one with `GixBackend` and
+`CliBackend` behind it, so an operation can move between them as `gix` matures.
+Today no operation has two implementations — reads are `gix`, writes are the
+CLI — so the trait would have exactly one implementor per method, which SPEC §2
+and §3 call debt rather than preparation. The property the trait was for is
+already held another way: nothing outside `omagit-git` names a backend, so
+moving an operation is a change inside this crate and nowhere else. The trait
+becomes worth writing the day an operation genuinely has two implementations.
 
-So **nothing fell back to the CLI, and the `GitBackend` trait is not built
-yet.** It would have exactly one implementation, and an abstraction with no
-second implementation is a debt, not a preparation (SPEC §2). It arrives at M5,
-when writes give it its second one. What does exist is `omagit-git/cli.rs`: the
-subprocess rules of SPEC §8 implemented in full — machine formats, a scrubbed
-environment, a deadline, cancellation by `SIGTERM` to the process *group*, and
-`stderr` passed through verbatim — carrying the one job M2 has for it, the
-start-up check that a usable `git` is installed.
-
-The reasoning above is what a later milestone should re-read before moving an
-operation across the line. It has not changed: `gix` gaining a `merge` is not a
-reason to stop running the user's hooks.
+**Every write is journalled, before it runs.** `cli::Invocation::run` opens a
+journal entry before the process is spawned and closes it when it ends, so a
+command that never returns leaves a record of having started — which is what
+SPEC §15 risk 5 asks for, and what is worth reading after a crash. Because the
+hook is in the one place a `git` process is created, no call site can forget it.
+Commands that can lose work are marked `destructive()` and logged at `warn`.
 
 ### 2.7 Lane colours never read the theme
 

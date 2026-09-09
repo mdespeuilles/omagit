@@ -43,6 +43,17 @@ impl RepoPath {
         self.0.as_bytes()
     }
 
+    /// The path as an argument to `git`, without a detour through UTF-8.
+    ///
+    /// Unix only, and deliberately: omagit targets Linux and macOS (SPEC §2),
+    /// where a path is bytes on both sides. Anywhere else this would have to
+    /// decide what a non-UTF-8 Git path means as an OS string, and there is no
+    /// good answer to give.
+    pub fn as_os_str(&self) -> &std::ffi::OsStr {
+        use std::os::unix::ffi::OsStrExt as _;
+        std::ffi::OsStr::from_bytes(self.as_bytes())
+    }
+
     pub fn as_bstr(&self) -> &BStr {
         self.0.as_bstr()
     }

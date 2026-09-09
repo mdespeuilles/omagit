@@ -28,6 +28,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+use crate::journal::Journal;
 use crate::{Cancel, GitError, MINIMUM_GIT_VERSION, Result, assert_off_render_thread};
 
 /// How long an invocation may run before it is killed.
@@ -57,6 +58,10 @@ const POLL: Duration = Duration::from_millis(10);
 pub struct Git {
     program: PathBuf,
     version: Version,
+    /// Where every invocation records itself. Carried here rather than passed
+    /// at each call site so that a command cannot be run without being written
+    /// down (SPEC §11, §15 risk 5).
+    journal: Journal,
 }
 
 impl Git {
@@ -81,6 +86,7 @@ impl Git {
             PROBE_TIMEOUT,
             &Cancel::new(),
             &format!("{} --version", program.display()),
+            None,
         )?;
 
         let text = output.text();
@@ -103,7 +109,19 @@ impl Git {
         Ok(Self {
             program: program.to_owned(),
             version,
+            journal: Journal::new(),
         })
+    }
+
+    /// Record every invocation into `journal` instead of this `Git`'s own.
+    /// The app calls this once, so the interface and the commands share one.
+    pub fn with_journal(mut self, journal: Journal) -> Self {
+        self.journal = journal;
+        self
+    }
+
+    pub fn journal(&self) -> &Journal {
+        &self.journal
     }
 
     pub fn version(&self) -> Version {
@@ -121,6 +139,8 @@ impl Git {
             work_dir: work_dir.into(),
             args: Vec::new(),
             timeout: DEFAULT_TIMEOUT,
+            input: None,
+            destructive: false,
         }
     }
 }
@@ -136,6 +156,8 @@ pub struct Invocation<'a> {
     work_dir: PathBuf,
     args: Vec<OsString>,
     timeout: Duration,
+    input: Option<Vec<u8>>,
+    destructive: bool,
 }
 
 impl<'a> Invocation<'a> {
@@ -151,6 +173,23 @@ impl<'a> Invocation<'a> {
     {
         self.args
             .extend(args.into_iter().map(|arg| arg.as_ref().to_owned()));
+        self
+    }
+
+    /// Feed `input` to the command on standard input.
+    ///
+    /// Bytes, and it matters: this carries patches and commit messages, neither
+    /// of which anybody promised was UTF-8, and both of which would be mangled
+    /// by going through an argument.
+    pub fn input(mut self, input: impl Into<Vec<u8>>) -> Self {
+        self.input = Some(input.into());
+        self
+    }
+
+    /// Mark this command as one that can lose work, so the journal says so
+    /// before it runs (SPEC §15 risk 5).
+    pub fn destructive(mut self) -> Self {
+        self.destructive = true;
         self
     }
 
@@ -172,14 +211,31 @@ impl<'a> Invocation<'a> {
 
     /// Run to completion, or until `cancel` fires or the deadline passes.
     pub fn run(&self, cancel: &Cancel) -> Result<Output> {
-        execute(
+        let command_line = self.command_line();
+        // Opened before the process exists, so a command that never returns
+        // still leaves a record of having been started.
+        let record = self
+            .git
+            .journal
+            .begin(&command_line, &self.work_dir, self.destructive);
+        let started = Instant::now();
+
+        let result = execute(
             &self.git.program,
             &self.args,
             Some(&self.work_dir),
             self.timeout,
             cancel,
-            &self.command_line(),
-        )
+            &command_line,
+            self.input.as_deref(),
+        );
+
+        let elapsed = started.elapsed();
+        match &result {
+            Ok(output) => record.succeeded(elapsed, &output.stderr),
+            Err(error) => record.failed(elapsed, &error.to_string()),
+        }
+        result
     }
 }
 
@@ -194,6 +250,7 @@ fn execute(
     timeout: Duration,
     cancel: &Cancel,
     command_line: &str,
+    input: Option<&[u8]>,
 ) -> Result<Output> {
     assert_off_render_thread();
     tracing::debug!(
@@ -205,7 +262,11 @@ fn execute(
     let mut command = Command::new(program);
     command
         .args(args)
-        .stdin(Stdio::null())
+        .stdin(if input.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if let Some(work_dir) = work_dir {
@@ -227,6 +288,22 @@ fn execute(
             source,
         },
     })?;
+
+    // Written from its own thread, for the same reason both output pipes are
+    // drained from theirs: a patch larger than a pipe buffer deadlocks a
+    // process that writes it while nobody reads `git`'s output.
+    let feeding = input.map(|input| {
+        let mut stdin = child.stdin.take();
+        let input = input.to_vec();
+        std::thread::spawn(move || {
+            if let Some(stdin) = stdin.as_mut() {
+                use std::io::Write as _;
+                let _ = stdin.write_all(&input);
+            }
+            // Dropped here, closing the pipe: `git apply -` waits for EOF.
+            drop(stdin);
+        })
+    });
 
     // Drain both pipes from their own threads. A command that writes more than
     // a pipe buffer to `stderr` while nobody reads it blocks forever, and `git`
@@ -263,6 +340,9 @@ fn execute(
         std::thread::sleep(POLL);
     };
 
+    if let Some(feeding) = feeding {
+        let _ = feeding.join();
+    }
     let stdout = stdout.map(join).unwrap_or_default();
     let stderr = stderr.map(join).unwrap_or_default();
     let stderr = String::from_utf8_lossy(&stderr).trim_end().to_owned();

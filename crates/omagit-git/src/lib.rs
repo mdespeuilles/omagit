@@ -35,6 +35,8 @@ pub mod cli;
 pub mod diff;
 pub mod error;
 pub mod history;
+pub mod journal;
+pub mod ops;
 pub mod patch;
 pub mod paths;
 pub mod refs;
