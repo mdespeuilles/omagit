@@ -318,6 +318,12 @@ impl WorkingCopyScreen {
         self.selected.clone()
     }
 
+    /// The store this screen reads, so a peer screen can share it rather than
+    /// opening a second one for the same repository.
+    pub fn store(&self) -> &Entity<RepoStore> {
+        &self.store
+    }
+
     /// Whether a destructive write is waiting on an answer. For the tests, and
     /// for the shell, which must not let Escape leave a screen that is asking
     /// a question.
@@ -905,7 +911,15 @@ impl WorkingCopyScreen {
                         palette,
                         fonts,
                     ))
-                    .child(nav_row("History", None, false, Some("M6"), palette, fonts))
+                    .child(
+                        div()
+                            .id("nav-history")
+                            .cursor_pointer()
+                            .on_click(|_, window, cx| {
+                                window.dispatch_action(Box::new(ShowHistory), cx);
+                            })
+                            .child(nav_row("History", None, false, None, palette, fonts)),
+                    )
                     .child(nav_row("Stashes", None, false, Some("M8"), palette, fonts))
                     .child(nav_row("Branches", None, false, Some("M7"), palette, fonts)),
             )

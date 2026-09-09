@@ -22,11 +22,19 @@ use omagit_git::{
     Cancel, DiffOptions, GitError, RepoPath, Repository, Status, StatusOptions, Summary, Watcher,
 };
 
+use omagit_git::Commit;
 use omagit_git::cli::Git;
+use omagit_git::graph::{Graph, Row as GraphRow};
+use omagit_git::history::{HistoryQuery, Walk};
 use omagit_git::ops::CommitOutcome;
 
 use crate::async_state::{AsyncState, Generation};
 use crate::writes::{Done, Queue, Write};
+
+/// How many commits a page of history carries. SPEC §12 measures the first
+/// thousand of a hundred thousand, so a thousand is the unit that budget is
+/// written in.
+const HISTORY_PAGE: usize = 1000;
 
 /// Which side of the index a diff is of.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -70,6 +78,54 @@ pub struct RepoStore {
     /// The last commit made here, so the screen can clear its message box only
     /// once the commit actually exists.
     last_commit: Option<CommitOutcome>,
+    /// The history, as far as it has been walked.
+    history: History,
+    /// The walk and the lane assignment, parked here between pages.
+    ///
+    /// `None` while a page is in flight: they are moved to the background
+    /// executor and handed back, which is what makes the next page resume
+    /// exactly where this one stopped rather than re-walking (SPEC §11).
+    walk: Option<Walk>,
+    graph: Option<Graph>,
+}
+
+/// One row of the History screen: the commit, and where its node sits.
+#[derive(Clone, Debug)]
+pub struct HistoryRow {
+    pub commit: Commit,
+    pub graph: GraphRow,
+}
+
+/// The history as far as it has been read.
+///
+/// Not an `AsyncState`: it is never wholly absent or wholly present, it grows.
+/// What the screen has to render is "these rows, and possibly more coming",
+/// which is a different shape from the four states of SPEC §10.
+#[derive(Debug, Default)]
+pub struct History {
+    pub rows: Vec<HistoryRow>,
+    /// Whether a page is being read right now.
+    pub loading: bool,
+    /// Whether the walk has reached the roots.
+    pub complete: bool,
+    /// The failure that stopped it, if one did.
+    pub failure: Option<GitError>,
+}
+
+impl History {
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    /// The widest gutter any row needs, so the column is sized once rather
+    /// than per frame.
+    pub fn gutter_lanes(&self) -> usize {
+        self.rows
+            .iter()
+            .map(|row| row.graph.width)
+            .max()
+            .unwrap_or(1)
+    }
 }
 
 /// What a generation is counted against.
@@ -102,6 +158,9 @@ impl RepoStore {
             watch_error: None,
             writes: Queue::default(),
             last_commit: None,
+            history: History::default(),
+            walk: None,
+            graph: None,
         };
         store.start_watching(cx);
         store.refresh(cx);
@@ -125,6 +184,86 @@ impl RepoStore {
     }
 
     /// Whether live updates are running, and why not if they are not.
+    pub fn history(&self) -> &History {
+        &self.history
+    }
+
+    /// Read the next page of history, starting the walk if it has not begun.
+    ///
+    /// Called when the screen opens and again when the list nears its end, so
+    /// a hundred thousand commits arrive a thousand at a time rather than all
+    /// at once (SPEC §12).
+    pub fn load_more_history(&mut self, cx: &mut Context<Self>) {
+        if self.history.loading || self.history.complete {
+            return;
+        }
+        self.history.loading = true;
+        self.history.failure = None;
+
+        let repo = self.repo.clone();
+        let cancel = self.cancel.clone();
+        // Taken, not borrowed: they cross to the background executor and come
+        // back, which is what lets the next page resume rather than re-walk.
+        let walk = self.walk.take();
+        let graph = self.graph.take();
+
+        cx.spawn(async move |this, cx| {
+            let read = cx
+                .background_spawn(async move {
+                    let mut walk = match walk {
+                        Some(walk) => walk,
+                        None => match Walk::new(&repo, HistoryQuery::all(), &cancel) {
+                            Ok(walk) => walk,
+                            Err(error) => return (None, None, Err(error)),
+                        },
+                    };
+                    let mut graph = graph.unwrap_or_default();
+                    match walk.next_page(HISTORY_PAGE, &cancel) {
+                        Ok(commits) => {
+                            let rows = commits
+                                .into_iter()
+                                .map(|commit| {
+                                    let graph_row = graph.push(&commit);
+                                    HistoryRow {
+                                        commit,
+                                        graph: graph_row,
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+                            let done = walk.is_done();
+                            (Some(walk), Some(graph), Ok((rows, done)))
+                        }
+                        Err(error) => (Some(walk), Some(graph), Err(error)),
+                    }
+                })
+                .await;
+
+            this.update(cx, |store, cx| {
+                let (walk, graph, outcome) = read;
+                store.walk = walk;
+                store.graph = graph;
+                store.history.loading = false;
+                match outcome {
+                    Ok((rows, done)) => {
+                        store.history.rows.extend(rows);
+                        store.history.complete = done;
+                    }
+                    Err(error) => {
+                        // The rows already read stay: a page that failed is not
+                        // a reason to blank a list someone is reading.
+                        tracing::warn!(%error, "reading a page of history failed");
+                        store.history.failure = Some(error);
+                        store.history.complete = true;
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+        cx.notify();
+    }
+
     /// What the write queue is doing, for the interface to render.
     pub fn writes(&self) -> &Queue {
         &self.writes
@@ -196,6 +335,22 @@ impl RepoStore {
     }
 
     /// Re-read the status and the summary.
+    /// Throw the history away and start it again.
+    ///
+    /// A commit, a checkout or a fetch changes what the walk would produce, and
+    /// there is no way to patch a lane assignment in place: the rows below a
+    /// new commit shift, and a graph that is half old and half new is worse
+    /// than one that is briefly empty.
+    fn restart_history(&mut self, cx: &mut Context<Self>) {
+        if self.history.is_empty() && self.walk.is_none() {
+            return;
+        }
+        self.history = History::default();
+        self.walk = None;
+        self.graph = None;
+        self.load_more_history(cx);
+    }
+
     pub fn refresh(&mut self, cx: &mut Context<Self>) {
         self.cancel.cancel();
         self.cancel = Cancel::new();
@@ -206,6 +361,9 @@ impl RepoStore {
         for (path, side) in open {
             self.read_diff(path, side, cx);
         }
+        // And so is the history, if anyone has asked for it: a commit, a
+        // checkout or a fetch changes what the walk produces.
+        self.restart_history(cx);
     }
 
     /// Read one file's diff, unless it is already in flight.

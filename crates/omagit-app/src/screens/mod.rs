@@ -8,8 +8,10 @@
 //! Repositories is the first (M3). Working Copy (M4) and History (M6) join it,
 //! and the topbar routes between them.
 
+pub mod history;
 pub mod repositories;
 pub mod working_copy;
 
+pub use history::HistoryScreen;
 pub use repositories::RepositoriesScreen;
 pub use working_copy::WorkingCopyScreen;

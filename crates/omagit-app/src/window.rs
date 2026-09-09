@@ -20,10 +20,10 @@ use omagit_git::Repository;
 use omagit_theme::DensityMode;
 use omagit_ui::{ActiveFonts, ActivePalette, Fonts, Palette, hsla};
 
-use crate::actions::{ShowRepositories, ShowWorkingCopy};
+use crate::actions::{ShowHistory, ShowRepositories, ShowWorkingCopy};
 use crate::platform::{self, Platform, TOPBAR_HEIGHT_COMFORTABLE, TOPBAR_HEIGHT_COMPACT};
 use crate::repo_store::RepoStore;
-use crate::screens::{RepositoriesScreen, WorkingCopyScreen};
+use crate::screens::{HistoryScreen, RepositoriesScreen, WorkingCopyScreen};
 use crate::store::Store;
 
 /// The reference window of the mock-ups is 1600×1000; below 1100px of usable
@@ -39,6 +39,7 @@ const MIN_SIZE: (f32, f32) = (900.0, 600.0);
 enum Screen {
     Repositories,
     WorkingCopy,
+    History,
 }
 
 /// What the topbar's trail shows.
@@ -62,7 +63,7 @@ impl Trail {
         Self {
             repository: match screen {
                 Screen::Repositories => None,
-                Screen::WorkingCopy => open,
+                Screen::WorkingCopy | Screen::History => open,
             },
         }
     }
@@ -78,6 +79,9 @@ pub struct Shell {
     /// filesystem watcher, so keeping it means coming back to a screen that is
     /// already up to date rather than one that has to re-read.
     working_copy: Option<(std::path::PathBuf, Entity<WorkingCopyScreen>)>,
+    /// Built the first time History is asked for, and kept: its walk and its
+    /// lane assignment are what make coming back to it instant.
+    history: Option<(std::path::PathBuf, Entity<HistoryScreen>)>,
     /// Held for its lifetime: dropping it stops the window following the
     /// system's light/dark preference.
     _appearance: Subscription,
@@ -102,6 +106,7 @@ impl Shell {
             repositories,
             screen: Screen::Repositories,
             working_copy: None,
+            history: None,
             _appearance: appearance,
             _store_changed: store_changed,
         }
@@ -248,6 +253,24 @@ impl Shell {
     /// Opening it is Git work, so it happens on the background executor and the
     /// screen appears when the repository is actually open — not before, and
     /// not by blocking a frame on it.
+    /// Show the History of the repository already open.
+    ///
+    /// It shares the Working Copy's store rather than opening a second one: one
+    /// `Entity<RepoStore>` per repository is what SPEC §10 asks for, and two
+    /// would mean two watchers and two answers to the same question.
+    fn open_history(&mut self, _: &ShowHistory, _: &mut Window, cx: &mut Context<Self>) {
+        let Some((path, working_copy)) = self.working_copy.clone() else {
+            return;
+        };
+        if !matches!(&self.history, Some((open, _)) if *open == path) {
+            let store = working_copy.read(cx).store().clone();
+            let screen = cx.new(|cx| HistoryScreen::new(store, cx));
+            self.history = Some((path, screen));
+        }
+        self.screen = Screen::History;
+        cx.notify();
+    }
+
     fn open_working_copy(&mut self, _: &ShowWorkingCopy, _: &mut Window, cx: &mut Context<Self>) {
         let Some(path) = self.store.read(cx).open_repository().map(ToOwned::to_owned) else {
             return;
@@ -295,13 +318,15 @@ impl Render for Shell {
         let fonts = cx.fonts().clone();
         let t = palette.tokens;
 
-        let body = match (self.screen, &self.working_copy) {
-            (Screen::WorkingCopy, Some((_, screen))) => screen.clone().into_any_element(),
+        let body = match (self.screen, &self.working_copy, &self.history) {
+            (Screen::WorkingCopy, Some((_, screen)), _) => screen.clone().into_any_element(),
+            (Screen::History, _, Some((_, screen))) => screen.clone().into_any_element(),
             _ => self.repositories.clone().into_any_element(),
         };
 
         div()
             .on_action(cx.listener(Self::open_working_copy))
+            .on_action(cx.listener(Self::open_history))
             .on_action(cx.listener(|shell, _: &ShowRepositories, _, cx| {
                 shell.screen = Screen::Repositories;
                 cx.notify();

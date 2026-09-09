@@ -49,6 +49,7 @@ actions!(
         /// Open the Working Copy of the selected repository, and come back.
         ShowWorkingCopy,
         ShowRepositories,
+        ShowHistory,
         /// Unified ↔ side-by-side.
         ToggleDiffMode,
         /// Move the diff cursor a line, or a hunk (DESIGN board 09).
@@ -87,6 +88,9 @@ pub const CONTEXT: &str = "Repositories";
 /// The Working Copy screen's own context.
 pub const CONTEXT_WORKING_COPY: &str = "WorkingCopy";
 
+/// The History screen's own context.
+pub const CONTEXT_HISTORY: &str = "History";
+
 /// The same screen, but only while no text field has the caret.
 ///
 /// A single character is a *binding* to someone navigating and a *character* to
@@ -96,6 +100,7 @@ pub const CONTEXT_WORKING_COPY: &str = "WorkingCopy";
 /// selection — which is exactly what `tests/keyboard.rs` caught.
 const OUTSIDE_TEXT: &str = "Repositories && !Input";
 const WORKING_COPY_OUTSIDE_TEXT: &str = "WorkingCopy && !Input";
+const HISTORY_OUTSIDE_TEXT: &str = "History && !Input";
 
 /// Install the default keymap.
 ///
@@ -177,5 +182,15 @@ pub fn bind(cx: &mut App) {
             Some(CONTEXT_WORKING_COPY),
         ),
         KeyBinding::new("secondary-l", ToggleJournal, Some(CONTEXT_WORKING_COPY)),
+        // `2` is the zone key DESIGN §5 gives the centre column on every
+        // screen; from the Working Copy, History is what it opens.
+        KeyBinding::new("secondary-2", ShowHistory, Some(CONTEXT_WORKING_COPY)),
+        // History. The same movement vocabulary again (DESIGN §5): one set of
+        // letters across the screens, not one per screen.
+        KeyBinding::new("down", SelectNext, Some(CONTEXT_HISTORY)),
+        KeyBinding::new("up", SelectPrevious, Some(CONTEXT_HISTORY)),
+        KeyBinding::new("j", SelectNext, Some(HISTORY_OUTSIDE_TEXT)),
+        KeyBinding::new("k", SelectPrevious, Some(HISTORY_OUTSIDE_TEXT)),
+        KeyBinding::new("escape", ShowWorkingCopy, Some(CONTEXT_HISTORY)),
     ]);
 }
