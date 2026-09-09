@@ -14,6 +14,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use gpui_kit::{AppContext, Context, Task};
 use omagit_git::diff::{FileDiff, staged_file, unstaged_file};
@@ -21,7 +22,11 @@ use omagit_git::{
     Cancel, DiffOptions, GitError, RepoPath, Repository, Status, StatusOptions, Summary, Watcher,
 };
 
+use omagit_git::cli::Git;
+use omagit_git::ops::CommitOutcome;
+
 use crate::async_state::{AsyncState, Generation};
+use crate::writes::{Done, Queue, Write};
 
 /// Which side of the index a diff is of.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -60,6 +65,11 @@ pub struct RepoStore {
     _watcher: Option<Watcher>,
     _watching: Option<Task<()>>,
     watch_error: Option<String>,
+    /// Writes, one at a time (SPEC §10). Per store, so per repository.
+    writes: Queue,
+    /// The last commit made here, so the screen can clear its message box only
+    /// once the commit actually exists.
+    last_commit: Option<CommitOutcome>,
 }
 
 /// What a generation is counted against.
@@ -90,6 +100,8 @@ impl RepoStore {
             _watcher: None,
             _watching: None,
             watch_error: None,
+            writes: Queue::default(),
+            last_commit: None,
         };
         store.start_watching(cx);
         store.refresh(cx);
@@ -113,6 +125,67 @@ impl RepoStore {
     }
 
     /// Whether live updates are running, and why not if they are not.
+    /// What the write queue is doing, for the interface to render.
+    pub fn writes(&self) -> &Queue {
+        &self.writes
+    }
+
+    pub fn last_commit(&self) -> Option<&CommitOutcome> {
+        self.last_commit.as_ref()
+    }
+
+    pub fn dismiss_write_failure(&mut self, cx: &mut Context<Self>) {
+        self.writes.clear_failure();
+        cx.notify();
+    }
+
+    /// Queue a write and start the queue if nothing is running.
+    ///
+    /// Confirmation for a destructive write is the screen's, not this: SPEC §3
+    /// rule 7 is about asking the user, and by the time something is queued the
+    /// asking is over.
+    pub fn submit(&mut self, write: Write, git: Arc<Git>, cx: &mut Context<Self>) {
+        self.writes.push(write);
+        self.pump(git, cx);
+        cx.notify();
+    }
+
+    fn pump(&mut self, git: Arc<Git>, cx: &mut Context<Self>) {
+        let Some(write) = self.writes.start() else {
+            return;
+        };
+        let repo = self.repo.clone();
+        // A write is not cancelled by a refresh: a half-applied patch is worse
+        // than a slow one, so it gets its own token that nothing else touches.
+        let cancel = Cancel::new();
+
+        cx.spawn(async move |this, cx| {
+            let outcome = {
+                let (write, git, repo) = (write.clone(), git.clone(), repo);
+                cx.background_spawn(async move { write.run(&git, &repo, &cancel) })
+                    .await
+            };
+            this.update(cx, |store, cx| {
+                let outcome = store.writes.finish(outcome);
+                match outcome {
+                    Ok(Done::Committed(made)) => {
+                        tracing::info!(commit = %made.id, "committed");
+                        store.last_commit = Some(made);
+                    }
+                    Ok(Done::Staged) => {}
+                    Err(error) => tracing::warn!(%error, "write failed"),
+                }
+                // The repository moved — or was meant to and did not. Either
+                // way what is on screen is now a guess.
+                store.refresh(cx);
+                store.pump(git, cx);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub fn watch_error(&self) -> Option<&str> {
         self.watch_error.as_deref()
     }

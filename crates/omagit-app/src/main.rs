@@ -14,6 +14,9 @@ fn main() {
     let config_dir = platform.config_dir();
     let _log_guard = omagit_app::logging::init(config_dir.as_deref());
 
+    // Before the render thread is armed and before a window exists (SPEC §8).
+    let git = omagit_app::git_runtime::GitRuntime::detect();
+
     tracing::info!(
         platform = platform.name(),
         config_dir = ?config_dir,
@@ -26,6 +29,7 @@ fn main() {
         // arms the debug guard that panics if Git work is ever started here
         // (SPEC §15 risk 1).
         omagit_git::mark_render_thread();
+        cx.set_global(git);
 
         // `gpui_omarchy::init` also starts its own once-a-second Omarchy poll.
         // Applying a theme below stops it: omagit owns theme sourcing (SPEC
