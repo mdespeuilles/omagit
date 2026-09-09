@@ -41,6 +41,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        .setup(|app| {
+            if let Some(dir) = platform::current().omarchy_state_dir() {
+                follow_system_palette(app.handle().clone(), dir);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::platform,
             commands::theme,
@@ -86,4 +92,64 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("omagit could not start");
+}
+
+/// Follow the Omarchy palette while the window is open (SPEC §6.1, source 2).
+///
+/// The spec calls that source *watched*, and `omarchy::Tracker` was written to
+/// serve it, but nothing ever drove it: the window read the palette once at
+/// start-up and then ignored the system for the rest of the session.
+///
+/// Watches the `current` directory, not the files under it, because switching a
+/// theme replaces the whole thing — `omarchy-theme-set` does `rm -rf theme`, a
+/// rename over it, then writes `theme.name`. A watch registered on `colors.toml`
+/// would be watching a file that no longer exists, and the burst of events that
+/// swap produces is exactly what the tracker is for: it answers "is the palette
+/// we can read *now* different from the last one we read", rather than
+/// "did something happen".
+///
+/// The stylesheet is re-resolved rather than rendered from the new palette
+/// directly, because Omarchy is only one of SPEC §6.1's four sources: with a
+/// user override in settings the palette may change and the window must not.
+/// Comparing the result to what was last sent is what makes that free.
+fn follow_system_palette(app: tauri::AppHandle, dir: std::path::PathBuf) {
+    use notify::Watcher as _;
+    use tauri::{Emitter as _, Manager as _};
+
+    std::thread::spawn(move || {
+        let (sender, events) = std::sync::mpsc::channel();
+        let mut watcher = match notify::recommended_watcher(sender) {
+            Ok(watcher) => watcher,
+            Err(error) => {
+                tracing::warn!(%error, "no theme watcher: the palette will not follow");
+                return;
+            }
+        };
+        if let Err(error) = watcher.watch(&dir, notify::RecursiveMode::NonRecursive) {
+            // Absent on a machine without Omarchy, which is not a fault: the
+            // source simply is not offered (SPEC §6.1).
+            tracing::debug!(%error, dir = ?dir, "no Omarchy state to watch");
+            return;
+        }
+
+        let mut tracker = omagit_theme::omarchy::Tracker::new();
+        let mut sent = commands::stylesheet(&app.state::<AppState>().settings());
+
+        for event in events {
+            if event.is_err() {
+                continue;
+            }
+            if tracker.refresh(&dir).is_none() {
+                continue;
+            }
+            let css = commands::stylesheet(&app.state::<AppState>().settings());
+            if css == sent {
+                continue;
+            }
+            sent = css.clone();
+            tracing::info!("the system palette changed, the window follows");
+            // The window may be gone; the thread ends with the channel.
+            let _ = app.emit("theme", css);
+        }
+    });
 }

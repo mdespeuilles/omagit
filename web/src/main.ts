@@ -3,7 +3,7 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import { api } from "./ipc";
-import { boot, watchProgress } from "./state";
+import { boot, watchProgress, watchTheme } from "./state";
 
 const app = createApp(App);
 
@@ -29,3 +29,6 @@ boot().catch(report);
 // Independent of `boot`: progress belongs to the window's lifetime, not to a
 // repository's, and a failure to subscribe must not stop the app from opening.
 watchProgress().catch(report);
+// Same reasoning, and the same independence: the system palette can change
+// while the window is open, and SPEC §6.1's second source is a live one.
+watchTheme().catch(report);

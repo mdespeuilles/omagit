@@ -35,11 +35,16 @@ pub fn platform() -> crate::platform::PlatformFacts {
 /// The theme, as the CSS custom properties the stylesheet reads.
 #[tauri::command]
 pub fn theme(state: State<'_, AppState>) -> String {
-    let settings = state.settings();
-    // The four sources of SPEC §6.1 resolve here; the window's own appearance
-    // is asked for by the front end and passed back in at M6b's next step.
-    let sources = omagit_theme::Sources::default();
-    let resolved = sources.resolve(&settings.theme);
+    stylesheet(&state.settings())
+}
+
+/// Resolve SPEC §6.1's four sources against this machine and render the result.
+///
+/// Shared with the watcher that pushes a new one when the system palette
+/// changes: the two must agree, or following the system theme would mean
+/// swapping the window to a stylesheet the next `theme` call contradicts.
+pub fn stylesheet(settings: &omagit_settings::Settings) -> String {
+    let resolved = crate::platform::theme_sources().resolve(&settings.theme);
     omagit_theme::css::scaled(&resolved.theme, settings.density, settings.scale())
 }
 

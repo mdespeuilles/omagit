@@ -710,6 +710,21 @@ export async function watchProgress(): Promise<void> {
   });
 }
 
+/// Follow the system palette for as long as the window is open.
+///
+/// SPEC §6.1 makes the Omarchy palette a *live* source, not a value read once:
+/// switch the system theme and every window that follows it turns with it. The
+/// backend decides whether anything actually changed — with a theme chosen by
+/// hand in preferences, nothing arrives here at all.
+export async function watchTheme(): Promise<void> {
+  await listen<string>("theme", (event) => {
+    document.documentElement.setAttribute("style", event.payload);
+    // The tokens carry the density and the scale, so the row heights the lists
+    // measured against the old ones are stale the moment they change.
+    measure();
+  });
+}
+
 /// Run one network operation, with the overlay up for its duration.
 async function overNetwork(what: string, run: () => Promise<string>): Promise<void> {
   if (state.running) return;

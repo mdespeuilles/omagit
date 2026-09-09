@@ -155,6 +155,24 @@ pub trait Platform: Send + Sync + 'static {
     }
 }
 
+/// The theme sources this machine actually offers (SPEC §6.1).
+///
+/// A function rather than `Sources::default()`, and that is the whole point:
+/// the default offers **nothing**, so a window that resolves against it gets the
+/// embedded theme however the machine is dressed. On Linux the Omarchy palette
+/// *is* the system theme — priority 2, and the default source on first launch —
+/// and it can only win if someone hands the resolver the state directory.
+///
+/// Priority 3 stays `None` for now: the window's own light/dark preference is
+/// asked for by the front end and passed back in at M6b's next step, and
+/// [`Platform::reports_system_appearance`] says where it will come from.
+pub fn theme_sources() -> omagit_theme::Sources {
+    omagit_theme::Sources {
+        omarchy_state: current().omarchy_state_dir(),
+        system_appearance: None,
+    }
+}
+
 /// The platform this build runs on.
 pub fn current() -> &'static dyn Platform {
     #[cfg(target_os = "linux")]
@@ -171,3 +189,27 @@ pub fn current() -> &'static dyn Platform {
 /// (DESIGN-TOKENS §7, board 08).
 pub const TOPBAR_HEIGHT_COMFORTABLE: f32 = 48.0;
 pub const TOPBAR_HEIGHT_COMPACT: f32 = 40.0;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::prelude::v1::test;
+
+    #[test]
+    fn the_resolver_is_told_what_this_machine_has() {
+        // The bug this pins: the window resolved against `Sources::default()`,
+        // which offers *nothing*. SPEC §6.1's second source could never win, so
+        // an Omarchy desktop got the embedded theme however it was dressed —
+        // and it looked like the theme code was broken when the theme code had
+        // simply never been asked.
+        assert_eq!(theme_sources().omarchy_state, current().omarchy_state_dir());
+
+        #[cfg(target_os = "linux")]
+        assert!(
+            theme_sources()
+                .omarchy_state
+                .is_some_and(|dir| dir.ends_with(".local/state/omarchy/current")),
+            "a test run has HOME, so Linux has a Quattro path to offer"
+        );
+    }
+}
