@@ -3,30 +3,23 @@
 A graphical Git client for **Omarchy / Linux** and **macOS**, written in Rust
 and rendered with GPUI. Inspired by Tower, deliberately simpler.
 
-## Build and run
+## Run it
 
 ```sh
-cargo run -p omagit-app          # or: cargo run --bin omagit
-OMAGIT_LOG=debug cargo run       # logs to stderr and to the config directory
+scripts/dev.sh
 ```
 
-The Git core also runs without a window, which is how it is validated and
-measured (SPEC §14, M2):
+That is the whole of it: the script starts the front end's dev server, waits for
+it, and then runs the app.
 
-```sh
-cargo run -p omagit-git-cli -- info                 # HEAD, work tree, git version
-cargo run -p omagit-git-cli -- status --ignored
-cargo run -p omagit-git-cli -- log -n 20 --all
-cargo run -p omagit-git-cli -- show <full-hash>     # message, then the diff
-cargo run -p omagit-git-cli -- diff --staged
-cargo run -p omagit-git-cli --release -- -C ~/some/repo bench
-```
+**Do not run the binary on its own in a debug build.** Tauri loads the dev
+server rather than the embedded front end there, so `cargo run` with nothing
+serving on port 5173 opens a blank window and says nothing about why. A release
+build (`cargo build --release`) embeds the front end and needs no server.
 
-Add `--timing` to any of them. `bench` prints the reads SPEC §12 sets budgets
-for, against whatever repository it is pointed at.
-
-Requires the toolchain pinned in `rust-toolchain.toml`; `rustup` picks it up on
-its own.
+`OMAGIT_LOG=debug scripts/dev.sh` turns up the logging. Front-end errors go to
+the same log as the backend's, so a start-up failure is one file to read rather
+than a devtools console to open.
 
 ## Before opening a PR
 
