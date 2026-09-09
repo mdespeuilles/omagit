@@ -72,7 +72,20 @@ pub struct FileDiff {
     pub path: RepoPath,
     pub change: FileChange,
     pub content: DiffContent,
+    /// The file's mode on its new side, as Git writes it: `100644`, `100755`
+    /// for an executable, `120000` for a symlink.
+    ///
+    /// Needed to *write* a diff, not only to read one: a patch that creates a
+    /// file must state `new file mode`, and getting it wrong stages an
+    /// executable as a plain file. Falls back to `100644` where there is no new
+    /// side to ask, which is the mode a deletion's header carries anyway.
+    pub mode: u32,
 }
+
+/// The mode Git gives an ordinary file.
+pub const MODE_FILE: u32 = 0o100644;
+/// The mode Git gives an executable file.
+pub const MODE_EXECUTABLE: u32 = 0o100755;
 
 /// What happened to the file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -361,6 +374,7 @@ pub fn staged_file(
         path: entry.path.clone(),
         change,
         content: content_of(old, new, entry.is_submodule, options),
+        mode: index_mode(&index, &entry.path).unwrap_or(MODE_FILE),
     }))
 }
 
@@ -409,8 +423,44 @@ pub fn unstaged_file(
     Ok(Some(FileDiff {
         path: entry.path.clone(),
         change,
+        // The working tree is this diff's new side, so its mode is the one a
+        // patch built from it has to state.
+        mode: worktree_mode(repo, &entry.path)
+            .or_else(|| index_mode(&index, &entry.path))
+            .unwrap_or(MODE_FILE),
         content: content_of(old, new, entry.is_submodule, options),
     }))
+}
+
+/// The mode the index records for a path.
+fn index_mode(index: &gix::index::State, path: &RepoPath) -> Option<u32> {
+    index
+        .entry_by_path(path.as_bstr())
+        .map(|entry| entry.mode.bits())
+}
+
+/// The mode the file on disk has, which is what a patch describing the working
+/// tree must state.
+fn worktree_mode(repo: &Repository, path: &RepoPath) -> Option<u32> {
+    let absolute = path.to_absolute(repo.work_dir()?)?;
+    let metadata = std::fs::symlink_metadata(&absolute).ok()?;
+    if metadata.file_type().is_symlink() {
+        return Some(0o120000);
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let executable = metadata.permissions().mode() & 0o111 != 0;
+        Some(if executable {
+            MODE_EXECUTABLE
+        } else {
+            MODE_FILE
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        Some(MODE_FILE)
+    }
 }
 
 fn tree_of(gix: &gix::Repository, commit: Option<ObjectId>) -> Result<Option<gix::Tree<'_>>> {
@@ -437,7 +487,7 @@ fn file_from_tree_change(
     // A tree entry is a directory. Its contents come through as their own
     // changes, and a row for the directory itself would be a row nothing can
     // be shown for.
-    let (path, change_kind, old_id, new_id, is_submodule) = match change {
+    let (path, change_kind, old_id, new_id, is_submodule, mode) = match change {
         Change::Addition {
             location,
             entry_mode,
@@ -453,6 +503,7 @@ fn file_from_tree_change(
                 None,
                 Some(id),
                 entry_mode.is_commit(),
+                entry_mode.value() as u32,
             )
         }
         Change::Deletion {
@@ -470,6 +521,7 @@ fn file_from_tree_change(
                 Some(id),
                 None,
                 entry_mode.is_commit(),
+                entry_mode.value() as u32,
             )
         }
         Change::Modification {
@@ -493,6 +545,7 @@ fn file_from_tree_change(
                 Some(previous_id),
                 Some(id),
                 entry_mode.is_commit() || previous_entry_mode.is_commit(),
+                entry_mode.value() as u32,
             )
         }
         Change::Rewrite {
@@ -524,6 +577,7 @@ fn file_from_tree_change(
                 Some(source_id),
                 Some(id),
                 entry_mode.is_commit(),
+                entry_mode.value() as u32,
             )
         }
     };
@@ -546,6 +600,7 @@ fn file_from_tree_change(
         path,
         change: change_kind,
         content,
+        mode,
     }))
 }
 
