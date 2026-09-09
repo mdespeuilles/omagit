@@ -41,6 +41,33 @@ enum Screen {
     WorkingCopy,
 }
 
+/// What the topbar's trail shows.
+///
+/// A decision worth its own name, because it was wrong: the trail was keyed on
+/// whether the store had a repository *open* rather than on which screen is
+/// *showing*. Coming back to the list does not close the repository — the
+/// Working Copy keeps its state and its watcher, which is what makes returning
+/// to it instant — so the list drew a segment for a repository it was not
+/// showing, offered a way back to the screen already under the pointer, and
+/// named `Esc` for a key that does something else there.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Trail {
+    /// The repository segment, and with it the way back and the `Esc` hint.
+    /// `None` on the list, where "Dépôts" is the name of where you are.
+    repository: Option<String>,
+}
+
+impl Trail {
+    fn of(screen: Screen, open: Option<String>) -> Self {
+        Self {
+            repository: match screen {
+                Screen::Repositories => None,
+                Screen::WorkingCopy => open,
+            },
+        }
+    }
+}
+
 pub struct Shell {
     density: DensityMode,
     platform: &'static dyn Platform,
@@ -91,21 +118,15 @@ impl Shell {
         let t = palette.tokens;
         let reserve = self.platform.topbar_reserve();
         let modifier = self.platform.primary_modifier();
-        // The trail says where you *are*, not what the store happens to
-        // remember. Coming back to the list does not close the repository — the
-        // Working Copy keeps its state and its watcher — so keying the trail on
-        // "a repository is open" left the list showing a repository segment it
-        // was not showing, and offering a way back to the screen already under
-        // the pointer.
-        let showing_repository = match self.screen {
-            Screen::Repositories => None,
-            Screen::WorkingCopy => self
-                .store
+        let showing_repository = Trail::of(
+            self.screen,
+            self.store
                 .read(cx)
                 .open_repository()
                 .and_then(|path| path.file_name())
                 .map(|name| name.to_string_lossy().into_owned()),
-        };
+        )
+        .repository;
 
         div()
             .flex()
@@ -351,5 +372,44 @@ pub fn options(platform: &dyn Platform, cx: &mut App) -> WindowOptions {
         // neither drags nor delays clicks in that band.
         app_owns_titlebar_drag: true,
         ..Default::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::prelude::v1::test;
+
+    fn open() -> Option<String> {
+        Some("app.duodeal.com".to_owned())
+    }
+
+    #[test]
+    fn the_list_names_where_you_are_rather_than_where_you_were() {
+        // The bug: a repository stays open behind the list, and the trail was
+        // reading that instead of the screen.
+        assert_eq!(
+            Trail::of(Screen::Repositories, open()),
+            Trail { repository: None },
+            "no repository segment, so no way back to the screen you are on"
+        );
+    }
+
+    #[test]
+    fn a_repository_on_screen_gets_its_segment() {
+        assert_eq!(
+            Trail::of(Screen::WorkingCopy, open()),
+            Trail { repository: open() }
+        );
+    }
+
+    #[test]
+    fn the_working_copy_without_a_repository_shows_no_segment() {
+        // Not a state the shell reaches — it only shows the Working Copy once a
+        // repository is open — but the trail must not invent a name for one.
+        assert_eq!(
+            Trail::of(Screen::WorkingCopy, None),
+            Trail { repository: None }
+        );
     }
 }

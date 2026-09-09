@@ -888,6 +888,10 @@ impl RepositoriesScreen {
 
         div()
             .id(("repository", at.group * 1000 + at.index))
+            // Addressable from a test, so a pointer test clicks the row the
+            // user would click rather than a coordinate someone worked out
+            // once. Compiles away outside test builds.
+            .debug_selector(move || format!("repository:{}:{}", at.group, at.index))
             .flex()
             .items_center()
             .gap(px(8.0))
