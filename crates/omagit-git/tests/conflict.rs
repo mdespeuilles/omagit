@@ -368,3 +368,224 @@ fn a_stash_that_conflicts_on_the_way_back_has_no_operation_and_still_has_sides_t
     assert_eq!(contents(&repo, "shared.txt"), "stashed\n");
     assert!(conflicts(&repo).is_empty());
 }
+
+// ── The markers, and choosing between them ──────────────────────────────────
+
+use omagit_git::conflict::{Choice, Segment};
+
+/// The file `git` leaves behind for the merge in `stopped_merge`.
+fn markers(repo: &TestRepo) -> String {
+    contents(repo, "shared.txt")
+}
+
+#[test]
+fn the_two_sides_are_read_out_of_the_file_git_wrote() {
+    let repo = stopped_merge();
+
+    let file = conflict::read(&repo.open(), &"shared.txt".into()).expect("markers");
+
+    assert_eq!(file.regions, 1);
+    let Some(Segment::Conflict(region)) = file.segments.first() else {
+        panic!("the whole file is one conflict: {:?}", file.segments)
+    };
+    assert_eq!(region.ours, ["ours"]);
+    assert_eq!(region.theirs, ["theirs"]);
+    assert_eq!(region.index, 0);
+    assert_eq!(region.start, 1);
+    // The labels are git's own: `HEAD` on our side, the branch on theirs.
+    assert_eq!(region.ours_label, "HEAD");
+    assert_eq!(region.theirs_label, "feature");
+    assert_eq!(region.base, None, "the default style keeps no base");
+}
+
+#[test]
+fn agreed_text_keeps_its_place_in_the_file() {
+    let repo = TestRepo::new();
+    repo.commit_file("poem.txt", "one\ntwo\nthree\nfour\n", "seed");
+    repo.branch("feature");
+    repo.write("poem.txt", "one\ntwo\nTHEIRS\nfour\n");
+    repo.add_all();
+    repo.commit_staged("their line");
+    repo.checkout("main");
+    repo.write("poem.txt", "one\ntwo\nOURS\nfour\n");
+    repo.add_all();
+    repo.commit_staged("our line");
+    integrate::merge(
+        &git(),
+        &repo.open(),
+        "feature",
+        &Default::default(),
+        &never(),
+    )
+    .expect_err("the same line");
+
+    let file = conflict::read(&repo.open(), &"poem.txt".into()).expect("markers");
+
+    let shapes: Vec<&str> = file
+        .segments
+        .iter()
+        .map(|segment| match segment {
+            Segment::Agreed { .. } => "agreed",
+            Segment::Conflict(_) => "conflict",
+        })
+        .collect();
+    assert_eq!(shapes, ["agreed", "conflict", "agreed"]);
+    let Some(Segment::Agreed { start, lines }) = file.segments.first() else {
+        panic!("the two lines above it")
+    };
+    assert_eq!(
+        (*start, lines.as_slice()),
+        (1, ["one".to_owned(), "two".to_owned()].as_slice())
+    );
+}
+
+#[test]
+fn a_diff3_file_keeps_its_base_apart_from_the_two_sides() {
+    // With `merge.conflictStyle = diff3` git writes a third section. Parsed
+    // even though no button offers it: a resolution that ignored it would leave
+    // the ancestor's lines in the file.
+    let repo = stopped_merge();
+    repo.git(&["config", "merge.conflictStyle", "diff3"]);
+    repo.git(&["checkout", "--merge", "--", "shared.txt"]);
+
+    let file = conflict::read(&repo.open(), &"shared.txt".into()).expect("markers");
+
+    let Some(Segment::Conflict(region)) = file.segments.first() else {
+        panic!("one conflict")
+    };
+    assert_eq!(
+        region.base.as_deref(),
+        Some(["original".to_owned()].as_slice())
+    );
+    assert_eq!(region.ours, ["ours"]);
+    assert_eq!(region.theirs, ["theirs"]);
+}
+
+#[test]
+fn choosing_a_side_writes_the_file_without_its_markers() {
+    let repo = stopped_merge();
+    assert!(markers(&repo).contains("<<<<<<<"));
+
+    omagit_git::ops::conflict::resolve(
+        &git(),
+        &repo.open(),
+        &"shared.txt".into(),
+        &[Choice::Theirs],
+        &never(),
+    )
+    .expect("resolved");
+
+    assert_eq!(markers(&repo), "theirs\n");
+    assert!(
+        conflicts(&repo).is_empty(),
+        "and staged, because a rewritten file is still unmerged until it is added"
+    );
+}
+
+#[test]
+fn both_keeps_the_two_sides_ours_first() {
+    let repo = stopped_merge();
+
+    omagit_git::ops::conflict::resolve(
+        &git(),
+        &repo.open(),
+        &"shared.txt".into(),
+        &[Choice::Both],
+        &never(),
+    )
+    .expect("resolved");
+
+    assert_eq!(markers(&repo), "ours\ntheirs\n");
+}
+
+#[test]
+fn answers_for_a_file_that_has_moved_underneath_are_refused() {
+    // The dialog read three conflicts; something resolved one by hand while it
+    // was open. Writing the old answers would undo that silently.
+    let repo = stopped_merge();
+
+    let error = omagit_git::ops::conflict::resolve(
+        &git(),
+        &repo.open(),
+        &"shared.txt".into(),
+        &[Choice::Ours, Choice::Ours],
+        &never(),
+    )
+    .expect_err("two answers, one conflict");
+
+    assert!(
+        error.to_string().contains("1 conflicts, not the 2"),
+        "{error}"
+    );
+    assert!(
+        markers(&repo).contains("<<<<<<<"),
+        "and the file is untouched"
+    );
+}
+
+#[test]
+fn markers_that_do_not_pair_up_are_refused_rather_than_guessed_at() {
+    let repo = stopped_merge();
+    // Half a conflict — an editor left open, a bad hand resolution.
+    repo.write("shared.txt", "<<<<<<< HEAD\nours\n");
+
+    let error = conflict::read(&repo.open(), &"shared.txt".into()).expect_err("half a marker");
+
+    assert!(error.to_string().contains("do not pair up"), "{error}");
+}
+
+#[test]
+fn a_file_resolved_by_hand_has_no_conflicts_left_and_that_is_not_an_error() {
+    let repo = stopped_merge();
+    repo.write("shared.txt", "settled by hand\n");
+
+    let file = conflict::read(&repo.open(), &"shared.txt".into()).expect("no markers");
+
+    assert_eq!(file.regions, 0);
+    assert_eq!(
+        file.segments,
+        vec![Segment::Agreed {
+            start: 1,
+            lines: vec!["settled by hand".to_owned()]
+        }]
+    );
+}
+
+#[test]
+fn a_resolution_gives_back_the_line_endings_it_was_given() {
+    // Windows line endings, and a file with no final newline. Both survive
+    // because everything outside the markers is copied byte for byte rather
+    // than reassembled from the lines the parser read.
+    let repo = TestRepo::new();
+    repo.git(&["config", "core.autocrlf", "false"]);
+    repo.write_bytes("crlf.txt", b"one\r\ntwo\r\nthree");
+    repo.add_all();
+    repo.commit_staged("seed");
+    repo.branch("feature");
+    repo.write_bytes("crlf.txt", b"one\r\nTHEIRS\r\nthree");
+    repo.add_all();
+    repo.commit_staged("their line");
+    repo.checkout("main");
+    repo.write_bytes("crlf.txt", b"one\r\nOURS\r\nthree");
+    repo.add_all();
+    repo.commit_staged("our line");
+    integrate::merge(
+        &git(),
+        &repo.open(),
+        "feature",
+        &Default::default(),
+        &never(),
+    )
+    .expect_err("the same line");
+
+    omagit_git::ops::conflict::resolve(
+        &git(),
+        &repo.open(),
+        &"crlf.txt".into(),
+        &[Choice::Ours],
+        &never(),
+    )
+    .expect("resolved");
+
+    assert_eq!(repo.read("crlf.txt"), b"one\r\nOURS\r\nthree");
+}

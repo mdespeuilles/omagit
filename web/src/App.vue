@@ -10,6 +10,7 @@ import CloneDialog from "./components/CloneDialog.vue";
 import CommitBox from "./components/CommitBox.vue";
 import CommitDetail from "./components/CommitDetail.vue";
 import Confirm from "./components/Confirm.vue";
+import ConflictDialog from "./components/ConflictDialog.vue";
 import DiffView from "./components/DiffView.vue";
 import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
@@ -104,4 +105,5 @@ const widths = {
   <StatusBar />
   <Confirm v-if="app.question" />
   <CloneDialog v-if="app.clone" />
+  <ConflictDialog v-if="app.resolving" />
 </template>

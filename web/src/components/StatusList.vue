@@ -11,6 +11,7 @@ import type { StatusRow } from "../ipc";
 import {
   app,
   discardFile,
+  openConflict,
   plural,
   resolveConflict,
   selectFile,
@@ -180,6 +181,16 @@ function name(path: string): string {
              unmerged path anyway, so the button would have been one that always
              fails. -->
         <template v-if="item.conflict">
+          <!-- The two sides settle the whole file in one click; the dialog is
+               for a file whose conflicts do not all want the same answer. -->
+          <button
+            class="row-action"
+            :disabled="!!app.busy"
+            title="Résoudre conflit par conflit"
+            @click.stop="openConflict(item.path)"
+          >
+            Résoudre…
+          </button>
           <button
             class="row-action"
             :disabled="!!app.busy"

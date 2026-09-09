@@ -139,6 +139,12 @@ pub trait Platform: Send + Sync + 'static {
     /// Which window buttons the app draws for itself (board 02).
     fn caption(&self) -> Caption;
 
+    /// The command that hands a file to whatever the desktop opens it with.
+    ///
+    /// The fallback when the configured Git editor is one that lives in a
+    /// terminal — see `editor.rs`, where the reason is written down.
+    fn opener(&self) -> &'static str;
+
     fn facts(&self) -> PlatformFacts {
         PlatformFacts {
             name: self.name(),

@@ -65,7 +65,8 @@ describe("a repository stopped on a conflict", () => {
 
     const list = mount(StatusList);
     const actions = list.findAll(".row-action").map((button) => button.text());
-    expect(actions).toEqual(["main", "feature"]);
+    // The dialog first, then the two whole-file answers named by branch.
+    expect(actions).toEqual(["Résoudre…", "main", "feature"]);
     expect(state.app.sides).toEqual({ ours: "main", theirs: "feature", replayed: false });
   });
 
@@ -77,9 +78,9 @@ describe("a repository stopped on a conflict", () => {
 
     const list = mount(StatusList);
     const titles = list.findAll(".row-action").map((button) => button.attributes("title") ?? "");
-    expect(titles[0]).toContain("déjà en place");
-    expect(titles[0]).toContain("rejou");
-    expect(titles[1]).toContain("rejoué");
+    expect(titles[1]).toContain("déjà en place");
+    expect(titles[1]).toContain("rejou");
+    expect(titles[2]).toContain("rejoué");
   });
 
   it("asks for the sides only while something is running", async () => {
@@ -189,5 +190,126 @@ describe("a repository stopped on a conflict", () => {
     const labels = bar.findAll("button").map((button) => button.text());
     expect(labels).toContain("Poursuivre");
     expect(labels).toContain("Abandonner");
+  });
+});
+
+describe("board 07's conflict dialog", () => {
+  /// The dialog, open on the file, with `regions` conflicts in it.
+  async function opened(regions = 2) {
+    backend.current = new Repository([{ ...conflicted, regions }]);
+    backend.current.operation = "merge";
+    vi.resetModules();
+    const state = await import("./state");
+    await state.boot();
+    await state.openRepository("/repo");
+    await settled(state);
+    await state.openConflict("shared.txt");
+    const ConflictDialog = (await import("./components/ConflictDialog.vue")).default;
+    return { state, dialog: mount(ConflictDialog) };
+  }
+
+  it("reads the file and counts its conflicts", async () => {
+    const { state, dialog } = await opened(2);
+
+    expect(sent("conflict_file")).toEqual([{ path: "/repo", file: "shared.txt" }]);
+    expect(state.app.resolving?.choices).toEqual([null, null]);
+    expect(dialog.text()).toContain("conflit 1 / 2");
+  });
+
+  it("names the sides by their branch rather than by the pronoun", async () => {
+    const { dialog } = await opened(1);
+
+    const bands = dialog.findAll(".conflict-side-name").map((band) => band.text());
+    expect(bands[0]).toContain("main");
+    expect(bands[1]).toContain("feature");
+  });
+
+  it("holds the primary shut until every conflict has an answer", async () => {
+    const { state, dialog } = await opened(2);
+    const primary = () => dialog.findAll("button").find((b) => b.text().includes("indexer"))!;
+
+    expect(primary().attributes("disabled")).toBeDefined();
+
+    state.chooseSide(0, "ours");
+    await dialog.vm.$nextTick();
+    expect(primary().attributes("disabled")).toBeDefined();
+
+    state.chooseSide(1, "both");
+    await dialog.vm.$nextTick();
+    expect(primary().attributes("disabled")).toBeUndefined();
+  });
+
+  it("moves to the next conflict nobody has answered", async () => {
+    // Four conflicts is four decisions; a dialog that stayed on the one just
+    // settled would make the reader find the next one every time.
+    const { state } = await opened(3);
+
+    state.chooseSide(0, "ours");
+    expect(state.app.resolving?.at).toBe(1);
+
+    // Answering out of order still leaves the cursor on the one nobody has
+    // answered, not on the one just settled.
+    state.chooseSide(2, "theirs");
+    expect(state.app.resolving?.at).toBe(1);
+
+    state.chooseSide(1, "both");
+    expect(state.app.resolving?.at).toBe(1);
+  });
+
+  it("sends the answers in file order and stages the file", async () => {
+    const { state } = await opened(2);
+
+    state.chooseSide(0, "theirs");
+    state.chooseSide(1, "ours");
+    state.applyResolution();
+    await settled(state);
+
+    expect(sent("resolve_hunks")).toEqual([
+      { path: "/repo", file: "shared.txt", choices: ["theirs", "ours"] },
+    ]);
+    expect(state.app.resolving).toBeNull();
+    const row = state.app.status.status === "ready" ? state.app.status.value[0]! : null;
+    expect(row!.conflict).toBeNull();
+    expect(row!.staged).toBe("modified");
+  });
+
+  it("stands aside once the file is open in an editor", async () => {
+    // What the dialog is drawing is about to stop being true.
+    const { state } = await opened(1);
+
+    state.openInEditor();
+    await settled(state);
+
+    expect(sent("open_in_editor")).toEqual([{ path: "/repo", file: "shared.txt" }]);
+    expect(state.app.resolving).toBeNull();
+    expect(state.app.notes).toContain("ouvert dans code");
+  });
+
+  it("says when the markers cannot be read rather than drawing nothing", async () => {
+    backend.current = new Repository([{ ...conflicted }]);
+    backend.current.operation = "merge";
+    backend.current.unreadableConflict = "the markers do not pair up: `<<<<<<<` at line 1";
+    vi.resetModules();
+    const state = await import("./state");
+    await state.boot();
+    await state.openRepository("/repo");
+    await settled(state);
+
+    await state.openConflict("shared.txt");
+    const ConflictDialog = (await import("./components/ConflictDialog.vue")).default;
+    const dialog = mount(ConflictDialog);
+
+    expect(state.app.resolving?.body.status).toBe("failed");
+    expect(dialog.text()).toContain("do not pair up");
+  });
+
+  it("lets a file settled elsewhere be staged with no answers at all", async () => {
+    const { state, dialog } = await opened(0);
+
+    expect(dialog.text()).toContain("plus de marqueurs");
+    state.applyResolution();
+    await settled(state);
+
+    expect(sent("resolve_hunks")).toEqual([{ path: "/repo", file: "shared.txt", choices: [] }]);
   });
 });

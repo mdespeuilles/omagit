@@ -29,6 +29,8 @@ import {
   type PlatformFacts,
   type Progress,
   type Refs,
+  type Choice,
+  type Conflicted,
   type RepoSummary,
   type Sides,
   type StashRow,
@@ -182,6 +184,24 @@ type State = {
   /// one. `null` when nothing is running — and read from the repository, never
   /// assumed from the branch on screen.
   sides: Sides | null;
+  /// The conflict dialog, while it is up.
+  resolving: Resolving | null;
+};
+
+/// What the conflict dialog is holding.
+export type Resolving = {
+  file: string;
+  /// The markers as they were read. A failure here is the file being
+  /// unreadable as a conflict — binary, or markers that do not pair up — and
+  /// the dialog says so rather than drawing nothing.
+  body: Async<Conflicted>;
+  /// One answer per conflict, in file order; `null` until one is made. The
+  /// primary button waits for all of them, because a file written with half its
+  /// conflicts answered would still have markers in it and would be staged
+  /// anyway.
+  choices: (Choice | null)[];
+  /// Which conflict the header counts — board 07's "conflit 1 / 2".
+  at: number;
 };
 
 /// What the Remiser form is holding.
@@ -265,6 +285,7 @@ const state = reactive<State>({
   stashFile: null,
   stashing: null,
   sides: null,
+  resolving: null,
 });
 
 export const app = readonly(state);
@@ -420,6 +441,7 @@ export async function openRepository(path: string): Promise<void> {
   state.stashFile = null;
   state.stashing = null;
   state.sides = null;
+  state.resolving = null;
   // The box belongs to the repository, not to the window.
   state.message = "";
   state.amend = false;
@@ -1227,6 +1249,89 @@ export function continueOperation(): void {
   if (!path || !operation) return;
   void write(`Poursuivre ${operation}`, async () => {
     state.notes = await api.continueOperation(path);
+  });
+}
+
+/// Open board 07's dialog on one conflicted file.
+export async function openConflict(file: string): Promise<void> {
+  const path = state.open;
+  if (!path) return;
+  state.resolving = { file, body: { status: "loading" }, choices: [], at: 0 };
+  try {
+    const body = await api.conflictFile(path, file);
+    if (state.resolving?.file !== file) return;
+    state.resolving = {
+      file,
+      body: { status: "ready", value: body },
+      choices: Array.from({ length: body.regions }, () => null),
+      at: 0,
+    };
+  } catch (error) {
+    if (state.resolving?.file === file) {
+      state.resolving = {
+        file,
+        body: { status: "failed", error: message(error) },
+        choices: [],
+        at: 0,
+      };
+    }
+  }
+}
+
+export function closeConflict(): void {
+  state.resolving = null;
+}
+
+/// Answer one conflict, and move to the next one nobody has answered.
+///
+/// Moving is the point: a file with four conflicts is four decisions, and a
+/// dialog that stayed on the one just settled would make the reader find the
+/// next one themselves every time.
+export function chooseSide(index: number, choice: Choice): void {
+  const resolving = state.resolving;
+  if (!resolving || index >= resolving.choices.length) return;
+  resolving.choices[index] = choice;
+  const next = resolving.choices.findIndex((answer) => answer === null);
+  resolving.at = next < 0 ? index : next;
+}
+
+/// Board 07's `n`: the next conflict, wrapping round.
+export function nextConflict(): void {
+  const resolving = state.resolving;
+  if (!resolving || resolving.choices.length === 0) return;
+  resolving.at = (resolving.at + 1) % resolving.choices.length;
+}
+
+/// Whether every conflict in the file has an answer.
+export function conflictSettled(): boolean {
+  const resolving = state.resolving;
+  return !!resolving && resolving.choices.every((answer) => answer !== null);
+}
+
+/// Write the answers into the file and stage it.
+export function applyResolution(): void {
+  const path = state.open;
+  const resolving = state.resolving;
+  if (!path || !resolving || !conflictSettled()) return;
+  const { file, choices } = resolving;
+  state.resolving = null;
+  void write(`Résoudre ${file}`, () => api.resolveHunks(path, file, choices as Choice[]));
+}
+
+/// Hand the file to the editor and stand aside.
+///
+/// The dialog closes, because what it is showing is about to stop being true:
+/// the file is now open somewhere else, and a panel still drawing the markers
+/// as they were would be the second opinion nobody asked for.
+export function openInEditor(): void {
+  const path = state.open;
+  const file = state.resolving?.file;
+  if (!path || !file) return;
+  state.resolving = null;
+  void write(`Ouvrir ${file}`, async () => {
+    // What was launched, which is not always what was configured: a terminal
+    // editor started from a window with no terminal is a process nobody sees.
+    state.notes = await api.openInEditor(path, file);
   });
 }
 

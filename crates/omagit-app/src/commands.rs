@@ -473,6 +473,62 @@ pub fn continue_operation(state: State<'_, AppState>, path: String) -> Answer<St
     omagit_git::ops::resume(&git, &open.repo, operation, &state.cancel()).map_err(say)
 }
 
+/// One conflicted file's markers, as the dialog draws them.
+#[tauri::command(async)]
+pub fn conflict_file(
+    state: State<'_, AppState>,
+    path: String,
+    file: String,
+) -> Answer<dto::Conflicted> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+    let read = omagit_git::conflict::read(&open.repo, &wanted).map_err(say)?;
+    Ok(dto::conflicted(&read))
+}
+
+/// Rewrite a conflicted file with one side chosen per conflict, and stage it.
+///
+/// The answers are matched against the file as it is when this runs, not as the
+/// dialog read it: a count that no longer agrees means somebody edited it in
+/// between, and the refusal is better than writing stale answers over their
+/// work.
+#[tauri::command(async)]
+pub fn resolve_hunks(
+    state: State<'_, AppState>,
+    path: String,
+    file: String,
+    choices: Vec<edits::Choice>,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+    let choices: Vec<omagit_git::Choice> = choices.into_iter().map(Into::into).collect();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::conflict::resolve(&git, &open.repo, &wanted, &choices, &state.cancel())
+        .map_err(say)
+}
+
+/// Hand the file to the editor the user configured, and leave it open.
+///
+/// Answers with what was launched, because it is not always what was
+/// configured: a terminal editor started from a window with no terminal is a
+/// process nobody can see (`editor.rs`).
+#[tauri::command(async)]
+pub fn open_in_editor(state: State<'_, AppState>, path: String, file: String) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+    crate::editor::open(
+        &git,
+        &open.repo,
+        &wanted,
+        crate::platform::current().opener(),
+        &state.cancel(),
+    )
+    .map_err(say)
+}
+
 // ── Stashes (M8) ────────────────────────────────────────────────────────────
 //
 // Reads are addressed by index, writes by commit. `git` addresses a stash by

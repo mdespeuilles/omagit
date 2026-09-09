@@ -31,6 +31,9 @@ export type Fixture = {
   /// Unmerged, as `git status` names the kind: `both modified`, `deleted by
   /// us`. What makes the row a conflict rather than a change.
   conflict?: string;
+  /// How many conflicts the file's markers hold, for the dialog. One unless a
+  /// test is about answering several.
+  regions?: number;
 };
 
 import { isFiltered } from "./ipc";
@@ -47,6 +50,8 @@ import type {
   Page,
   PlatformFacts,
   FileRow,
+  Choice,
+  Conflicted,
   Refs,
   RemoteBranchRow,
   Sides,
@@ -115,6 +120,12 @@ export class Repository {
   remoteBranches: RemoteBranchRow[] = [];
   /// Held open so a test can watch the overlay while an operation runs.
   holdNetwork: Promise<void> | null = null;
+  /// What `open_in_editor` says it launched. Not always what is configured —
+  /// a terminal editor is handed to the desktop's opener instead.
+  editorSays = "shared.txt ouvert dans code";
+  /// Set to make a conflicted file unreadable as one: markers that do not pair
+  /// up, or a binary file.
+  unreadableConflict: string | null = null;
   /// Set to make the next network call fail, the way an unreachable host does.
   failNetwork: string | null = null;
   /// What `git` said. Real operations answer with their stderr.
@@ -296,6 +307,29 @@ export class Repository {
           throw new Error(failure);
         }
         return "Merge made by the 'ort' strategy.";
+      case "conflict_file": {
+        if (this.unreadableConflict) throw new Error(this.unreadableConflict);
+        const file = this.find(args["file"] as string);
+        if (!file) throw new Error(`${args["file"]} n'est plus dans le statut`);
+        return this.markers(file);
+      }
+      case "resolve_hunks": {
+        this.guard();
+        const file = this.find(args["file"] as string);
+        if (!file) throw new Error(`${args["file"]} n'est plus dans le statut`);
+        const choices = args["choices"] as Choice[];
+        const regions = file.conflict ? (file.regions ?? 1) : 0;
+        // The real one refuses answers that no longer match the file.
+        if (choices.length !== regions) {
+          throw new Error(`the file now holds ${regions} conflicts, not the ${choices.length}`);
+        }
+        delete file.conflict;
+        file.staged = "modified";
+        file.unstaged = null;
+        return undefined;
+      }
+      case "open_in_editor":
+        return this.editorSays;
       case "conflict_sides":
         // Only ever asked while something is running, which is what the real
         // one answers too.
@@ -553,6 +587,26 @@ export class Repository {
       body: "",
       files: [{ path: "a.txt", change: "modified", added: 1, removed: 0, reason: null }],
     };
+  }
+
+  /// A conflicted file's markers: one agreed line, then one conflict per
+  /// region. Enough for the dialog to count them and answer them in order.
+  private markers(file: Fixture): Conflicted {
+    const regions = file.conflict ? (file.regions ?? 1) : 0;
+    const segments: Conflicted["segments"] = [{ kind: "agreed", start: 1, lines: ["contexte"] }];
+    for (let index = 0; index < regions; index += 1) {
+      segments.push({
+        kind: "conflict",
+        index,
+        start: 2 + index * 4,
+        ours_label: "HEAD",
+        theirs_label: "feature",
+        ours: [`ours ${index}`],
+        theirs: [`theirs ${index}`],
+        base: null,
+      });
+    }
+    return { segments, regions };
   }
 
   /// One entry of the shelf, by the commit it is addressed by.

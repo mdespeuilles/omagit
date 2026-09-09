@@ -2336,3 +2336,102 @@ select:focus {
   gap: 6px;
   justify-content: flex-end;
 }
+
+/* ── The conflict dialog (M8, board 07) ──────────────────────────────────── */
+
+/* Wider than the form dialogs: what it shows is code, and code that wraps is
+   code nobody can compare. */
+.conflict-dialog {
+  width: min(880px, 92vw);
+}
+
+.conflict-body {
+  flex: 1;
+  min-height: 0;
+  max-height: 52vh;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.conflict-line {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-mono);
+  white-space: pre;
+}
+.conflict-line.added {
+  background: var(--diff-added);
+}
+.conflict-line.removed {
+  background: var(--diff-deleted);
+}
+.conflict-line .gutter {
+  flex: none;
+  width: 44px;
+  padding-right: 8px;
+  text-align: right;
+  color: var(--text-dim);
+  font-size: var(--text-meta);
+}
+.conflict-line .sign {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.conflict-line .text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The agreed text is context: it is there so the reader can see what the two
+   sides are surrounded by, not to be chosen. */
+.conflict-agreed .text {
+  color: var(--text-muted);
+}
+
+/* The conflict being answered carries the accent on its edge — a rule, not a
+   fill: the two bands inside it already carry the diff tints, and a third
+   background over them would make the sides harder to tell apart. */
+.conflict-region {
+  border-left: 2px solid transparent;
+}
+.conflict-region.current {
+  border-left-color: var(--accent);
+}
+.conflict-region.answered .conflict-choices {
+  color: var(--text-dim);
+}
+
+.conflict-choices {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-meta);
+}
+.conflict-choices button {
+  height: 20px;
+  padding: 0 8px;
+  font-size: var(--text-meta);
+}
+
+/* The band that says whose version follows. Board 07: the identity goes on the
+   header, and the lines below keep the standard 12% diff grounds. */
+.conflict-side {
+  padding: 3px 8px;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+  background: var(--surface-raised);
+}
+.conflict-side-name {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}

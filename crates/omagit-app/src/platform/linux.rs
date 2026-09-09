@@ -102,6 +102,10 @@ impl Platform for Linux {
         Linux::caption_under(std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some())
     }
 
+    fn opener(&self) -> &'static str {
+        "xdg-open"
+    }
+
     fn omarchy_state_dir(&self) -> Option<PathBuf> {
         omagit_theme::omarchy::state_dir_from_env()
     }

@@ -42,6 +42,10 @@ impl Platform for MacOs {
         Caption::NONE
     }
 
+    fn opener(&self) -> &'static str {
+        "open"
+    }
+
     fn omarchy_state_dir(&self) -> Option<PathBuf> {
         // There is no Omarchy on macOS. Embedded themes are the default
         // experience here, not a degraded fallback (SPEC §6.1).

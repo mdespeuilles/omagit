@@ -8,6 +8,7 @@
 
 pub mod commands;
 pub mod dto;
+pub mod editor;
 pub mod edits;
 pub mod log;
 pub mod logging;
@@ -88,6 +89,9 @@ pub fn run() {
             commands::rebase,
             commands::abort_operation,
             commands::conflict_sides,
+            commands::conflict_file,
+            commands::resolve_hunks,
+            commands::open_in_editor,
             commands::resolve_conflict,
             commands::continue_operation,
             commands::stashes,

@@ -9,9 +9,9 @@
 //! is what `status` already reads.
 
 use crate::cli::Git;
-use crate::conflict::Side;
+use crate::conflict::{Choice, Side};
 use crate::status::Conflict;
-use crate::{Cancel, RepoPath, Repository, Result};
+use crate::{Cancel, GitError, RepoPath, Repository, Result};
 
 /// Resolve one file by keeping one side whole, and mark it settled.
 ///
@@ -63,6 +63,46 @@ fn keeps_nothing(side: Side, conflict: Conflict) -> bool {
             | (Side::Ours, Conflict::AddedByThem | Conflict::DeletedByUs)
             | (Side::Theirs, Conflict::AddedByUs | Conflict::DeletedByThem)
     )
+}
+
+/// Rewrite a conflicted file with one side chosen for each of its conflicts,
+/// and mark it settled.
+///
+/// The only write in this crate that does not go through `git`, and it is the
+/// one place that is right: resolving a conflict *is* editing the file, and the
+/// file is what `git` is waiting for someone to edit. What follows it is the
+/// `git add` that turns an edited file into a resolved one — the same pair
+/// [`take`] does, for the same reason.
+///
+/// Written in place rather than through a temporary file and a rename. Two
+/// reasons, and the second is the one that decided it: a rename replaces the
+/// inode, so the mode is the new file's and an editor holding the old one is
+/// left holding a file nobody will read again — and a torn write here is
+/// recoverable, because both sides are still in the index until it is staged
+/// (`git checkout --merge -- <path>` puts the markers back).
+pub fn resolve(
+    git: &Git,
+    repo: &Repository,
+    path: &RepoPath,
+    choices: &[Choice],
+    cancel: &Cancel,
+) -> Result<()> {
+    let work_dir = super::work_dir(repo)?;
+    let full = path
+        .to_absolute(work_dir)
+        .ok_or_else(|| GitError::NotFound(path.display_lossy().into_owned()))?;
+    let text = std::fs::read(&full).map_err(|source| GitError::Io {
+        path: full.clone(),
+        source,
+    })?;
+
+    // Parsed again here rather than trusted from the read that filled the
+    // dialog: the answers are matched against the file as it is *now*, so a
+    // resolution made by hand in the meantime is refused instead of overwritten.
+    let resolved = crate::conflict::rebuild(&text, choices)?;
+
+    std::fs::write(&full, resolved).map_err(|source| GitError::Io { path: full, source })?;
+    super::stage_file(git, repo, path, cancel)
 }
 
 #[cfg(test)]

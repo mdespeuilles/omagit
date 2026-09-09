@@ -53,7 +53,7 @@ pub mod thread_guard;
 pub mod watch;
 
 pub use cancel::Cancel;
-pub use conflict::{Side, Sides};
+pub use conflict::{Choice, Conflicted, Region, Segment, Side, Sides};
 pub use diff::{Diff, DiffOptions, FileDiff, Hunk, Line, LineKind, Refinement};
 pub use error::{GitError, Result};
 pub use graph::{Graph, Row as GraphRow};

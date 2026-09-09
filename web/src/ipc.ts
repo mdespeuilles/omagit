@@ -185,6 +185,33 @@ export type Refs = {
 /// cannot see. `replayed` is what tells the interface to explain that.
 export type Sides = { ours: string; theirs: string; replayed: boolean };
 
+/// Which version of one conflict inside a file to keep. `both` keeps the two,
+/// ours first — board 07's third button.
+export type Choice = "ours" | "theirs" | "both";
+
+/// One conflicted file, cut into what the two sides agree on and what they do
+/// not.
+///
+/// Lines, not a diff: `git` has already written both versions into the file
+/// between its markers, and resolving is choosing which of them to keep.
+export type ConflictSegment =
+  | { kind: "agreed"; start: number; lines: string[] }
+  | {
+      kind: "conflict";
+      index: number;
+      start: number;
+      /// What git wrote after the markers — `HEAD`, a branch, a subject.
+      ours_label: string;
+      theirs_label: string;
+      ours: string[];
+      theirs: string[];
+      /// Only under `merge.conflictStyle = diff3`: what both sides started
+      /// from. Shown, never offered as a choice.
+      base: string[] | null;
+    };
+
+export type Conflicted = { segments: ConflictSegment[]; regions: number };
+
 /// One entry of the shelf.
 ///
 /// `index` is `git`'s own address — `stash@{0}` is the most recent — and it is
@@ -330,6 +357,10 @@ export const api = {
   resolveConflict: (path: string, file: string, side: "ours" | "theirs") =>
     invoke<void>("resolve_conflict", { path, file, side }),
   continueOperation: (path: string) => invoke<string>("continue_operation", { path }),
+  conflictFile: (path: string, file: string) => invoke<Conflicted>("conflict_file", { path, file }),
+  resolveHunks: (path: string, file: string, choices: Choice[]) =>
+    invoke<void>("resolve_hunks", { path, file, choices }),
+  openInEditor: (path: string, file: string) => invoke<string>("open_in_editor", { path, file }),
 
   // The shelf (M8). Reads are addressed by index because that is what the row
   // shows; writes by commit, because the numbering moves under them.

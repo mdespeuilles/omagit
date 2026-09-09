@@ -485,6 +485,67 @@ pub fn sides(sides: &omagit_git::Sides) -> Sides {
     }
 }
 
+/// One conflicted file, cut into what the two sides agree on and what they do
+/// not.
+///
+/// The lines are the ones on disk, not a diff: `git` has already written both
+/// versions into the file between its markers, and resolving is choosing which
+/// to keep. Sending them as text is what lets the dialog draw board 07's two
+/// bands without a second read.
+#[derive(Debug, serde::Serialize)]
+pub struct Conflicted {
+    pub segments: Vec<Segment>,
+    /// Zero is not an error: a file settled by hand outside omagit has no
+    /// markers left, and the answer to that is to stage it.
+    pub regions: usize,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum Segment {
+    Agreed {
+        start: usize,
+        lines: Vec<String>,
+    },
+    Conflict {
+        index: usize,
+        start: usize,
+        /// What `git` wrote after the markers — `HEAD`, a branch, a subject.
+        ours_label: String,
+        theirs_label: String,
+        ours: Vec<String>,
+        theirs: Vec<String>,
+        /// Only under `merge.conflictStyle = diff3`. Drawn dimmed, and never
+        /// offered as a choice: it is what both sides started from.
+        base: Option<Vec<String>>,
+    },
+}
+
+pub fn conflicted(file: &omagit_git::Conflicted) -> Conflicted {
+    Conflicted {
+        regions: file.regions,
+        segments: file
+            .segments
+            .iter()
+            .map(|segment| match segment {
+                omagit_git::Segment::Agreed { start, lines } => Segment::Agreed {
+                    start: *start,
+                    lines: lines.clone(),
+                },
+                omagit_git::Segment::Conflict(region) => Segment::Conflict {
+                    index: region.index,
+                    start: region.start,
+                    ours_label: region.ours_label.clone(),
+                    theirs_label: region.theirs_label.clone(),
+                    ours: region.ours.clone(),
+                    theirs: region.theirs.clone(),
+                    base: region.base.clone(),
+                },
+            })
+            .collect(),
+    }
+}
+
 /// One entry of the shelf, as the Stashes list draws it.
 ///
 /// `index` is `git`'s own address — `stash@{0}` is the most recent — and it is

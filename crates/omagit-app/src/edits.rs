@@ -122,6 +122,27 @@ impl From<Side> for omagit_git::conflict::Side {
     }
 }
 
+/// Which version of one conflict inside a file to keep.
+///
+/// The wire's copy of [`omagit_git::Choice`], for the reason [`Side`] is one.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Choice {
+    Ours,
+    Theirs,
+    Both,
+}
+
+impl From<Choice> for omagit_git::Choice {
+    fn from(choice: Choice) -> Self {
+        match choice {
+            Choice::Ours => omagit_git::Choice::Ours,
+            Choice::Theirs => omagit_git::Choice::Theirs,
+            Choice::Both => omagit_git::Choice::Both,
+        }
+    }
+}
+
 /// Keep one side of a conflicted file whole, and mark it settled.
 ///
 /// Which *kind* of conflict it is comes from the status here rather than from

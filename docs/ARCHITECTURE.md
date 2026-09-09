@@ -1058,6 +1058,67 @@ versions shown side by side, resolution per hunk with Ours / Theirs / Both, and
 opening the file in the configured editor. Board 07 draws that dialog; it is
 M8's third slice.
 
+### 2.37 M8, third slice: board 07's conflict dialog
+
+**The markers are the data.** A conflicted file is not a diff to be computed and
+not a merge to be redone: `git` has already written both versions into the file,
+between `<<<<<<<`, `=======` and `>>>>>>>`, and resolving is choosing which of
+them to keep. So `conflict::read` parses what is on disk, and
+`ops::conflict::resolve` writes it back with the chosen sides. Nothing here
+re-derives a merge, which is the one thing a Git client must never get subtly
+right.
+
+**Parsed as bytes, displayed as text.** One scan produces byte ranges; the
+dialog gets lossy strings and the rebuild copies the original ranges. That is
+what makes a CRLF file come back CRLF, a file with no final newline keep none,
+and text that is not UTF-8 survive a round trip it never became a `String` for.
+A test writes a CRLF fixture and reads the bytes back.
+
+**A malformed sequence is refused, not guessed at.** A region that never closes,
+a `>>>>>>>` with nothing open, a second `<<<<<<<` inside one: any of them means
+the file is no longer what `git` wrote — somebody has already been editing it —
+and rebuilding from a misreading is how a resolution eats a line nobody chose.
+The dialog shows the reason and the row keeps its two whole-file answers and the
+editor.
+
+**Zero conflicts is not an error.** A file settled by hand outside omagit has no
+markers left, and the only thing missing is the `git add`. The dialog says so
+and its primary button still works, with no answers to send.
+
+**The answers are matched against the file as it is when they are written**, not
+as the dialog read it. A count that no longer agrees means somebody resolved
+something in between, and the refusal names both numbers. It is the same rule as
+the stash's index (§2.35) and the running operation (§2.34): what crossed the
+wire is a copy, and the repository is the original.
+
+**`diff3` is parsed even though no button offers it.** With
+`merge.conflictStyle = diff3` or `zdiff3` there is a third section — the common
+ancestor — and a resolution that did not know about it would leave the base's
+lines in the file. It is drawn dimmed, as context for the decision rather than
+one of its answers.
+
+**The editor is the configured one, unless it lives in a terminal.** SPEC §11
+asks for "l'éditeur configuré", which is `git`'s: `GIT_EDITOR`, `core.editor`,
+`VISUAL`, `EDITOR`, in that order. But most people's Git editor is `vim`,
+because the only thing `git` ever opens one for is a commit message in a
+terminal — and spawning `vim` from a window that has none starts a process
+nobody can see, waiting on a pipe, holding the file. So `editor.rs` keeps a list
+of terminal editors, hands those to the desktop's own opener (`xdg-open`,
+`open`) instead, and the answer says which of the two happened and why. Being
+wrong towards the opener costs a file opening in the wrong application; being
+wrong the other way costs a button that does nothing.
+
+It is also the one subprocess in this application that is *not* an
+`cli::Invocation`: no deadline, no captured output, nothing waiting for it. An
+editor is a program someone works in for minutes; those rules exist for `git`,
+which always answers.
+
+**The dialog answers its own keys** — `Esc` to close, `n` for the next conflict,
+`⌘⏎`/`Ctrl+⏎` to apply — while the window still has no keymap. M9 makes bindings
+reassignable and `docs/KEYMAP.md` is still about the GPUI build; a dialog on
+screen answering three keys of its own is not what that file is for, and is
+recorded here instead.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -1267,6 +1328,15 @@ a tab; that collapse is not built. What *was* a bug — the header's controls
 drawn on top of the file path — is fixed: the path could not shrink and had no
 clip, so its text spilled over them. It now keeps a floor and the stats clip
 first (`tests/working_copy.rs`).
+
+A fifteenth, from M8: **`docs/KEYMAP.md` describes a build that no longer
+exists.** It says the bindings live in `crates/omagit-app/src/actions.rs`, which
+the port to Tauri deleted along with the rest of the GPUI interface, and it
+lists M3's Repositories bindings — `j`/`k`, `/`, `1`/`2`/`3`, `Esc` — none of
+which the web front end has. What the window answers today is the browser's own
+tab order over rows that are buttons (§2.31), plus the keys a dialog binds while
+it is open (§2.37). The whole of it is M9's, and until then the file should not
+be read as a description of what ships.
 
 A fourteenth, from M8: **the branch tree nests `<button>` inside `<button>`.**
 Its row is a button so the keyboard can reach it (§2.31) and its three actions
