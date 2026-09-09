@@ -535,6 +535,21 @@ Re-read at every milestone (SPEC §15).
 | 6 | **macOS distribution cost.** | Unchanged and recurring: Apple developer account, signing, notarisation, a macOS CI runner. Budget it now, not at M10. |
 | 7 | **Nothing compiles the other platform.** | **Accepted, deliberately, after M4.** The CI workflow is deleted: on a private repository with one developer it verified work nobody else had written, on every push, with a macOS runner billed ten times the Linux rate — the first pull request's run alone cost about 113 minutes. What it genuinely covered is now uncovered, and that is the price: `scripts/check.sh` compiles only the host's half of `omagit-app/src/platform/`, and the macOS half of `status` — APFS case folding, decomposed names — is exercised nowhere. Both blind spots have already produced real bugs (§5, ninth and tenth entries), so this is a known cost, not an oversight: the project is developed on both machines, and each will find the other's breakage the next time it is used. The workflow's last state is commit `08193f5`, to restore unchanged if a second developer joins. |
 
+### Known defects, open
+
+**A file in intent-to-add state is invisible.** After `git add -N path`, `git
+status` reports ` A path`; omagit's status drops the entry entirely, so the file
+does not appear in the Working Copy at all. Found at M5 (2026-09-09) while
+building the patch tests, and it matters beyond cosmetics: `git add -N` is the
+step that gives a new file an index entry, which is what staging *part* of a new
+file requires. The bug is in `omagit-git/status.rs`, in what it does with the
+gix status items for an intent-to-add entry, not in the diff or the patch.
+
+**The diff header overlaps at narrow widths.** In the Working Copy, the
+unified/side-by-side control is drawn over the file path. DESIGN §4 says that
+below 1100px of usable width the detail panel becomes a tab; either that
+collapse is missing or the header does not handle the width.
+
 A seventh, found while building M0 and worth watching: `block 0.1.6`, deep under
 `gpui-pre-apple`, emits a future-incompatibility warning. Not actionable from
 here; re-check at each `gpui-kit` bump.
