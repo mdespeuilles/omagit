@@ -76,6 +76,21 @@ describe("the topbar", () => {
     expect(app.find(".topbar").classes()).not.toContain("compact");
   });
 
+  it("draws the window buttons the backend asked for, and no others", async () => {
+    // Board 02: on Linux the window has no system title bar, so the app draws
+    // its own — but *which* ones is the backend's answer, not the front end's
+    // guess. The fake speaks for a tiled Hyprland session: close alone, because
+    // the compositor owns the size.
+    const { app } = await running();
+
+    const buttons = app.findAll(".caption button");
+    expect(buttons).toHaveLength(1);
+    const close = buttons[0]!;
+    expect(close.attributes("aria-label")).toBe("Fermer");
+    // Never in the tab order: Tab belongs to the app's own controls.
+    expect(close.attributes("tabindex")).toBe("-1");
+  });
+
   it("goes back to the app's own topbar on Dépôts, with a repository still open", async () => {
     // The reported bug: the header did not come back. The repository stays
     // loaded on purpose — you may be going back to switch and return — but the

@@ -20,8 +20,19 @@
 // Actions that belong to a later milestone are drawn **disabled rather than
 // hidden**: board 02 fixes the topbar's content, and an action that will exist
 // reads better as not-yet than as absent.
+//
+// The empty parts of the bar carry `data-tauri-drag-region`, because on Linux
+// the window has no system title bar to grab (board 02: "aucune décoration
+// système"). Tauri only drags when the *target* itself carries the attribute,
+// so the buttons keep their clicks; what drags is the spacer, the gaps, and the
+// repository block. Under Hyprland tiled none of it is reachable — the
+// compositor moves windows — but on GNOME or KDE it is the only way.
+//
+// The window buttons that go with it are `Caption.vue`, at the edge the backend
+// names.
 
 import { computed } from "vue";
+import Caption from "./Caption.vue";
 import {
   addRepository,
   app,
@@ -34,6 +45,15 @@ import {
 import { tildify } from "../format";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
+
+/// The window buttons the app has to draw, and on which edge (board 02). None
+/// until the platform has answered, and none at all on macOS.
+const caption = computed(() => app.platform?.caption ?? null);
+const drawsCaption = computed(
+  () =>
+    caption.value !== null &&
+    (caption.value.minimize || caption.value.maximize || caption.value.close),
+);
 
 /// Nothing on the network while something else is.
 const busy = computed(() => app.running !== null);
@@ -78,12 +98,14 @@ const where = computed(() => {
 </script>
 
 <template>
-  <header class="topbar" :class="{ compact: !inRepository }">
+  <header class="topbar" :class="{ compact: !inRepository }" data-tauri-drag-region>
     <span
       v-if="app.platform && app.platform.reserve.leading > 0"
       class="reserve"
       :style="{ width: `${app.platform.reserve.leading}px` }"
     />
+
+    <Caption v-if="drawsCaption && caption!.side === 'leading'" :caption="caption!" />
 
     <template v-if="inRepository && app.summary">
       <!-- Board 02: the repository, named on two lines. -->
@@ -96,7 +118,7 @@ const where = computed(() => {
         ◧
       </button>
       <span class="topbar-rule" />
-      <span class="topbar-repo">
+      <span class="topbar-repo" data-tauri-drag-region>
         <span class="topbar-repo-name mono">{{ app.summary.name }}</span>
         <span class="topbar-repo-where mono">{{ where }}</span>
       </span>
@@ -108,7 +130,7 @@ const where = computed(() => {
       <span class="topbar-crumb">Dépôts</span>
     </template>
 
-    <span class="topbar-spacer" />
+    <span class="topbar-spacer" data-tauri-drag-region />
 
     <span v-if="app.gitUnusable" class="banner danger">
       git indisponible — {{ app.gitUnusable }}
@@ -157,5 +179,7 @@ const where = computed(() => {
       class="reserve"
       :style="{ width: `${app.platform.reserve.trailing}px` }"
     />
+
+    <Caption v-if="drawsCaption && caption!.side === 'trailing'" :caption="caption!" />
   </header>
 </template>

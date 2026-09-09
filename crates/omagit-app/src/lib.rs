@@ -20,8 +20,13 @@ use state::AppState;
 /// Build and run the application.
 pub fn run() {
     let platform = platform::current();
+    let display_note = platform.prepare_display();
     let config_dir = platform.config_dir();
     let _log_guard = logging::init(config_dir.as_deref());
+
+    if let Some(note) = display_note {
+        tracing::info!("{note}");
+    }
 
     tracing::info!(
         platform = platform.name(),

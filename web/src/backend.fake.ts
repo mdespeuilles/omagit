@@ -167,6 +167,7 @@ export class Repository {
           modifier: "control",
           modifier_label: "Ctrl",
           reserve: { leading: 0, trailing: 0 },
+          caption: { minimize: false, maximize: false, close: true, side: "trailing" },
           credential_helper: "store",
           home: "/home/dev",
         } satisfies PlatformFacts;

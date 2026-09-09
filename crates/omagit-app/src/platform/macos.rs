@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use super::{Platform, PrimaryModifier, TopbarReserve};
+use super::{Caption, Platform, PrimaryModifier, TopbarReserve};
 
 pub struct MacOs;
 
@@ -34,6 +34,12 @@ impl Platform for MacOs {
 
     fn credential_helper(&self) -> &'static str {
         "osxkeychain"
+    }
+
+    /// None: the traffic lights are the system's, drawn over the topbar, and
+    /// `topbar_reserve` keeps the first 78px clear for them (board 02).
+    fn caption(&self) -> Caption {
+        Caption::NONE
     }
 
     fn omarchy_state_dir(&self) -> Option<PathBuf> {

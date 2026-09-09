@@ -321,6 +321,51 @@ button.icon {
   flex: none;
 }
 
+/* Board 02's window buttons. 38 wide by the full height of the topbar, flush to
+   the window's edge — the negative margin cancels the topbar's own 8px padding,
+   because a caption button that stops short of the corner is a caption button
+   you have to aim at. */
+.caption {
+  display: flex;
+  align-self: stretch;
+  flex: none;
+}
+.caption.trailing {
+  margin-left: 4px;
+  margin-right: -8px;
+}
+.caption.leading {
+  margin-right: 4px;
+  margin-left: -8px;
+}
+.caption button {
+  width: 38px;
+  height: 100%;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+  color: var(--text-muted);
+}
+
+/* Drawn on the app's own grid: 16px, 1.5px stroke, right angles. */
+.caption svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+}
+.caption button:hover {
+  color: var(--text);
+}
+
+/* Close takes `danger` filled, like Windows: the one button here whose mistake
+   costs something should say so before the click, not after. */
+.caption button.close:hover {
+  background: var(--danger);
+  color: var(--bg);
+}
+
 /* The app's own name, set the way board 06 sets it. */
 .topbar-name {
   font-size: var(--text-mono);

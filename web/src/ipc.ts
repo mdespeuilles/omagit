@@ -200,11 +200,22 @@ export type JournalRow = {
   stderr: string;
 };
 
+/// The window buttons the app draws itself, and the edge they sit on.
+///
+/// All three false on macOS, where the system draws its own over the topbar.
+export type Caption = {
+  minimize: boolean;
+  maximize: boolean;
+  close: boolean;
+  side: "leading" | "trailing";
+};
+
 export type PlatformFacts = {
   name: string;
   modifier: "control" | "command";
   modifier_label: string;
   reserve: { leading: number; trailing: number };
+  caption: Caption;
   credential_helper: string;
   /// Empty when the environment does not say.
   home: string;
