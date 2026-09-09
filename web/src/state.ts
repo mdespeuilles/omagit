@@ -12,6 +12,7 @@
 // State lives here, screens derive from it, and none of them can disagree.
 
 import { reactive, readonly } from "vue";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { measure } from "./metrics";
 import {
@@ -25,6 +26,7 @@ import {
   type JournalRow,
   type LibraryRow,
   type PlatformFacts,
+  type Progress,
   type Refs,
   type RepoSummary,
   type StatusRow,
@@ -124,6 +126,16 @@ type State = {
   library: Record<string, Async<RepoSummary>>;
   /// Which card the Repositories screen is showing.
   card: string | null;
+  /// What the network is doing, while it is doing it. `null` when nothing is.
+  running: Progress | null;
+  /// Whether a cancellation has been asked for and not yet taken effect. The
+  /// overlay says so rather than looking as though the button did nothing:
+  /// `git` stops when it next checks, which is not instant.
+  stopping: boolean;
+  /// What the last network operation said. `git` reports what it did on
+  /// stderr — "Everything up-to-date", the branches it created — and that is
+  /// worth keeping until the next one.
+  networkSaid: string | null;
   /// Every reference, for the sidebar's tree.
   ///
   /// Read in the background when a repository opens rather than with the
@@ -184,6 +196,9 @@ const state = reactive<State>({
   compareFrom: null,
   library: {},
   card: null,
+  running: null,
+  stopping: false,
+  networkSaid: null,
   refs: idle(),
   collapsed: {},
   panes: {},
@@ -656,6 +671,94 @@ export function toggleJournal(): void {
 
 async function refreshJournal(): Promise<void> {
   state.journal = await api.journal();
+}
+
+// ── The network (M7) ────────────────────────────────────────────────────────
+
+/// Start listening for progress.
+///
+/// Once, at start-up. `git` writes progress to stderr as it works, and the
+/// backend turns each line into an event — the answer to the command only comes
+/// back at the end, which is exactly what the user is waiting to hear about.
+export async function watchProgress(): Promise<void> {
+  await listen<Progress>("progress", (event) => {
+    state.running = event.payload;
+  });
+}
+
+/// Run one network operation, with the overlay up for its duration.
+async function overNetwork(what: string, run: () => Promise<string>): Promise<void> {
+  if (state.running) return;
+  state.running = { what, phase: "…", percent: null };
+  state.stopping = false;
+  state.networkSaid = null;
+  try {
+    const said = await run();
+    state.networkSaid = said.trim() || `${what} : rien à faire`;
+  } catch (error) {
+    state.writeError = `${what} : ${message(error)}`;
+  } finally {
+    state.running = null;
+    state.stopping = false;
+  }
+  // Refs move, and so does the divergence every branch row shows.
+  await settle();
+}
+
+export function fetchRemote(remote = ""): void {
+  const path = state.open;
+  if (!path) return;
+  void overNetwork("Fetch", () => api.fetch(path, remote));
+}
+
+export function pullRemote(): void {
+  const path = state.open;
+  if (!path) return;
+  void overNetwork("Pull", () => api.pull(path));
+}
+
+/// Push the current branch to its upstream's remote, or to `origin`.
+///
+/// `force` is `--force-with-lease` and nothing weaker: plain `--force`
+/// overwrites whatever is on the remote, including a colleague's commit pushed
+/// thirty seconds ago, and cannot tell that from the rebase you meant to
+/// publish.
+export function pushBranch(force: boolean): void {
+  const path = state.open;
+  const summary = state.summary;
+  if (!path || !summary) return;
+  const branch = summary.operation ? null : summary.head;
+  if (!branch) return;
+
+  const tracking = summary.tracking;
+  const remote = tracking?.upstream.split("/")[0] ?? "origin";
+  const run = (): void =>
+    void overNetwork("Push", () => api.push(path, remote, branch, force, !tracking));
+
+  if (!force) {
+    run();
+    return;
+  }
+  ask(
+    {
+      title: `Forcer la publication de ${branch} ?`,
+      detail:
+        "Avec --force-with-lease : refusé si le distant a bougé depuis la dernière fois qu'on l'a vu. Ce qui est remplacé n'est plus sur aucun clone.",
+      verb: "Forcer",
+    },
+    run,
+  );
+}
+
+/// Stop what is running. `git` stops when it next looks, which is not instant.
+export function stopNetwork(): void {
+  if (!state.running) return;
+  state.stopping = true;
+  void api.cancelOperation();
+}
+
+export function dismissNetworkSaid(): void {
+  state.networkSaid = null;
 }
 
 // ── Branches (M7) ───────────────────────────────────────────────────────────

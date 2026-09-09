@@ -177,6 +177,9 @@ export type Refs = {
   remotes: RemoteRow[];
 };
 
+/// One line of `git`'s progress, as the overlay draws it.
+export type Progress = { what: string; phase: string; percent: number | null };
+
 export type LibraryRow = {
   group: number;
   index: number;
@@ -232,6 +235,15 @@ export const api = {
   fileDiff: (path: string, file: string, staged: boolean) =>
     invoke<Diff | null>("file_diff", { path, file, staged }),
   journal: () => invoke<JournalRow[]>("journal"),
+
+  // The network (M7). Each can take minutes and each can be stopped; the
+  // progress arrives as `progress` events rather than in the answer, which
+  // only comes back at the end.
+  fetch: (path: string, remote: string) => invoke<string>("fetch", { path, remote }),
+  pull: (path: string) => invoke<string>("pull", { path }),
+  push: (path: string, remote: string, branch: string, force: boolean, setUpstream: boolean) =>
+    invoke<string>("push", { path, remote, branch, force, setUpstream }),
+  cancelOperation: () => invoke<string | null>("cancel_operation"),
 
   // Branches (M7).
   refs: (path: string) => invoke<Refs>("refs", { path }),

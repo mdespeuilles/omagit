@@ -48,6 +48,7 @@ import type {
   RepoSummary,
   StatusRow,
   TagRow,
+  Tracking,
 } from "./ipc";
 
 export type Call = { command: string; args: Record<string, unknown> };
@@ -106,6 +107,16 @@ export class Repository {
   ];
   tags: TagRow[] = [];
   remoteBranches: RemoteBranchRow[] = [];
+  /// Held open so a test can watch the overlay while an operation runs.
+  holdNetwork: Promise<void> | null = null;
+  /// Set to make the next network call fail, the way an unreachable host does.
+  failNetwork: string | null = null;
+  /// What `git` said. Real operations answer with their stderr.
+  networkSays = "Everything up-to-date";
+  cancelled = 0;
+  /// What the current branch tracks, which is what decides where a push goes
+  /// and whether it has to set an upstream.
+  tracking: Tracking | null = null;
   /// How many rows a page holds. Small in tests, so paging is exercised by
   /// three commits rather than by fifteen hundred.
   page = 3;
@@ -202,6 +213,18 @@ export class Repository {
         return "le message précédent";
       case "journal":
         return [] satisfies JournalRow[];
+      case "fetch":
+      case "pull":
+      case "push": {
+        if (this.holdNetwork) await this.holdNetwork;
+        const failure = this.failNetwork;
+        this.failNetwork = null;
+        if (failure) throw new Error(failure);
+        return this.networkSays;
+      }
+      case "cancel_operation":
+        this.cancelled += 1;
+        return "Fetch";
       case "refs":
         return {
           branches: this.branches.map((row) => ({ ...row })),
@@ -306,7 +329,7 @@ export class Repository {
       name: row?.name ?? "repo",
       head: this.head,
       operation: null,
-      tracking: null,
+      tracking: this.tracking,
       counts: {
         modified: this.files.length,
         added: 0,

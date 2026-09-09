@@ -22,10 +22,27 @@
 // reads better as not-yet than as absent.
 
 import { computed } from "vue";
-import { addRepository, app, showScreen } from "../state";
+import { addRepository, app, fetchRemote, pullRemote, pushBranch, showScreen } from "../state";
 import { tildify } from "../format";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
+
+/// Nothing on the network while something else is.
+const busy = computed(() => app.running !== null);
+const tracking = computed(() => app.summary?.tracking ?? null);
+const detached = computed(() => app.summary?.head.startsWith("detached") ?? false);
+
+/// The counts are the reason to press Pull and Push.
+const behind = computed(() => (tracking.value && !tracking.value.gone ? tracking.value.behind : 0));
+const ahead = computed(() => (tracking.value && !tracking.value.gone ? tracking.value.ahead : 0));
+
+/// Why a button is off, said where the button is rather than after the fact.
+const cannotPush = computed(() => {
+  if (app.gitUnusable) return app.gitUnusable;
+  if (busy.value) return "une opération réseau est déjà en cours";
+  if (detached.value) return "HEAD est détaché : il n'y a pas de branche à publier";
+  return null;
+});
 
 /// Whether the window is looking *into* a repository, which is what decides the
 /// topbar's whole shape.
@@ -90,14 +107,28 @@ const where = computed(() => {
     </span>
 
     <template v-if="inRepository">
-      <!-- M7's network actions. Drawn now, disabled, because board 02 fixes
-           what the topbar contains and an action that will exist reads better
-           as not-yet than as absent. -->
-      <button disabled title="Réseau — jalon M7">
+      <!-- Board 02's three, and each carries the number that is the reason to
+           press it. -->
+      <button :disabled="busy || !!app.gitUnusable" @click="fetchRemote()">
         Fetch<span class="hint">{{ modifier }}F</span>
       </button>
-      <button disabled title="Réseau — jalon M7">Pull</button>
-      <button disabled title="Réseau — jalon M7">Push</button>
+      <button
+        :disabled="busy || !!app.gitUnusable || !tracking"
+        :title="tracking ? '' : 'Cette branche ne suit aucune branche distante'"
+        @click="pullRemote()"
+      >
+        Pull<span v-if="behind > 0" class="hint">↓{{ behind }}</span>
+      </button>
+      <!-- Primary only when there is something to send: an accent-filled button
+           that does nothing is the loudest thing on the screen saying the least. -->
+      <button
+        :class="{ primary: ahead > 0 }"
+        :disabled="!!cannotPush"
+        :title="cannotPush ?? ''"
+        @click="pushBranch(false)"
+      >
+        Push<span v-if="ahead > 0" class="hint">↑{{ ahead }}</span>
+      </button>
     </template>
     <template v-else>
       <button @click="addRepository()">

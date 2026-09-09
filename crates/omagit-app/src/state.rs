@@ -46,6 +46,19 @@ pub struct AppState {
     library: Mutex<Library>,
     settings: Mutex<Settings>,
     config_dir: Option<PathBuf>,
+    /// The token of the network operation in flight, if one is.
+    ///
+    /// One at a time, and that is a product decision as much as a technical
+    /// one: two fetches on one repository race for `.git/FETCH_HEAD`, and a
+    /// progress overlay that had to describe two things at once would describe
+    /// neither. The second caller is refused with the name of the first.
+    running: Mutex<Option<Running>>,
+}
+
+/// A network operation in flight.
+pub struct Running {
+    pub what: String,
+    pub cancel: Cancel,
 }
 
 impl AppState {
@@ -80,6 +93,7 @@ impl AppState {
             library: Mutex::new(library),
             settings: Mutex::new(settings),
             config_dir,
+            running: Mutex::new(None),
         }
     }
 
@@ -144,13 +158,49 @@ impl AppState {
         self.lock(&self.settings).clone()
     }
 
-    /// A token that nothing cancels yet.
-    ///
-    /// Cancellation arrives with the progress overlay at M7; until then every
-    /// read runs to completion, which is what the GPUI build did too outside a
-    /// refresh.
+    /// A token for a read. Nothing cancels these: they finish in milliseconds,
+    /// and a cancelled status would just be asked for again.
     pub fn cancel(&self) -> Cancel {
         Cancel::new()
+    }
+
+    /// Claim the one network slot, or say who has it.
+    ///
+    /// The guard releases it on drop, including on a panic, which is the whole
+    /// reason it is a guard: an operation that failed to clear the slot would
+    /// leave the app refusing every fetch until it restarted.
+    pub fn start_network(&self, what: &str) -> std::result::Result<NetworkSlot<'_>, String> {
+        let mut running = self.lock(&self.running);
+        if let Some(current) = running.as_ref() {
+            return Err(format!("{} est déjà en cours", current.what));
+        }
+        let cancel = Cancel::new();
+        *running = Some(Running {
+            what: what.to_owned(),
+            cancel: cancel.clone(),
+        });
+        Ok(NetworkSlot {
+            state: self,
+            cancel,
+        })
+    }
+
+    /// Stop whatever is running on the network. Nothing to stop is not an
+    /// error: the button is pressed at the moment an operation ends often
+    /// enough that treating it as one would be noise.
+    pub fn cancel_network(&self) -> Option<String> {
+        let running = self.lock(&self.running);
+        running.as_ref().map(|current| {
+            current.cancel.cancel();
+            current.what.clone()
+        })
+    }
+
+    /// What is running on the network, if anything.
+    pub fn network(&self) -> Option<String> {
+        self.lock(&self.running)
+            .as_ref()
+            .map(|current| current.what.clone())
     }
 
     /// A poisoned lock is not worth taking the app down for: nothing here is
@@ -159,5 +209,21 @@ impl AppState {
         mutex
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// Holds the network slot for as long as the operation runs.
+///
+/// A guard rather than a pair of calls, so the slot is released on a panic as
+/// well as on a return: an operation that failed to clear it would leave the
+/// app refusing every fetch until it restarted.
+pub struct NetworkSlot<'a> {
+    state: &'a AppState,
+    pub cancel: Cancel,
+}
+
+impl Drop for NetworkSlot<'_> {
+    fn drop(&mut self) {
+        *self.state.lock(&self.state.running) = None;
     }
 }

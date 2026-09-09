@@ -66,6 +66,10 @@ pub fn run() {
             commands::checkout,
             commands::create_branch,
             commands::delete_branch,
+            commands::fetch,
+            commands::pull,
+            commands::push,
+            commands::cancel_operation,
             commands::journal,
             commands::log,
         ])

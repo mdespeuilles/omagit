@@ -14,6 +14,7 @@ import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
+import Progress from "./components/Progress.vue";
 import Sidebar from "./components/Sidebar.vue";
 import Splitter from "./components/Splitter.vue";
 import StatusBar from "./components/StatusBar.vue";
@@ -82,6 +83,7 @@ const widths = {
       <Journal v-if="app.showJournal" />
     </template>
   </div>
+  <Progress />
   <StatusBar />
   <Confirm v-if="app.question" />
 </template>

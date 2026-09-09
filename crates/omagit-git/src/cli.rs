@@ -80,13 +80,16 @@ impl Git {
     /// that hangs looks like an app that will not launch.
     pub fn detect_at(program: &Path) -> Result<Self> {
         let output = execute(
-            program,
-            &[OsString::from("--version")],
-            None,
-            PROBE_TIMEOUT,
+            Spawn {
+                program,
+                args: &[OsString::from("--version")],
+                work_dir: None,
+                timeout: PROBE_TIMEOUT,
+                command_line: &format!("{} --version", program.display()),
+                input: None,
+                watch: None,
+            },
             &Cancel::new(),
-            &format!("{} --version", program.display()),
-            None,
         )?;
 
         let text = output.text();
@@ -141,6 +144,7 @@ impl Git {
             timeout: DEFAULT_TIMEOUT,
             input: None,
             destructive: false,
+            watch: None,
         }
     }
 }
@@ -150,7 +154,9 @@ impl Git {
 /// Kept as a value rather than executed on the spot so it can be logged exactly
 /// as it will run — SPEC §15 requires that of every destructive command, and the
 /// operations journal of SPEC §11 shows the same string to the user.
-#[derive(Clone, Debug)]
+/// No `Debug`: it carries a closure, and what a reader wants from an invocation
+/// is [`Invocation::command_line`], which is the thing the journal records.
+#[derive(Clone)]
 pub struct Invocation<'a> {
     git: &'a Git,
     work_dir: PathBuf,
@@ -158,6 +164,7 @@ pub struct Invocation<'a> {
     timeout: Duration,
     input: Option<Vec<u8>>,
     destructive: bool,
+    watch: Option<Progress>,
 }
 
 impl<'a> Invocation<'a> {
@@ -193,6 +200,15 @@ impl<'a> Invocation<'a> {
         self
     }
 
+    /// Watch `stderr` as it is written, for a progress overlay.
+    ///
+    /// Only useful with `--progress`: `git` writes progress when it thinks it
+    /// has a terminal, and it does not have one here.
+    pub fn watching(mut self, watch: Progress) -> Self {
+        self.watch = Some(watch);
+        self
+    }
+
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
@@ -221,13 +237,16 @@ impl<'a> Invocation<'a> {
         let started = Instant::now();
 
         let result = execute(
-            &self.git.program,
-            &self.args,
-            Some(&self.work_dir),
-            self.timeout,
+            Spawn {
+                program: &self.git.program,
+                args: &self.args,
+                work_dir: Some(&self.work_dir),
+                timeout: self.timeout,
+                command_line: &command_line,
+                input: self.input.as_deref(),
+                watch: self.watch.clone(),
+            },
             cancel,
-            &command_line,
-            self.input.as_deref(),
         );
 
         let elapsed = started.elapsed();
@@ -243,15 +262,26 @@ impl<'a> Invocation<'a> {
 ///
 /// The one place a `git` process is created, so rules 2 to 5 of SPEC §8 cannot
 /// be forgotten at a call site.
-fn execute(
-    program: &Path,
-    args: &[OsString],
-    work_dir: Option<&Path>,
+struct Spawn<'a> {
+    program: &'a Path,
+    args: &'a [OsString],
+    work_dir: Option<&'a Path>,
     timeout: Duration,
-    cancel: &Cancel,
-    command_line: &str,
-    input: Option<&[u8]>,
-) -> Result<Output> {
+    command_line: &'a str,
+    input: Option<&'a [u8]>,
+    watch: Option<Progress>,
+}
+
+fn execute(spawn: Spawn<'_>, cancel: &Cancel) -> Result<Output> {
+    let Spawn {
+        program,
+        args,
+        work_dir,
+        timeout,
+        command_line,
+        input,
+        watch,
+    } = spawn;
     assert_off_render_thread();
     tracing::debug!(
         command = %command_line,
@@ -309,7 +339,10 @@ fn execute(
     // a pipe buffer to `stderr` while nobody reads it blocks forever, and `git`
     // on a large repository writes plenty.
     let stdout = child.stdout.take().map(drain);
-    let stderr = child.stderr.take().map(drain);
+    let stderr = child.stderr.take().map(|pipe| match watch {
+        Some(watch) => drain_watching(pipe, watch),
+        None => drain(pipe),
+    });
 
     let started = Instant::now();
     let status = loop {
@@ -356,6 +389,13 @@ fn execute(
         })
     }
 }
+
+/// Told each line `git` writes to `stderr`, as it is written.
+///
+/// `git` reports progress there and nowhere else, and only when it believes it
+/// is talking to a terminal — hence `--progress` at every call site that wants
+/// this.
+pub type Progress = std::sync::Arc<dyn Fn(&str) + Send + Sync>;
 
 /// What a successful invocation produced.
 ///
@@ -472,6 +512,54 @@ fn drain<R: std::io::Read + Send + 'static>(mut pipe: R) -> std::thread::JoinHan
     std::thread::spawn(move || {
         let mut buffer = Vec::new();
         let _ = std::io::Read::read_to_end(&mut pipe, &mut buffer);
+        buffer
+    })
+}
+
+/// The same, reporting each line as it arrives.
+///
+/// `read_to_end` is the wrong shape for a network operation: it answers once,
+/// at the end, and the end is exactly what the user is waiting to hear about.
+/// This reads in chunks and cuts on **both** `\n` and `\r`, because `git`
+/// overwrites its own progress line with a carriage return — a reader that
+/// split on newlines alone would receive one enormous line at the end and
+/// report nothing until then.
+fn drain_watching<R: std::io::Read + Send + 'static>(
+    mut pipe: R,
+    watch: Progress,
+) -> std::thread::JoinHandle<Vec<u8>> {
+    std::thread::spawn(move || {
+        let mut buffer = Vec::new();
+        let mut chunk = [0u8; 4096];
+        let mut pending = Vec::new();
+        loop {
+            match std::io::Read::read(&mut pipe, &mut chunk) {
+                Ok(0) | Err(_) => break,
+                Ok(read) => {
+                    buffer.extend_from_slice(&chunk[..read]);
+                    pending.extend_from_slice(&chunk[..read]);
+                    let mut start = 0;
+                    for (at, byte) in pending.iter().enumerate() {
+                        if *byte == b'\n' || *byte == b'\r' {
+                            let line = String::from_utf8_lossy(&pending[start..at]);
+                            let line = line.trim();
+                            if !line.is_empty() {
+                                watch(line);
+                            }
+                            start = at + 1;
+                        }
+                    }
+                    pending.drain(..start);
+                }
+            }
+        }
+        // Whatever `git` left without a terminator — the last line of a
+        // failure, most often, which is the one worth showing.
+        let line = String::from_utf8_lossy(&pending);
+        let line = line.trim();
+        if !line.is_empty() {
+            watch(line);
+        }
         buffer
     })
 }

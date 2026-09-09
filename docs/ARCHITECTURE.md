@@ -846,6 +846,60 @@ exists and is tested; no command exposes it, because nothing in the window
 renames a branch yet and a registered command nobody calls is the speculative
 API SPEC §3 refuses.
 
+### 2.33 M7, second slice: the network
+
+**Nothing here ever waits for a person.** `GIT_TERMINAL_PROMPT=0` was already
+set for every invocation (`cli.rs`, SPEC §8 rule 2), and it is what makes a
+network operation cancellable rather than hung: there is no terminal behind this
+window, so a `git` that decided to ask for a password would never be answered.
+`SSH_ASKPASS` is deliberately not set either — an `ssh` with no agent fails
+naming the key, which is actionable, where pointing it at a helper that cannot
+draw a window would hang the same way. Authentication itself is `git`'s, through
+`libsecret` and `osxkeychain`, which is the third reason SPEC §8 gives for the
+subprocess and the one that matters most here.
+
+**Progress required a second way of reading stderr.** `read_to_end` answers
+once, at the end, and the end is exactly what the user is waiting to hear about.
+`drain_watching` reads in chunks and cuts on **both** `\n` and `\r`, because
+`git` overwrites its own progress line with a carriage return: a reader that
+split on newlines alone would receive one enormous line at the end and report
+nothing until then. There is a test for that specific shape, against a real push.
+
+**One operation at a time**, which is a product decision as much as a technical
+one: two fetches on one repository race for `.git/FETCH_HEAD`, and an overlay
+that had to describe two things at once would describe neither. The slot is a
+guard released on drop, so a panic cannot leave the app refusing every fetch
+until it restarts.
+
+**`--force-with-lease` and no plain `--force`.** `--force` overwrites whatever
+is on the remote, including a colleague's commit pushed thirty seconds ago, and
+cannot tell that case from the rebase you meant to publish.
+`--force-with-lease` refuses exactly that case, and the refusal is the point —
+`force_with_lease_refuses_exactly_the_case_force_would_destroy` builds the
+divergence with a second clone and asserts both halves.
+
+**No merge strategy is chosen for `pull`.** `pull.rebase`, `pull.ff` and a
+branch's own `branch.<name>.rebase` are the user's settings, and passing
+`--rebase` or `--no-rebase` of our own would quietly override a decision someone
+made for the repository.
+
+**The remote is a bare repository on disk** in every test. That is a real remote
+to `git` — the same refspec handling, the same `--prune`, the same lease check —
+and it needs no network, so the suite runs in a tunnel and never flakes on
+someone else's outage. What it does *not* cover is authentication, which cannot
+be tested without a server and a helper; the rule that protects it is the
+environment, and `cli.rs` asserts that.
+
+**The overlay is a bar at the foot of the window, not a modal.** A fetch does
+not stop you reading the diff you were reading, and a modal held for two minutes
+of network is the app hanging with extra steps. It sweeps rather than sitting at
+zero while `git` counts with no total to count against — a bar frozen at 0%
+reads as a stall — and it says "arrêt…" while a cancellation is in flight,
+because `git` stops when it next looks and that is not instant.
+
+**Still not built** in M7: merge and rebase, and clone. Board 06 draws `Cloner…`
+disabled, which is where it stays.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

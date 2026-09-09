@@ -423,6 +423,127 @@ pub fn delete_branch(
     omagit_git::ops::delete(&git, &open.repo, &name, force, &state.cancel()).map_err(say)
 }
 
+// ── The network (M7) ────────────────────────────────────────────────────────
+//
+// Everything here can take minutes and can be stopped. Two rules hold it
+// together: one operation at a time per window, and nothing ever waits for a
+// person — `GIT_TERMINAL_PROMPT=0` is set for every invocation, so a repository
+// whose credentials no helper can supply *fails* rather than hanging on a
+// prompt there is no terminal to answer.
+
+/// One line of `git`'s progress, on its way to the overlay.
+#[derive(Clone, serde::Serialize)]
+pub struct Progress {
+    pub what: String,
+    pub phase: String,
+    pub percent: Option<u8>,
+}
+
+/// Build the callback that turns `git`'s stderr into events.
+fn reporting(app: &tauri::AppHandle, what: &str) -> omagit_git::cli::Progress {
+    use tauri::Emitter as _;
+    let app = app.clone();
+    let what = what.to_owned();
+    std::sync::Arc::new(move |line: &str| {
+        let step = omagit_git::ops::Step::parse(line);
+        // A failure to emit is not worth failing the operation for: the window
+        // has gone, and the fetch it asked for can finish without it.
+        let _ = app.emit(
+            "progress",
+            Progress {
+                what: what.clone(),
+                phase: step.phase,
+                percent: step.percent,
+            },
+        );
+    })
+}
+
+/// Bring refs down from every remote.
+#[tauri::command(async)]
+pub fn fetch(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+    remote: String,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let slot = state.start_network("Fetch")?;
+    let remote = remote.trim();
+
+    omagit_git::ops::fetch(
+        &git,
+        &open.repo,
+        (!remote.is_empty()).then_some(remote),
+        Some(reporting(&app, "Fetch")),
+        &slot.cancel,
+    )
+    .map_err(say)
+}
+
+/// Fetch and integrate, the way the repository is configured to.
+#[tauri::command(async)]
+pub fn pull(app: tauri::AppHandle, state: State<'_, AppState>, path: String) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let slot = state.start_network("Pull")?;
+
+    // A pull writes the working tree, so it takes the same lock every other
+    // write does.
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::pull(
+        &git,
+        &open.repo,
+        Some(reporting(&app, "Pull")),
+        &slot.cancel,
+    )
+    .map_err(say)
+}
+
+/// Send a branch to a remote.
+#[tauri::command(async)]
+pub fn push(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+    remote: String,
+    branch: String,
+    force: bool,
+    set_upstream: bool,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let slot = state.start_network("Push")?;
+
+    omagit_git::ops::push(
+        &git,
+        &open.repo,
+        &omagit_git::ops::Push {
+            remote: &remote,
+            branch: &branch,
+            force: if force {
+                omagit_git::ops::PushForce::WithLease
+            } else {
+                omagit_git::ops::PushForce::Never
+            },
+            set_upstream,
+        },
+        Some(reporting(&app, "Push")),
+        &slot.cancel,
+    )
+    .map_err(say)
+}
+
+/// Stop whatever is running on the network.
+///
+/// Nothing to stop is not an error: the button is pressed at the moment an
+/// operation ends often enough that treating it as one would be noise.
+#[tauri::command]
+pub fn cancel_operation(state: State<'_, AppState>) -> Option<String> {
+    state.cancel_network()
+}
+
 /// The operations journal (SPEC §11): the exact command, not a summary.
 #[tauri::command]
 pub fn journal(state: State<'_, AppState>) -> Vec<dto::JournalRow> {
