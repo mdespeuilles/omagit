@@ -51,6 +51,30 @@ actions!(
         ShowRepositories,
         /// Unified ↔ side-by-side.
         ToggleDiffMode,
+        /// Move the diff cursor a line, or a hunk (DESIGN board 09).
+        NextDiffLine,
+        PreviousDiffLine,
+        NextHunk,
+        PreviousHunk,
+        /// Pick the changed line under the diff cursor.
+        ToggleLinePick,
+        /// Pick every changed line of the hunk the cursor is in.
+        ToggleHunkPick,
+        /// Move what is picked — or the whole file, when nothing is — between
+        /// the working copy and the index.
+        StagePicked,
+        UnstagePicked,
+        /// Undo it in the working tree. Destructive; confirmed first.
+        DiscardPicked,
+        /// Commit what is staged.
+        Commit,
+        /// The three flags of SPEC §11, each a deliberate act rather than a
+        /// setting that stays on.
+        ToggleAmend,
+        ToggleSignOff,
+        ToggleNoVerify,
+        /// The operations journal (SPEC §11).
+        ToggleJournal,
     ]
 );
 
@@ -116,5 +140,39 @@ pub fn bind(cx: &mut App) {
         KeyBinding::new("secondary-r", RefreshAll, Some(CONTEXT_WORKING_COPY)),
         KeyBinding::new("secondary-d", ToggleDiffMode, Some(CONTEXT_WORKING_COPY)),
         KeyBinding::new("escape", ShowRepositories, Some(CONTEXT_WORKING_COPY)),
+        // The diff, from DESIGN board 09: "j k ligne · ⌥ j k hunk suivant /
+        // précédent · Space sélectionne les lignes · ⌥S indexe le hunk
+        // focalisé · ⌥D le rejette".
+        //
+        // `alt-` rather than `secondary-`: these act on the diff under the
+        // cursor, and holding them apart from the screen-wide `⌘` commands is
+        // what keeps "stage this hunk" from being one slip away from
+        // "refresh everything".
+        KeyBinding::new("alt-j", NextDiffLine, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("alt-k", PreviousDiffLine, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("alt-down", NextDiffLine, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("alt-up", PreviousDiffLine, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("alt-shift-j", NextHunk, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("alt-shift-k", PreviousHunk, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("space", ToggleLinePick, Some(WORKING_COPY_OUTSIDE_TEXT)),
+        KeyBinding::new("alt-space", ToggleHunkPick, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("alt-s", StagePicked, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("alt-u", UnstagePicked, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("alt-d", DiscardPicked, Some(CONTEXT_WORKING_COPY)),
+        // Commit is the one write with a `⌘`: it is the screen's primary
+        // action, and DESIGN board 03 draws it as ⌘⏎.
+        KeyBinding::new("secondary-enter", Commit, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new("secondary-shift-a", ToggleAmend, Some(CONTEXT_WORKING_COPY)),
+        KeyBinding::new(
+            "secondary-shift-s",
+            ToggleSignOff,
+            Some(CONTEXT_WORKING_COPY),
+        ),
+        KeyBinding::new(
+            "secondary-shift-v",
+            ToggleNoVerify,
+            Some(CONTEXT_WORKING_COPY),
+        ),
+        KeyBinding::new("secondary-l", ToggleJournal, Some(CONTEXT_WORKING_COPY)),
     ]);
 }
