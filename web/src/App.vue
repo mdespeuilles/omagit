@@ -2,10 +2,9 @@
 // The shell. Chrome belongs here rather than to a screen — the mistake the
 // GPUI build made, where opening History left a window with no way out of it.
 //
-// Only the middle changes between screens. The topbar, the sidebar, the status
-// bar and the diff pane are the same elements throughout, which is also why the
-// diff pane can be one component: what it draws comes from `state.diff`, and
-// both screens put something there.
+// The columns are resizable, and their widths live here rather than in each
+// pane's own stylesheet rule: a splitter has to know which two things it sits
+// between, and that is only true at this level.
 
 import CommitBox from "./components/CommitBox.vue";
 import CommitDetail from "./components/CommitDetail.vue";
@@ -16,10 +15,22 @@ import Journal from "./components/Journal.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
 import Sidebar from "./components/Sidebar.vue";
+import Splitter from "./components/Splitter.vue";
 import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
 import Topbar from "./components/Topbar.vue";
-import { app } from "./state";
+import { app, paneWidth } from "./state";
+
+/// The stylesheet's own widths, and the floor a column may be dragged to. The
+/// floor is per pane because what has to stay readable differs: a file list can
+/// give up more than a diff.
+const widths = {
+  library: 300,
+  sidebar: 260,
+  middle: 340,
+  history: 520,
+  detail: 340,
+};
 </script>
 
 <template>
@@ -28,24 +39,41 @@ import { app } from "./state";
     <!-- Board 06 has no workspace sidebar: with no repository open there is no
          workspace to be in, and the repository list *is* the left column. -->
     <template v-if="app.screen === 'repositories'">
-      <RepositoryList />
+      <section class="pane" :style="{ width: `${paneWidth('library', widths.library)}px` }">
+        <RepositoryList />
+        <Splitter pane="library" :width="paneWidth('library', widths.library)" :min="240" />
+      </section>
       <RepositoryCard />
     </template>
 
     <template v-else>
-      <Sidebar />
+      <section class="pane" :style="{ width: `${paneWidth('sidebar', widths.sidebar)}px` }">
+        <Sidebar />
+        <Splitter pane="sidebar" :width="paneWidth('sidebar', widths.sidebar)" :min="200" />
+      </section>
+
       <template v-if="app.screen === 'history'">
-        <HistoryList />
-        <CommitDetail />
-        <DiffView />
-      </template>
-      <template v-else>
-        <section class="middle">
-          <CommitBox />
-          <StatusList />
+        <section class="pane" :style="{ width: `${paneWidth('history', widths.history)}px` }">
+          <HistoryList />
+          <Splitter pane="history" :width="paneWidth('history', widths.history)" :min="360" />
         </section>
-        <DiffView />
+        <section class="pane" :style="{ width: `${paneWidth('detail', widths.detail)}px` }">
+          <CommitDetail />
+          <Splitter pane="detail" :width="paneWidth('detail', widths.detail)" :min="260" />
+        </section>
       </template>
+
+      <template v-else>
+        <section class="pane" :style="{ width: `${paneWidth('middle', widths.middle)}px` }">
+          <div class="middle">
+            <CommitBox />
+            <StatusList />
+          </div>
+          <Splitter pane="middle" :width="paneWidth('middle', widths.middle)" :min="280" />
+        </section>
+      </template>
+
+      <DiffView />
       <Journal v-if="app.showJournal" />
     </template>
   </div>

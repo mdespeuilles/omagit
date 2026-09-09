@@ -11,12 +11,28 @@ import { when, exact } from "../format";
 import { app, compareWith, markCompareFrom, moreHistory, selectCommit, setQuery } from "../state";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
-import { rowHeight } from "../metrics";
+import { doubleRowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
-const ROW_HEIGHT = rowHeight();
+/// Two lines per commit.
+///
+/// Board 05 draws one, and this is a deliberate departure from it: on a real
+/// history the single line has six things competing for it — author, refs,
+/// date, hash and message — and the message, which is what the list is read
+/// for, is the one that loses. Two lines give the message the whole of the
+/// second one.
+const ROW_HEIGHT = doubleRowHeight();
 
 const rows = computed(() => (app.history.status === "ready" ? app.history.value : []));
+
+/// `Maxence d'Espeuilles` → `MD`. The first letters of the first two words,
+/// which is what board 01's avatar shows.
+function initials(name: string): string {
+  return [...name.trim().split(/\s+/).slice(0, 2)]
+    .map((word) => [...word][0] ?? "")
+    .join("")
+    .toUpperCase();
+}
 
 /// A plain click opens a commit; a shift-click compares it with the marked one.
 ///
@@ -89,17 +105,25 @@ function open(id: string, extend: boolean): void {
       >
         <GraphGutter v-if="item.graph" :row="item" :height="ROW_HEIGHT" />
         <span v-else class="gutter-none" />
-        <span class="commit-author">{{ item.author }}</span>
-        <span
-          v-for="label in item.labels"
-          :key="label.kind + label.name"
-          class="ref"
-          :class="label.kind"
-          >{{ label.name }}</span
-        >
-        <span class="commit-when" :title="exact(item.when)">{{ when(item.when) }}</span>
-        <span class="commit-hash mono">{{ item.id.short }}</span>
-        <span class="commit-summary">{{ item.summary }}</span>
+        <span class="avatar mono" :title="item.author">{{ initials(item.author) }}</span>
+        <span class="commit-lines">
+          <span class="commit-line-top">
+            <span class="commit-author">{{ item.author }}</span>
+            <span class="pane-head-spacer" />
+            <span class="commit-when" :title="exact(item.when)">{{ when(item.when) }}</span>
+          </span>
+          <span class="commit-line-bottom">
+            <span class="commit-hash mono">{{ item.id.short }}</span>
+            <span
+              v-for="label in item.labels"
+              :key="label.kind + label.name"
+              class="ref"
+              :class="label.kind"
+              >{{ label.name }}</span
+            >
+            <span class="commit-summary">{{ item.summary }}</span>
+          </span>
+        </span>
       </div>
     </VirtualList>
 

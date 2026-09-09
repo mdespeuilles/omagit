@@ -15,7 +15,13 @@ let cache: Record<string, number> = {};
 export function measure(): void {
   const style = getComputedStyle(document.documentElement);
   cache = {};
-  for (const name of ["row-height", "line-height", "control-height", "header-height"]) {
+  for (const name of [
+    "row-height",
+    "row-padding",
+    "line-height",
+    "control-height",
+    "header-height",
+  ]) {
     cache[name] = Number.parseFloat(style.getPropertyValue(`--${name}`)) || 0;
   }
 }
@@ -28,4 +34,13 @@ export function rowHeight(): number {
 /// One line of a diff. Board 03: 17px compact, 20px comfortable.
 export function lineHeight(): number {
   return cache["line-height"] || 17;
+}
+
+/// A row holding two lines of text: a commit, in the History list.
+///
+/// Derived rather than named, because it is two of something that already has
+/// a token plus the padding a row already has. A literal here would be a third
+/// number to keep in step with the density by hand.
+export function doubleRowHeight(): number {
+  return 2 * lineHeight() + (cache["row-padding"] || 6);
 }

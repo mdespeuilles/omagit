@@ -36,6 +36,14 @@ pub struct Settings {
     /// boards are drawn in and small on a 3440-wide display at arm's length.
     #[serde(default = "default_scale")]
     pub ui_scale: f32,
+    /// How wide the resizable columns have been dragged, by name.
+    ///
+    /// A map rather than named fields: the panes are an interface concern and
+    /// this crate has no business knowing that one of them is called
+    /// `history`. A pane that disappears leaves a key nobody reads, which is
+    /// cheaper than a migration.
+    #[serde(default)]
+    pub panes: std::collections::BTreeMap<String, f32>,
 }
 
 /// Slightly larger than the boards, because the boards are a reference frame
@@ -56,6 +64,7 @@ impl Default for Settings {
             theme: ThemeSource::default(),
             density: DensityMode::default(),
             ui_scale: default_scale(),
+            panes: std::collections::BTreeMap::new(),
         }
     }
 }
@@ -153,6 +162,7 @@ mod tests {
             },
             density: DensityMode::Comfortable,
             ui_scale: 1.25,
+            panes: [("history".to_owned(), 480.0)].into_iter().collect(),
         };
         settings.save(dir.path()).expect("save");
         assert_eq!(Settings::load(dir.path()), settings);

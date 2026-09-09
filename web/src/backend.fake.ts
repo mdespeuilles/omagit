@@ -87,6 +87,8 @@ export class Repository {
   ];
   /// A folder the picker would hand back that is not a repository.
   notARepository: string | null = null;
+  /// The column widths the settings file remembers.
+  panes: Record<string, number> = {};
   /// How many rows a page holds. Small in tests, so paging is exercised by
   /// three commits rather than by fifteen hundred.
   page = 3;
@@ -183,6 +185,11 @@ export class Repository {
         return "le message précédent";
       case "journal":
         return [] satisfies JournalRow[];
+      case "panes":
+        return { ...this.panes };
+      case "set_pane":
+        this.panes[args["name"] as string] = args["width"] as number;
+        return undefined;
       case "history": {
         this.cursor = 0;
         this.handedOut = [];

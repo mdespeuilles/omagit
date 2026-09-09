@@ -695,6 +695,50 @@ segmented control; board 03's branch tree, which is M7's; board 06's drag to
 reorder and its group editing, which are §2.27's; and the two-line topbar's
 back / forward history navigation.
 
+### 2.29 Two lines per commit, against board 05, and columns you can drag
+
+**Two lines.** Board 05 draws one, and this departs from it deliberately, asked
+for with the board in front of us. On a real history — 500 commits, long
+branch names, a signed-off author — the single line has six things competing
+for it: the graph, an avatar, the author, the refs, the date, the hash and the
+message. The message is what the list is read for, and it is the one that
+loses; at a 520px column it was reaching the reader as eight characters and an
+ellipsis. Two lines give the author and the date the first, and the message the
+whole of the second.
+
+The avatar stays **square**. The reference the request came with is Tower's,
+whose avatars are circles; DESIGN §1 is "square everything, no radii anywhere",
+and one rounded thing would be the only rounded thing in the app.
+
+The row's height is `2 × line_height + row_padding` rather than a number:
+it is two of something that already has a token, plus the padding a row already
+has, and a literal would be a third value to keep in step with the density by
+hand.
+
+**Draggable columns.** Every fixed column now sits inside a `.pane` wrapper that
+carries the width and the splitter, so a pane knows nothing about being
+resizable — the splitter has to know which two things it sits between, and that
+is only true at the shell's level.
+
+Two things about it are less obvious than they look, and each has a test that
+fails when it is undone:
+
+* **The travel is divided by `--scale`.** The pointer's coordinates are in
+  scaled pixels because `#app` is zoomed; the width the stylesheet wants is
+  unscaled. Without the division, dragging at 1.15 moves the edge fifteen per
+  cent further than the pointer, which reads as the column running away.
+* **The drag settles on the width it computed**, not on `props.width`. Settling
+  on the prop means settling on whatever has made it back down through a render:
+  it happens to work while the parent is reactive, and it is one refactor away
+  from writing the width the drag started at. The first version did exactly
+  that, and the test caught it.
+
+The widths are remembered in `settings.toml` under `panes`, a map rather than
+named fields: which columns exist is an interface concern, and a pane that
+disappears leaves a key nobody reads rather than a migration. Written when the
+drag ends and not while it moves — the file is rewritten on every call, and a
+drag is a hundred of them.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

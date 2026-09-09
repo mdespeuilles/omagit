@@ -125,6 +125,21 @@ impl AppState {
         outcome
     }
 
+    /// Change the settings and write them out.
+    ///
+    /// The same shape as [`Self::with_library`], and for the same reason: a
+    /// caller that had to remember to save would eventually not.
+    pub fn with_settings<T>(&self, act: impl FnOnce(&mut Settings) -> T) -> T {
+        let mut settings = self.lock(&self.settings);
+        let outcome = act(&mut settings);
+        if let Some(dir) = &self.config_dir
+            && let Err(error) = settings.save(dir)
+        {
+            tracing::warn!(%error, "the settings could not be saved");
+        }
+        outcome
+    }
+
     pub fn settings(&self) -> Settings {
         self.lock(&self.settings).clone()
     }

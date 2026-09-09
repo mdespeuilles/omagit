@@ -43,6 +43,23 @@ pub fn theme(state: State<'_, AppState>) -> String {
     omagit_theme::css::scaled(&resolved.theme, settings.density, settings.scale())
 }
 
+/// How wide the resizable columns are, by name.
+#[tauri::command]
+pub fn panes(state: State<'_, AppState>) -> std::collections::BTreeMap<String, f32> {
+    state.settings().panes
+}
+
+/// Remember a column's width.
+///
+/// Called when a drag ends rather than while it moves: the settings file is
+/// rewritten on every call, and a drag is a hundred calls.
+#[tauri::command]
+pub fn set_pane(state: State<'_, AppState>, name: String, width: f32) {
+    state.with_settings(|settings| {
+        settings.panes.insert(name, width);
+    });
+}
+
 /// Whether writing is possible at all, and why not when it is not.
 #[tauri::command]
 pub fn git_status(state: State<'_, AppState>) -> Option<String> {

@@ -355,23 +355,52 @@ button.icon {
   min-height: 0;
 }
 
-/* The middle column: the commit box above the file list, as Board 03 has it.
+/* A resizable column. It carries the width and the splitter; what is inside
+   carries the pane's own layout, so a pane knows nothing about being
+   draggable. */
+.pane {
+  position: relative;
+  display: flex;
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+}
+.pane > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* On the border, not beside it: a separator with width of its own would push
+   everything along and put a gap in the hairline grid. */
+.splitter {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 5px;
+  z-index: 2;
+  cursor: col-resize;
+}
+.splitter:hover,
+.splitter.dragging,
+.splitter:focus-visible {
+  background: var(--accent);
+  outline: 0;
+}
+
+/* The middle column: the commit box above the file list, as board 03 has it.
    The box is sized by its content, the list takes what is left. */
 .middle {
   display: flex;
   flex-direction: column;
-  width: 340px;
-  flex: none;
   min-height: 0;
   border-right: 1px solid var(--border);
 }
 
-/* Board 03: 260px, on the surface. */
+/* Board 03, on the surface. */
 .sidebar {
   display: flex;
   flex-direction: column;
-  width: 260px;
-  flex: none;
   min-height: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -1102,26 +1131,71 @@ button.danger.solid:hover {
 
 /* ── History ─────────────────────────────────────────────────────────────── */
 
-/* Shares the leftover width with the diff rather than taking a fixed slice:
-   both are content, and the window is not always 1600px. */
 .history {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
-  min-width: 380px;
   min-height: 0;
   border-right: 1px solid var(--border);
 }
 
+/* Two lines per commit. Board 05 draws one; on a real history the six things
+   competing for it crush the message, which is what the list is read for. */
 .commit-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
   height: 100%;
   padding-right: var(--pad);
-  font-size: var(--text-body);
+  border: 0;
+  text-align: left;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.commit-lines {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+.commit-line-top,
+.commit-line-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The author names the row; the message explains it. */
+.commit-author {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-body);
+  color: var(--text);
+}
+.commit-when {
+  flex: none;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+.commit-hash {
+  flex: none;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+/* Last, and it takes the whole of the second line. */
+.commit-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
 }
 .commit-row:hover {
   background: var(--surface-hover);
@@ -1140,28 +1214,6 @@ button.danger.solid:hover {
 }
 
 /* Last, and it takes what is left: the message is what the list is read for. */
-.commit-summary {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.commit-author,
-.commit-when,
-.commit-hash {
-  flex: none;
-  font-size: var(--text-meta);
-  color: var(--text-dim);
-}
-.commit-author {
-  width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.commit-when {
-  width: 88px;
-}
-
 /* Board 01 §06. Four kinds, four readings (DESIGN §5); the one that says where
    you are is the only filled one. */
 .ref {
@@ -1194,8 +1246,6 @@ button.danger.solid:hover {
 .detail {
   display: flex;
   flex-direction: column;
-  width: 340px;
-  flex: none;
   min-height: 0;
   border-right: 1px solid var(--border);
   overflow-y: auto;
@@ -1259,6 +1309,7 @@ button.danger.solid:hover {
 .filters {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   flex: none;
   padding: 4px var(--pad);
@@ -1273,11 +1324,13 @@ button.danger.solid:hover {
   padding: 0 6px;
   font-size: var(--text-meta);
 }
+/* A basis rather than zero, so a narrow pane wraps the row instead of
+   crushing every placeholder into two letters. */
 .filter-box {
-  flex: 1 1 0;
+  flex: 1 1 90px;
 }
 .filter-box.wide {
-  flex: 2 1 0;
+  flex: 2 1 140px;
 }
 .filter-box::placeholder {
   color: var(--text-dim);
@@ -1324,13 +1377,10 @@ button.danger.solid:hover {
 
 /* ── The repository list ─────────────────────────────────────────────────── */
 
-/* Board 06: 300px, on the surface, with the list between a filter and a
-   footer. */
+/* Board 06: on the surface, with the list between a filter and a footer. */
 .library {
   display: flex;
   flex-direction: column;
-  width: 300px;
-  flex: none;
   min-height: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);

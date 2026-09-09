@@ -119,6 +119,9 @@ type State = {
   library: Record<string, Async<RepoSummary>>;
   /// Which card the Repositories screen is showing.
   card: string | null;
+  /// How wide each resizable column has been dragged, in unscaled pixels.
+  /// Absent means the stylesheet's own width.
+  panes: Record<string, number>;
   /// Two commits being compared, when someone has picked a second one.
   ///
   /// Its own field rather than a mode on `commit`, because it is a different
@@ -166,6 +169,7 @@ const state = reactive<State>({
   compareFrom: null,
   library: {},
   card: null,
+  panes: {},
 });
 
 export const app = readonly(state);
@@ -186,6 +190,17 @@ export async function boot(): Promise<void> {
   // before any list decides how many rows fit.
   measure();
   state.platform = platform;
+  // Widths the user dragged last time. Asked for with everything else rather
+  // than lazily: a column that started at its default and jumped once the
+  // answer arrived would be worse than one that never moved.
+  // A width the user dragged is a convenience; failing to read one is not a
+  // reason for the window not to open.
+  void api
+    .panes()
+    .then((panes) => {
+      state.panes = panes;
+    })
+    .catch((error) => api.log("warn", `largeurs de colonnes illisibles : ${message(error)}`));
   state.gitUnusable = gitUnusable;
   state.repositories = repositories;
 
@@ -230,6 +245,23 @@ async function readSummary(row: LibraryRow): Promise<void> {
 
 export function showCard(path: string): void {
   state.card = path;
+}
+
+/// A column's width, or the stylesheet's own when it has not been dragged.
+export function paneWidth(name: string, fallback: number): number {
+  return state.panes[name] ?? fallback;
+}
+
+/// While the pointer moves.
+export function resizePane(name: string, width: number): void {
+  state.panes[name] = width;
+}
+
+/// When it stops. Separate because the settings file is rewritten on every
+/// call, and a drag is a hundred of them.
+export function settlePane(name: string, width: number): void {
+  state.panes[name] = width;
+  void api.setPane(name, width);
 }
 
 /// Add a folder to the library, through the platform's own folder picker.
