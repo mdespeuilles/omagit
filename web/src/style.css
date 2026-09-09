@@ -1,0 +1,266 @@
+/* Every colour, metric and family is a token from `omagit-theme`, injected at
+   start-up as custom properties on `:root` (DESIGN-TOKENS §1). Nothing here
+   invents a value: a literal colour in this file is a bug, the same way
+   `rgb(0x1a1b26)` in a component was. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* The window is the app; nothing scrolls but the panes that say they do. */
+  overflow: hidden;
+  /* Text selection is for content, not for chrome: dragging across a list
+     should move a selection, not highlight labels. */
+  user-select: none;
+  cursor: default;
+}
+
+::selection {
+  background: var(--surface-raised);
+}
+
+/* Square everything (DESIGN §1): no radii anywhere, borders 1px, one shadow in
+   the whole app and only under a modal overlay. */
+button,
+input,
+textarea {
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+button {
+  height: var(--control-height);
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+button:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 1px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* The virtualised list: the viewport scrolls, the spacer gives it its height,
+   and the rows are positioned inside it. `transform` rather than `top` so a
+   scroll never triggers layout. */
+.vlist {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.vlist-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.vlist-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  will-change: transform;
+  contain: strict;
+}
+
+/* The shell: a topbar, then three columns. Board 03's widths. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  height: 40px;
+  flex: none;
+  padding: 0 var(--pad);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.reserve {
+  flex: none;
+}
+
+.topbar-name {
+  font-weight: 600;
+}
+.topbar-sep,
+.topbar-crumb {
+  color: var(--text-muted);
+}
+
+.banner {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.banner.danger {
+  color: var(--danger);
+  border-left: 2px solid var(--danger);
+}
+
+.shell {
+  display: flex;
+  height: calc(100% - 40px);
+  min-height: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  flex: none;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.sidebar-row {
+  border: 0;
+  text-align: left;
+  padding: 0 var(--pad);
+  height: var(--row-height);
+  flex: none;
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  flex: none;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.diff {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  height: var(--header-height);
+  flex: none;
+  padding: 0 var(--pad);
+  font-size: 11px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0 var(--pad);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.file-row:hover {
+  background: var(--surface-hover);
+}
+.file-code {
+  width: 22px;
+  flex: none;
+  color: var(--text-muted);
+}
+.file-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+/* The diff. Backgrounds at the tint scale of DESIGN-TOKENS §5, never an
+   opacity invented here. */
+.diff-header,
+.diff-fold {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.diff-fold {
+  color: var(--text-dim);
+}
+
+.diff-line {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  white-space: pre;
+}
+.diff-line.added {
+  background: var(--diff-added);
+}
+.diff-line.removed {
+  background: var(--diff-deleted);
+}
+
+.diff-line .gutter {
+  width: 44px;
+  flex: none;
+  text-align: right;
+  padding-right: 8px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.diff-line .sign {
+  width: 14px;
+  flex: none;
+  text-align: center;
+  color: var(--text-muted);
+}
+.diff-line .text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fatal {
+  margin: 0;
+  padding: 16px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: var(--danger, #b4637a);
+  background: var(--bg, #faf4ed);
+}

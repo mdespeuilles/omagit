@@ -7,6 +7,7 @@
 //! The pieces, in the order DESIGN-TOKENS.md introduces them:
 //!
 //! * [`color`] — the sRGB type and `mix`, whose argument order is load-bearing.
+//! * [`css`] — the tokens as CSS custom properties, for the web front end.
 //! * [`oklch`] — perceptual derivation and the mandatory contrast correction.
 //! * [`theme`] — inputs, per-theme tuning, and the derivation into tokens.
 //! * [`tokens`] — the canonical vocabulary, plus density and typography.
@@ -16,6 +17,7 @@
 //! * [`source`] — the four sources of §6.1, resolved in priority order.
 
 pub mod color;
+pub mod css;
 pub mod embedded;
 pub mod lanes;
 pub mod oklch;

@@ -1,12 +1,16 @@
 //! Everything that differs between Linux and macOS.
 //!
-//! The UI layer never carries a `#[cfg(target_os)]` (SPEC §3 rule 6); it asks
-//! this module instead. The trait exists because the two platforms already
-//! diverge, not to leave room for a third (SPEC §2).
+//! The trait exists because the two platforms already diverge, not to leave
+//! room for a third (SPEC §2). It shrank when the interface moved to the web:
+//! window decoration is `tauri.conf.json`'s business now, and the typography
+//! stacks resolve themselves — `system-ui` is a real CSS keyword, so the
+//! resolution `omagit-ui::fonts` had to do by hand is gone.
+//!
+//! What is left is what the *front end* cannot know: where config lives, which
+//! modifier the platform calls primary, the band the window system draws over,
+//! and where Omarchy keeps its theme.
 
 use std::path::PathBuf;
-
-use gpui_kit::Pixels;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -15,17 +19,18 @@ mod macos;
 
 /// The horizontal bands of the topbar that belong to the window system.
 ///
-/// These are **reserves, not margins** (DESIGN-TOKENS §9): they are laid out as
+/// **Reserves, not margins** (DESIGN-TOKENS §9): the front end lays them out as
 /// flex spacers, so nothing else shifts when they change. A control placed at
 /// 12px from the left edge would end up under the macOS traffic lights.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
 pub struct TopbarReserve {
-    pub leading: Pixels,
-    pub trailing: Pixels,
+    pub leading: f32,
+    pub trailing: f32,
 }
 
 /// Which modifier the platform spells as "primary" (SPEC §9).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PrimaryModifier {
     Control,
     Command,
@@ -33,28 +38,25 @@ pub enum PrimaryModifier {
 
 impl PrimaryModifier {
     /// How the shortcut reads in the interface. The docs say ⌘/Ctrl; the app
-    /// shows one or the other, never both (DESIGN.md §2, "un seul modificateur").
+    /// shows one or the other, never both (DESIGN §2).
     pub fn label(self) -> &'static str {
         match self {
             PrimaryModifier::Control => "Ctrl",
             PrimaryModifier::Command => "⌘",
         }
     }
-
-    /// The whole binding, as the interface writes it: `⌘O`, `Ctrl O`.
-    ///
-    /// The space is not cosmetic. `⌘` is a glyph and reads as one token against
-    /// the letter beside it; `Ctrl` is a word, and `CtrlO` reads as a typo.
-    /// DESIGN §2 spells both forms out.
-    pub fn shortcut(self, key: &str) -> String {
-        match self {
-            PrimaryModifier::Control => format!("Ctrl {key}"),
-            PrimaryModifier::Command => format!("⌘{key}"),
-        }
-    }
 }
 
-/// The platform-dependent facts the app needs to open its first window.
+/// What the front end needs to know about where it is running.
+#[derive(Debug, serde::Serialize)]
+pub struct PlatformFacts {
+    pub name: &'static str,
+    pub modifier: PrimaryModifier,
+    pub modifier_label: &'static str,
+    pub reserve: TopbarReserve,
+    pub credential_helper: &'static str,
+}
+
 pub trait Platform: Send + Sync + 'static {
     fn name(&self) -> &'static str;
 
@@ -63,19 +65,8 @@ pub trait Platform: Send + Sync + 'static {
 
     fn primary_modifier(&self) -> PrimaryModifier;
 
-    /// The platform's own UI family, standing in for the CSS generic
-    /// `system-ui` at the head of the typography stack (DESIGN-TOKENS §8).
-    /// The font list never enumerates it by name.
-    fn system_ui_family(&self) -> &'static str;
-
     /// The bands the window system draws over.
     fn topbar_reserve(&self) -> TopbarReserve;
-
-    /// Titlebar configuration for the main window.
-    fn titlebar(&self) -> Option<gpui_kit::TitlebarOptions>;
-
-    /// Client- or server-side decorations. Only Wayland/X11 read this.
-    fn window_decorations(&self) -> Option<gpui_kit::WindowDecorations>;
 
     /// The credential helper Git is expected to use (SPEC §9). Reported at
     /// start-up so a missing helper is visible rather than a silent auth
@@ -90,6 +81,16 @@ pub trait Platform: Send + Sync + 'static {
 
     /// Whether the platform reports a light/dark preference worth following.
     fn reports_system_appearance(&self) -> bool;
+
+    fn facts(&self) -> PlatformFacts {
+        PlatformFacts {
+            name: self.name(),
+            modifier: self.primary_modifier(),
+            modifier_label: self.primary_modifier().label(),
+            reserve: self.topbar_reserve(),
+            credential_helper: self.credential_helper(),
+        }
+    }
 }
 
 /// The platform this build runs on.
@@ -105,6 +106,6 @@ pub fn current() -> &'static dyn Platform {
 }
 
 /// The topbar is 48px tall in comfortable density, 40px in compact
-/// (DESIGN-TOKENS §7, mock-up 08).
+/// (DESIGN-TOKENS §7, board 08).
 pub const TOPBAR_HEIGHT_COMFORTABLE: f32 = 48.0;
 pub const TOPBAR_HEIGHT_COMPACT: f32 = 40.0;

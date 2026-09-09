@@ -5,9 +5,7 @@ members = [
     "crates/omagit-git-cli",
     "crates/omagit-theme",
     "crates/omagit-settings",
-    "crates/omagit-ui",
     "crates/omagit-app",
-    "vendor/gpui-omarchy",
 ]
 
 [workspace.package]
@@ -18,15 +16,15 @@ license = "MIT"
 repository = "https://github.com/omagit/omagit"
 
 [workspace.dependencies]
-# UI — omagit never depends on `gpui` directly (SPEC §4).
-gpui-kit = { version = "=0.6.0", default-features = false }
-gpui-omarchy = { path = "vendor/gpui-omarchy" }
+# UI — Tauri 2: a Rust backend and a web front end (SPEC §4, amended).
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 
 # Internal
 omagit-git = { path = "crates/omagit-git" }
 omagit-theme = { path = "crates/omagit-theme" }
 omagit-settings = { path = "crates/omagit-settings" }
-omagit-ui = { path = "crates/omagit-ui" }
 
 # Git — `gix` for reads (SPEC §8). Default features are trimmed to the read
 # path: no network client (the `git` binary does the network), no
@@ -56,32 +54,10 @@ tempfile = "3"
 clap = { version = "4", features = ["derive"] }
 
 # Syntax highlighting for the diff viewer (SPEC §4). SPEC's own note says
-# "GPUI l'embarque déjà" — it does not, for this workspace: `gpui-kit` routes
-# tree-sitter through `gpui-component`, which is off here because turning it on
-# would pull in a second, competing component library (see
-# docs/notes/gpui-kit-capabilities.md). So the grammars are omagit's own.
-#
-# One grammar per language actually rendered, and no more: each is a C compile
-# and an unhighlighted file is a legible file (DESIGN §1 — hierarchy never rests
-# on hue), so an absent grammar costs far less than a speculative one.
-tree-sitter = "0.27"
-tree-sitter-rust = "0.24"
-tree-sitter-toml-ng = "0.7"
-tree-sitter-json = "0.24"
-tree-sitter-md = "0.5"
-
 # Local time, for an interface that says "aujourd'hui" and "il y a 2 h".
 # Already in the tree under `gix`, so it costs no build time — see
 # `omagit-app/src/time.rs` for why the alternative was worse.
 jiff = "0.2"
-
-# Note for whoever bumps gpui-kit: upstream gpui-omarchy carries a
-# `[profile.release.package.gpui-pre-macros] debug-assertions = true` workaround
-# for gpui-pre-macros 0.3.1, and Cargo ignores [profile] in workspace members, so
-# vendoring drops it silently. Verified on 2026-09-08 that the resolved 0.3.4 no
-# longer needs it (release build is green without). If a release build ever fails
-# inside gpui-pre-macros, that override is the fix — see
-# docs/notes/gpui-omarchy-capabilities.md.
 
 [profile.dev]
 debug = "limited"

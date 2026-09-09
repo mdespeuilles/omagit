@@ -29,6 +29,9 @@ cargo test --workspace
 echo "── release build ──────────────────────────────────"
 cargo build --workspace --release
 
+echo "── web ────────────────────────────────────────────"
+npm --prefix web run check
+
 echo "── deny ───────────────────────────────────────────"
 # Its `[graph] targets` cover Linux as well
 # as macOS, so a licence or advisory problem that only appears in the Linux

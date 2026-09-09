@@ -3,3 +3,6 @@
 .DS_Store
 *.log
 /packaging/macos/build
+
+# Tauri's generated schemas and plugin permissions.
+/crates/omagit-app/gen/

@@ -2,8 +2,6 @@
 
 use std::path::PathBuf;
 
-use gpui_kit::{Pixels, TitlebarOptions, WindowDecorations};
-
 use super::{Platform, PrimaryModifier, TopbarReserve};
 
 pub struct Linux;
@@ -29,12 +27,6 @@ impl Platform for Linux {
         PrimaryModifier::Control
     }
 
-    fn system_ui_family(&self) -> &'static str {
-        // fontconfig resolves the generic to whatever the session configures as
-        // its interface face, which is exactly what `system-ui` means here.
-        "sans-serif"
-    }
-
     fn topbar_reserve(&self) -> TopbarReserve {
         // Tiled under Hyprland the compositor owns close and resize, so the
         // reserve is zero. The conditional 115px band — three 38px caption
@@ -42,22 +34,9 @@ impl Platform for Linux {
         // topbar itself, once the app reads `gtk-decoration-layout` to know
         // which buttons to draw and on which side.
         TopbarReserve {
-            leading: Pixels::ZERO,
-            trailing: Pixels::ZERO,
+            leading: 0.0,
+            trailing: 0.0,
         }
-    }
-
-    fn titlebar(&self) -> Option<TitlebarOptions> {
-        Some(TitlebarOptions {
-            title: Some("omagit".into()),
-            appears_transparent: true,
-            traffic_light_position: None,
-        })
-    }
-
-    fn window_decorations(&self) -> Option<WindowDecorations> {
-        // The compositor draws neither titlebar nor buttons; the app does.
-        Some(WindowDecorations::Client)
     }
 
     fn credential_helper(&self) -> &'static str {
@@ -101,10 +80,5 @@ mod tests {
             Some(value) => unsafe { std::env::set_var("XDG_CONFIG_HOME", value) },
             None => unsafe { std::env::remove_var("XDG_CONFIG_HOME") },
         }
-    }
-
-    #[test]
-    fn linux_asks_for_client_side_decorations() {
-        assert_eq!(Linux.window_decorations(), Some(WindowDecorations::Client));
     }
 }
