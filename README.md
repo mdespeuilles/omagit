@@ -27,8 +27,9 @@ than a devtools console to open.
 scripts/fixture.sh              # --conflict leaves it stopped in the middle of one
 ```
 
-Builds a throw-away repository under `$TMPDIR` with everything a screen needs to
-have something to draw: a history with a merge in it, five branches — one merged,
+Builds a throw-away repository in `~/omagit-fixture` — where a file picker can
+actually reach it; macOS's `$TMPDIR` is a `/var/folders/…` path the Finder hides
+— with everything a screen needs to have something to draw: a history with a merge in it, five branches — one merged,
 one nobody has touched since the spring — two tags, a divergence from a "remote"
 that is a bare repository on the disk beside it, two stashes, a working copy
 holding six kinds of change at once, and a merge that conflicts in three files.

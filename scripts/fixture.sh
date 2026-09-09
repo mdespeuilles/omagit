@@ -13,6 +13,10 @@
 #   scripts/fixture.sh --conflict   # and stop half-way through it
 #   scripts/fixture.sh --at ~/work/omagit-fixture
 #
+# It lands in `~/omagit-fixture` because that is where a file picker can reach
+# it — `$TMPDIR` on macOS is a `/var/folders/…` path the Finder hides. `--at`
+# puts it anywhere else.
+#
 # Everything is deterministic: fixed identities, dates relative to the day it is
 # run, and a "remote" that is a bare repository on the disk beside it. Nothing
 # here touches the network, and nothing reads the developer's own Git
@@ -34,11 +38,12 @@
 #                      dialog, and where a rebase has a chance of running.
 set -euo pipefail
 
-# `$TMPDIR` ends in a slash on macOS and not on Linux; joined naïvely that is a
-# path with `//` in it, which works and reads like a mistake in every line this
-# prints.
-root="${TMPDIR:-/tmp}"
-root="${root%/}/omagit-fixture"
+# In the home directory, not under `$TMPDIR`, and that is about the file picker
+# rather than about tidiness: on macOS `$TMPDIR` is `/var/folders/_j/kz8…/T`,
+# which the Finder's open panel hides and offers no way to reach — the fixture
+# was unreachable from the one button that adds a repository to omagit. `~` is
+# the first place every picker on both platforms opens into.
+root="${HOME:-/tmp}/omagit-fixture"
 conflict=no
 
 while [ $# -gt 0 ]; do
