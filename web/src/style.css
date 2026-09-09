@@ -579,6 +579,7 @@ button.icon {
 /* Board 01 §08. Full height because it sits inside a virtualised slot that
    already has the row's height. */
 .file-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -602,9 +603,15 @@ button.icon {
   flex: 1;
   min-width: 0;
 }
+/* The directory gives way first — it is the part a reader skims — and never
+   takes more than its share of the row. The cap is what keeps the *name*
+   visible when the actions are hanging over the end of the row: without it a
+   deep path pushed the filename under them, and the row you are pointing at is
+   the one whose name you need. */
 .file-path .dir {
   flex: 0 1 auto;
   min-width: 0;
+  max-width: 40%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -704,6 +711,7 @@ button.icon {
 .commit-row.selected,
 .stash-entry.selected {
   background: var(--surface-raised);
+  --row-bg: var(--surface-raised);
 }
 
 /* A list you choose from: the row is the answer, so it is filled (board 03,
@@ -714,6 +722,7 @@ button.icon {
 .library-row.selected {
   background: var(--accent);
   color: var(--on-accent);
+  --row-bg: var(--accent);
   font-weight: 500;
 }
 
@@ -725,6 +734,7 @@ button.icon {
 .file-row:hover,
 .stash-entry:hover {
   background: var(--surface-hover);
+  --row-bg: var(--surface-hover);
 }
 /* The shelf's actions sit beside its row rather than inside it, so the `<li>`
    is what paints and the button inside must not: two backgrounds over one row
@@ -741,6 +751,7 @@ button.icon {
 .commit-row.selected:hover,
 .stash-entry.selected:hover {
   background: var(--surface-raised);
+  --row-bg: var(--surface-raised);
 }
 .file-row:focus-visible,
 .library-row:focus-visible,
@@ -965,6 +976,36 @@ button.link.ok {
   color: var(--warning);
 }
 
+/* Row actions hang over the end of the row rather than taking width from it.
+   Invisible they may be, but a flex child takes its space all the same: three
+   of them — "Résoudre…" and two branch names — were holding a third of the file
+   row, so `src/merge.rs` drew as `sr… merge.rs` with four hundred pixels of
+   nothing beside it. The sidebar's branch rows had the same three and the same
+   truncation.
+
+   Over the row, not beside it: revealed by pointing at it or reaching it with
+   the keyboard, and painting the row's own background so what they cover
+   disappears cleanly instead of showing through. `--row-bg` is set with every
+   other row state, in the one block that owns them. */
+.row-actions {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 10px;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--row-bg, var(--surface));
+}
+.file-row:hover .row-actions,
+.branch-row:hover .row-actions,
+.stash-entry:hover .row-actions,
+.row-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Revealed by pointing at the row or reaching it with the keyboard, never by
    pointing alone: a target that only exists under the mouse is unreachable. */
 .row-action {
@@ -972,11 +1013,6 @@ button.link.ok {
   height: 16px;
   padding: 0 4px;
   font-size: var(--text-meta);
-  opacity: 0;
-}
-.file-row:hover .row-action,
-.row-action:focus-visible {
-  opacity: 1;
 }
 .row-action.danger {
   color: var(--danger);
@@ -1099,6 +1135,12 @@ button.link.ok {
 
 /* ── The status bar ──────────────────────────────────────────────────────── */
 
+/* One line, always. It has a fixed height and a message of unbounded length in
+   it — `git`'s own words about what just failed — so without this the long ones
+   wrapped *inside* 22 pixels and every fixed part of the bar overlapped the
+   next. What gives way is the message, because it is the only thing here whose
+   meaning survives being cut: the rest is four words already as short as they
+   go. */
 .statusbar {
   display: flex;
   align-items: center;
@@ -1106,10 +1148,32 @@ button.link.ok {
   flex: none;
   height: 22px;
   padding: 0 var(--pad);
+  overflow: hidden;
+  white-space: nowrap;
   font-size: var(--text-meta);
   color: var(--text-muted);
   background: var(--surface);
   border-top: 1px solid var(--border);
+}
+.statusbar > * {
+  flex: none;
+}
+/* The two that carry a sentence, named rather than matched on `.danger` —
+   "Abandonner" is a danger button too, and letting *it* shrink made it overflow
+   its own box and print on top of the next item. `min-width: 0` is what lets a
+   flex child shrink below its own content at all, and the ellipsis needs a
+   block to happen in: a button is a flex box, so the text inside carries
+   both. */
+.statusbar .message {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.statusbar .said {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .statusbar .sep {
   color: var(--text-dim);
@@ -2054,6 +2118,7 @@ select:focus {
 /* ── The branch tree (M7) ────────────────────────────────────────────────── */
 
 .branch-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2123,11 +2188,6 @@ select:focus {
 
 .branch-row .row-action {
   height: 16px;
-  opacity: 0;
-}
-.branch-row:hover .row-action,
-.branch-row .row-action:focus-visible {
-  opacity: 1;
 }
 
 .branch-new {
@@ -2245,6 +2305,7 @@ select:focus {
 /* Two lines, like the library and the history: an address and a message read
    as one thing, where it came from and when as another. */
 .stash-entry {
+  position: relative;
   display: flex;
   align-items: center;
 }
@@ -2301,20 +2362,8 @@ select:focus {
   color: var(--warning);
 }
 
-.stash-actions {
-  display: flex;
-  align-items: center;
-  flex: none;
-  gap: 4px;
-  padding-right: 10px;
-}
-.stash-actions .row-action {
+.stash-entry .row-action {
   height: 16px;
-  opacity: 0;
-}
-.stash-entry:hover .row-action,
-.stash-actions .row-action:focus-visible {
-  opacity: 1;
 }
 
 /* The form that adds to the list, at the top of the list it adds to. */

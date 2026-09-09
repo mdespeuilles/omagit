@@ -1119,6 +1119,44 @@ reassignable and `docs/KEYMAP.md` is still about the GPUI build; a dialog on
 screen answering three keys of its own is not what that file is for, and is
 recorded here instead.
 
+### 2.38 Three things the fixture found on screen in five minutes
+
+All three were invisible to both suites, and all three are the same shape: a
+rule that is right about one element and wrong about the row or the bar it sits
+in. §2.31 said a probe page in a real engine is the technique for this class;
+this is the second time it has paid, and the measurements below come from one.
+
+**Invisible actions were still taking their width.** A row's actions are drawn
+at zero opacity until it is pointed at — but a transparent flex child is a flex
+child, and three of them ("Résoudre…" plus two branch names) were holding a
+third of the file row. `src/merge.rs` drew as `sr… merge.rs` with four hundred
+pixels of nothing beside it, and the sidebar's branches truncated the same way.
+They now hang over the end of the row, absolutely positioned, painting the row's
+own background (`--row-bg`, set beside every other row state in the one block
+that owns them). The directory is capped at 40% of the row so that the *name* —
+the thing you are pointing at the row for — stays out from under them.
+
+**A 22-pixel status bar wrapped a sentence with no length limit.** `git`'s own
+words about a failed merge run to two hundred characters; the bar has a fixed
+height and no `overflow`, so the long ones wrapped inside it and every fixed
+part overlapped the next. The message is now the only thing that gives way, on
+one line, with the whole of it in the title — the rest of that bar is four words
+already as short as they go.
+
+Then the fix's own bug, caught by the same probe: matching the shrinkable
+message on `.link.danger` also matched *Abandonner*, which promptly shrank below
+its own text and printed over the next item. It is `.message` now, named for
+what it is rather than for the colour it happens to share.
+
+**Every error crossed to the window with its command in front of it.**
+`Display` on a failed command reads `git merge feature/x failed: CONFLICT …` —
+right for the journal and the log, where *which* command failed is the question,
+and wrong in a status bar, where the echo repeats what the reader just pressed
+and pushes the only new information off the end. `GitError::reason()` existed
+since §2.35 and was being used in exactly one place, the clone dialog. It is now
+what `say()` does, so it holds for every command; the exact line is still in the
+journal, marked, before it runs.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -1328,6 +1366,16 @@ a tab; that collapse is not built. What *was* a bug — the header's controls
 drawn on top of the file path — is fixed: the path could not shrink and had no
 clip, so its text spilled over them. It now keeps a floor and the stats clip
 first (`tests/working_copy.rs`).
+
+A sixteenth, from M8, and it is M9's: **the only way to add a repository is the
+platform's folder picker.** M3 also took a folder dropped into the window; the
+port to Tauri did not carry that over, and there is nowhere to type or paste a
+path either. It is not a small gap in practice — the fixture script first built
+its repository under `$TMPDIR`, which on macOS is a `/var/folders/…` path the
+Finder's open panel hides, so the fixture was unreachable from the one button
+that adds one. The fixture moved to `~`; the app still has one door. Drag and
+drop belongs with M9's keyboard work, where a command palette gives paths a
+second way in.
 
 A fifteenth, from M8: **`docs/KEYMAP.md` describes a build that no longer
 exists.** It says the bindings live in `crates/omagit-app/src/actions.rs`, which

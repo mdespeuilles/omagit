@@ -111,7 +111,7 @@ function origin(row: StashRow): string {
           </span>
         </button>
 
-        <span class="stash-actions">
+        <span class="row-actions">
           <button
             class="row-action"
             :disabled="busy"

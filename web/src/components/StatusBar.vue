@@ -57,11 +57,20 @@ import {
 
     <span v-if="app.busy" class="busy mono">{{ app.busy }}…</span>
 
-    <button v-if="app.notes" class="link ok" :title="app.notes" @click="dismissNotes()">
-      {{ app.notes.split("\n")[0] }} ✓
+    <!-- Both carry a sentence of `git`'s, which has no length limit: the text
+         is what shrinks, on one line, with the whole of it in the title. A bar
+         22 pixels tall that wrapped one of these overlapped everything else in
+         it. -->
+    <button v-if="app.notes" class="link ok message" :title="app.notes" @click="dismissNotes()">
+      <span class="said">{{ app.notes.split("\n")[0] }} ✓</span>
     </button>
-    <button v-if="app.writeError" class="link danger" @click="dismissWriteError()">
-      {{ app.writeError }} ✗
+    <button
+      v-if="app.writeError"
+      class="link danger message"
+      :title="app.writeError"
+      @click="dismissWriteError()"
+    >
+      <span class="said">{{ app.writeError }} ✗</span>
     </button>
 
     <button class="link" @click="toggleJournal()">Journal</button>

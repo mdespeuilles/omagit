@@ -175,48 +175,51 @@ function name(path: string): string {
           <span class="name">{{ name(item.path) }}</span>
         </span>
 
-        <!-- Only on the row being pointed at: a destructive target on every
-             row is one under every stray click. A conflicted row offers the two
-             sides instead of a discard: `git checkout -- <path>` refuses an
-             unmerged path anyway, so the button would have been one that always
-             fails. -->
-        <template v-if="item.conflict">
-          <!-- The two sides settle the whole file in one click; the dialog is
-               for a file whose conflicts do not all want the same answer. -->
+        <!-- Over the end of the row rather than beside it: invisible at rest,
+             but a flex child takes its width all the same, and three of them
+             were squeezing the path the row is about. A conflicted row offers
+             the two sides instead of a discard — `git checkout -- <path>`
+             refuses an unmerged path, so that button would have been one that
+             always fails. -->
+        <span class="row-actions">
+          <template v-if="item.conflict">
+            <!-- The two sides settle the whole file in one click; the dialog is
+                 for a file whose conflicts do not all want the same answer. -->
+            <button
+              class="row-action"
+              :disabled="!!app.busy"
+              title="Résoudre conflit par conflit"
+              @click.stop="openConflict(item.path)"
+            >
+              Résoudre…
+            </button>
+            <button
+              class="row-action"
+              :disabled="!!app.busy"
+              :title="explain('ours')"
+              @click.stop="resolveConflict(item, 'ours')"
+            >
+              {{ label("ours") }}
+            </button>
+            <button
+              class="row-action"
+              :disabled="!!app.busy"
+              :title="explain('theirs')"
+              @click.stop="resolveConflict(item, 'theirs')"
+            >
+              {{ label("theirs") }}
+            </button>
+          </template>
           <button
-            class="row-action"
-            :disabled="!!app.busy"
-            title="Résoudre conflit par conflit"
-            @click.stop="openConflict(item.path)"
+            v-else
+            class="row-action danger"
+            :disabled="!!app.busy || item.unstaged === null"
+            title="Rejeter les modifications non indexées"
+            @click.stop="discardFile(item)"
           >
-            Résoudre…
+            Rejeter
           </button>
-          <button
-            class="row-action"
-            :disabled="!!app.busy"
-            :title="explain('ours')"
-            @click.stop="resolveConflict(item, 'ours')"
-          >
-            {{ label("ours") }}
-          </button>
-          <button
-            class="row-action"
-            :disabled="!!app.busy"
-            :title="explain('theirs')"
-            @click.stop="resolveConflict(item, 'theirs')"
-          >
-            {{ label("theirs") }}
-          </button>
-        </template>
-        <button
-          v-else
-          class="row-action danger"
-          :disabled="!!app.busy || item.unstaged === null"
-          title="Rejeter les modifications non indexées"
-          @click.stop="discardFile(item)"
-        >
-          Rejeter
-        </button>
+        </span>
       </div>
     </VirtualList>
 

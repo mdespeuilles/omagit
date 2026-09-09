@@ -21,7 +21,29 @@ use crate::state::AppState;
 /// and SPEC §3 rule 3 wants that sentence to be Git's own words.
 type Answer<T> = Result<T, String>;
 
-fn say(error: impl std::fmt::Display) -> String {
+/// Git's words, without the command that produced them.
+///
+/// `Display` on a failed command reads "git merge feature/x failed: CONFLICT
+/// (content): Merge conflict in src/merge.rs" — the command first, the reason
+/// last. That order is right in the journal and in the log, where *which*
+/// command failed is the question. It is wrong everywhere the message is shown
+/// to somebody who just pressed the button: the echo repeats what they did and
+/// pushes the only new information off the end of the line. Found the first
+/// time in the clone dialog (§2.35) and fixed there alone; the status bar
+/// showed the same failure the same way, so the rule moves here, where every
+/// error crosses.
+///
+/// The exact line is not lost: the journal records it, marked, before it runs.
+fn say(error: omagit_git::GitError) -> String {
+    error.reason()
+}
+
+/// A hash the front end sent that is not one.
+///
+/// Its own helper because it is not a `GitError` at all: nothing ran, and what
+/// failed is the argument. Kept as its own sentence rather than dressed up as a
+/// Git failure.
+fn unreadable(error: impl std::fmt::Display) -> String {
     error.to_string()
 }
 
@@ -257,7 +279,7 @@ pub fn commit_detail(
 ) -> Answer<dto::CommitDetail> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
     let cancel = state.cancel();
-    let id = id.parse().map_err(say)?;
+    let id = id.parse().map_err(unreadable)?;
     let commit = omagit_git::history::commit(&open.repo, id).map_err(say)?;
     // Against the first parent, which is what `Diff::commit` does and what
     // `git show` shows. A merge's other parents are M6's A ↔ B comparison.
@@ -275,7 +297,7 @@ pub fn commit_file_diff(
     file: String,
 ) -> Answer<Option<dto::Diff>> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
-    let id = id.parse().map_err(say)?;
+    let id = id.parse().map_err(unreadable)?;
     let diff = omagit_git::Diff::commit(&open.repo, id, DiffOptions::default(), &state.cancel())
         .map_err(say)?;
     let wanted = RepoPath::from_bytes(file.into_bytes());
@@ -300,7 +322,10 @@ pub fn compare(
     to: String,
 ) -> Answer<dto::Comparison> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
-    let (from, to) = (from.parse().map_err(say)?, to.parse().map_err(say)?);
+    let (from, to) = (
+        from.parse().map_err(unreadable)?,
+        to.parse().map_err(unreadable)?,
+    );
     let diff = omagit_git::Diff::between(
         &open.repo,
         Some(from),
@@ -327,7 +352,10 @@ pub fn compare_file_diff(
     file: String,
 ) -> Answer<Option<dto::Diff>> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
-    let (from, to) = (from.parse().map_err(say)?, to.parse().map_err(say)?);
+    let (from, to) = (
+        from.parse().map_err(unreadable)?,
+        to.parse().map_err(unreadable)?,
+    );
     let diff = omagit_git::Diff::between(
         &open.repo,
         Some(from),
@@ -560,7 +588,7 @@ pub fn stash_files(
     id: String,
 ) -> Answer<Vec<dto::FileRow>> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
-    let id = id.parse().map_err(say)?;
+    let id = id.parse().map_err(unreadable)?;
     let diff = omagit_git::stash::diff(&open.repo, id, DiffOptions::default(), &state.cancel())
         .map_err(say)?;
     Ok(diff.files.iter().map(dto::file_row).collect())
@@ -575,7 +603,7 @@ pub fn stash_file_diff(
     file: String,
 ) -> Answer<Option<dto::Diff>> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
-    let id = id.parse().map_err(say)?;
+    let id = id.parse().map_err(unreadable)?;
     let diff = omagit_git::stash::diff(&open.repo, id, DiffOptions::default(), &state.cancel())
         .map_err(say)?;
     let wanted = RepoPath::from_bytes(file.into_bytes());
@@ -616,7 +644,7 @@ pub fn stash_restore(
 ) -> Answer<String> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
     let git = state.git().map_err(say)?.clone();
-    let id = id.parse().map_err(say)?;
+    let id = id.parse().map_err(unreadable)?;
 
     let _serialised = open.write_lock.lock();
     let entry = omagit_git::stash::find(&open.repo, id).map_err(say)?;
@@ -638,7 +666,7 @@ pub fn stash_restore(
 pub fn stash_drop(state: State<'_, AppState>, path: String, id: String) -> Answer<String> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
     let git = state.git().map_err(say)?.clone();
-    let id = id.parse().map_err(say)?;
+    let id = id.parse().map_err(unreadable)?;
 
     let _serialised = open.write_lock.lock();
     let entry = omagit_git::stash::find(&open.repo, id).map_err(say)?;
