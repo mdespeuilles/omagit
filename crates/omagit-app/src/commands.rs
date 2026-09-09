@@ -13,6 +13,7 @@ use omagit_git::{RepoPath, Summary};
 use tauri::State;
 
 use crate::dto;
+use crate::edits::{self, Target};
 use crate::state::AppState;
 
 /// Errors cross as their message. A `GitError` carries a boxed source chain
@@ -150,4 +151,135 @@ pub fn log(level: String, message: String) {
         "warn" => tracing::warn!(target: "omagit::web", "{message}"),
         _ => tracing::info!(target: "omagit::web", "{message}"),
     }
+}
+
+// ── Writing ─────────────────────────────────────────────────────────────────
+//
+// Every one of these takes the repository's write lock for its duration, which
+// is what SPEC §10 asks for: two writing Git commands must never run at once on
+// one repository. The lock lives on the open handle, so the serialisation is a
+// property of where it sits rather than a rule anyone has to remember.
+
+/// Move part of a file into the index, or out of it.
+#[tauri::command(async)]
+pub fn stage(
+    state: State<'_, AppState>,
+    path: String,
+    file: String,
+    target: Target,
+    unstage: bool,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+
+    let _serialised = open.write_lock.lock();
+    edits::stage(&git, &open.repo, &wanted, &target, unstage, &state.cancel()).map_err(say)
+}
+
+/// Move every change into the index, or take every change back out.
+///
+/// One Git command rather than one per row: a loop in the front end would spawn
+/// a process per file and write a journal line per file for what was asked as a
+/// single thing.
+#[tauri::command(async)]
+pub fn stage_all(state: State<'_, AppState>, path: String, unstage: bool) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    if unstage {
+        omagit_git::ops::unstage_all(&git, &open.repo, &state.cancel())
+    } else {
+        omagit_git::ops::stage_all(&git, &open.repo, &state.cancel())
+    }
+    .map_err(say)
+}
+
+/// Undo part of a file in the working tree.
+///
+/// Destructive: what it removes was never committed and is not in the reflog.
+/// The confirmation SPEC §3 rule 7 requires is the front end's — by the time a
+/// command is invoked, the asking is over.
+#[tauri::command(async)]
+pub fn discard(
+    state: State<'_, AppState>,
+    path: String,
+    file: String,
+    target: Target,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let wanted = RepoPath::from_bytes(file.into_bytes());
+
+    let _serialised = open.write_lock.lock();
+    edits::discard(&git, &open.repo, &wanted, &target, &state.cancel()).map_err(say)
+}
+
+/// Who `git` would record as the author, or nothing when it has none.
+///
+/// Asked before a message is written rather than after: `git commit` with no
+/// identity fails with a wall of text about `git config --global`, and an app
+/// that lets someone write a message and then shows them that has wasted their
+/// work (SPEC §11).
+#[tauri::command(async)]
+pub fn committer(state: State<'_, AppState>, path: String) -> Answer<Option<String>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let who =
+        omagit_git::ops::committer_identity(&git, &open.repo, &state.cancel()).map_err(say)?;
+    Ok(who.map(|who| format!("{} <{}>", who.name, who.email)))
+}
+
+/// The repository's `commit.template`, if it configures one.
+#[tauri::command(async)]
+pub fn commit_template(state: State<'_, AppState>, path: String) -> Answer<Option<String>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    omagit_git::ops::template(&git, &open.repo, &state.cancel()).map_err(say)
+}
+
+/// Make the commit.
+#[tauri::command(async)]
+pub fn commit(
+    state: State<'_, AppState>,
+    path: String,
+    message: String,
+    amend: bool,
+    sign_off: bool,
+    no_verify: bool,
+) -> Answer<dto::Made> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let options = omagit_git::ops::CommitOptions {
+        amend,
+        sign_off,
+        no_verify,
+    };
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::commit(&git, &open.repo, &message, &options, &state.cancel())
+        .map(|made| dto::Made {
+            id: made.id.into(),
+            notes: made.notes,
+        })
+        .map_err(say)
+}
+
+/// The message of the commit `HEAD` points at.
+///
+/// What an amend starts from. Without it the box would open empty and the
+/// commit being replaced would lose its message to a slip of a checkbox —
+/// which is precisely the kind of loss SPEC §3 rule 7 is about.
+#[tauri::command(async)]
+pub fn head_message(state: State<'_, AppState>, path: String) -> Answer<Option<String>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let Some(id) = open.repo.head().map_err(say)?.commit().copied() else {
+        return Ok(None);
+    };
+    let commit = omagit_git::history::commit(&open.repo, id).map_err(say)?;
+    Ok(Some(match commit.body.as_str() {
+        "" => commit.summary,
+        body => format!("{}\n\n{}", commit.summary, body),
+    }))
 }

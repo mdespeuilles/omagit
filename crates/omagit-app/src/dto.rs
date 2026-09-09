@@ -270,6 +270,16 @@ pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
     }
 }
 
+/// A commit that was just made.
+#[derive(Debug, serde::Serialize)]
+pub struct Made {
+    pub id: Oid,
+    /// Whatever `git` said on the way — a `pre-commit` hook's output, the
+    /// summary line. Shown rather than swallowed: a hook that rewrote a file
+    /// says so here and nowhere else.
+    pub notes: String,
+}
+
 /// One row of the repository list.
 #[derive(Debug, serde::Serialize)]
 pub struct LibraryRow {

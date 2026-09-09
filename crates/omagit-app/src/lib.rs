@@ -8,11 +8,11 @@
 
 pub mod commands;
 pub mod dto;
+pub mod edits;
 pub mod logging;
 pub mod platform;
 pub mod state;
 pub mod time;
-pub mod writes;
 
 use state::AppState;
 
@@ -44,6 +44,13 @@ pub fn run() {
             commands::summary,
             commands::status,
             commands::file_diff,
+            commands::stage,
+            commands::stage_all,
+            commands::discard,
+            commands::committer,
+            commands::commit_template,
+            commands::commit,
+            commands::head_message,
             commands::journal,
             commands::log,
         ])

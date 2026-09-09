@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "check": "vue-tsc --noEmit"
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "check": "prettier --check . && vue-tsc --noEmit && vitest run"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
@@ -16,8 +18,12 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/test-utils": "^2.5.0",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.9.6",
     "typescript": "^5.9.0",
     "vite": "^8.2.2",
+    "vitest": "^3.2.7",
     "vue-tsc": "^3.3.11"
   }
 }

@@ -427,6 +427,68 @@ M0. A core that had known about the UI would have made this change impossible to
 consider, which is the argument for those rules stated as a cost avoided rather
 than as a principle.
 
+### 2.21 The interaction harness the port lost is Vitest, and it is three suites
+
+§2.20 listed the loss of GPUI's `TestAppContext` as the real cost of the move,
+and SPEC §13's amendment says to replace it early, "parce que c'est par ce trou
+que sont passés tous les bugs d'interface de ce projet". The replacement is
+three suites, and the split is deliberate, because one of them cannot catch what
+another can:
+
+* **`web/src/**/*.test.ts` (Vitest + jsdom).** Drives `state.ts` and the
+  components against `backend.fake.ts` — a repository that *changes*: staging a
+  hunk leaves the file on both sides of the index, staging the whole file moves
+  it to one side, discarding an untracked file removes it. A fake whose answers
+  never moved would agree with any bug at all. This is what covers the state
+  machine, which is where every interface bug in this project has actually been.
+* **`crates/omagit-app/tests/edits.rs`.** The write logic against real
+  repositories built by the real `git`. This is why `edits.rs` exists as a
+  module at all: the part worth testing was inside a `#[tauri::command]`, where
+  reaching it meant building an application. What it pins is which side of the
+  index a patch is built from — inverted, that produces a patch `git apply`
+  rejects, or one it accepts against text that happens to match.
+* **`edits::tests`.** The wire shapes, parsed from the literal JSON `ipc.ts`
+  sends. Neither of the other two covers it: the front end's fake never
+  serialises, and the integration tests build a `Target` in Rust.
+
+**Every one of them was checked by putting the bug back.** Six in the front end
+(byte offsets read as UTF-16, a two-state checkbox, `direction: rtl` reversing
+the two halves of a path, the pane jumping to the staged tab after one hunk,
+picked lines surviving a write, the confirmation running before it is answered)
+and two in the write logic (the side inversion, and assuming nothing is
+untracked). A test that passes with its bug reintroduced was already shipped
+once in this project — for the diff header overlap in M5, where `debug_bounds`
+reported layout and the bug was in paint.
+
+**What none of them covers** is the browser: layout, overflow, whether a control
+is reachable. jsdom has no layout engine, so `.file-path` rendering its two
+halves in the wrong order is caught by DOM order here and would not be caught by
+a screenshot test that does not exist. Three of the bugs above were found by
+looking at the window, and that step has no substitute yet.
+
+### 2.22 Prettier gates the front end, at the width rustfmt uses
+
+The Rust half has had `cargo fmt --check` as the gate's first step since M0; the
+web half had nothing, and the style drifted between files written on different
+days. `prettier --check .` now runs in `npm run check`, which is what
+`scripts/check.sh` calls — the same rule, applied to the other language.
+
+`printWidth: 100` rather than Prettier's default 80, because that is rustfmt's
+`max_width` and because the front end was already written at it. Adopting the
+default would have reflowed every file in `web/` for no reason anyone could name
+afterwards, which is the kind of diff that hides a real change inside it.
+
+### 2.23 The write queue is gone; the lock and `busy` replaced it
+
+`omagit-app/src/writes.rs` held a per-repository queue with a failure banner,
+written for GPUI. Nothing referenced it after the port. The rule it enforced —
+SPEC §10's "two writing commands never run at once on one repository" — is now
+held in two places that are each closer to what they guard: a `Mutex` on the
+open repository handle, taken for the duration of every write command, and
+`state.busy` in the front end, which is also what disables the controls. Keeping
+a third implementation of one rule, wired to nothing, is the debt §2.4 refuses
+elsewhere.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -558,6 +620,39 @@ Also deliberately not built: the `GitBackend` trait, which has no second
 implementation until M5 (§2.6); the commit-graph lanes, which are M6's and need
 the walk that now exists; the filesystem watcher, which has nothing to
 invalidate until a screen reads a repository (M4); and the preferences UI (M9).
+
+**M5 and M6 were built on GPUI and are not on screen.** Staging by file, hunk
+and line, the commit box, discard, the operations journal, the history walk with
+its lanes — all of it is in `omagit-git`, tested there, and untouched by §2.20's
+change. What the port threw away is the 10,000 lines of interface that reached
+it. The list below is therefore about the *front end*, not about the features.
+
+**The Tauri front end, so far.** `omagit-app` is the backend and `web/` is the
+window:
+
+- The shell — topbar with the platform's edge reserves, sidebar, status bar —
+  belongs to `App.vue` rather than to a screen. That is the fix for the GPUI
+  bug where opening History left a window with no way out of it.
+- `VirtualList.vue`: rows positioned by `transform` inside a spacer, `v-for`
+  over slot *positions* keyed on the slot, a `ResizeObserver` for the viewport.
+  Keying on the index instead changed every key on every scroll, which is the
+  opposite of recycling; a pane laid out after mount measured zero.
+- The diff, virtualised, with the hunk tint, the word-level refinement of
+  DESIGN-TOKENS §5, folded context and the two sides of the index as tabs.
+- **The Working Copy in write.** The tri-state checkbox (a file can be wholly
+  in the index, wholly out, or half in — drawing the third as the second made
+  partial staging look as though it had done nothing), per-hunk and per-line
+  staging, discard behind the confirmation of SPEC §3 rule 7, and the commit box
+  with `commit.template`, the 50/72 subject rule, amend / sign-off / no-verify,
+  and the identity warning raised while the box is still empty.
+- The operations journal panel: the exact command, marked destructive before it
+  runs.
+- The tests of §2.21.
+
+Not yet ported: the Repositories screen (the sidebar lists what the library
+holds, but nothing adds to it from the window), History and its graph, and M6's
+filters and A ↔ B comparison. The Linux measurement §2.20 calls unknown is still
+unknown — it needs one run of `scripts/dev.sh` there.
 
 ## 5. Risks
 

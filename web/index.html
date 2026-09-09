@@ -12,13 +12,20 @@
       // Registered before the module loads, so a failure to load *it* is
       // caught too — the case a handler inside the module cannot see.
       window.__omagitBoot = [];
-      addEventListener("error", (e) => {
-        const what = e.error ? (e.error.stack ?? String(e.error)) : `${e.message} @ ${e.filename}:${e.lineno}`;
-        window.__omagitBoot.push(what);
-        document.body.innerHTML =
-          '<pre style="padding:16px;white-space:pre-wrap;font:12px ui-monospace">' +
-          String(what).replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;")) + "</pre>";
-      }, true);
+      addEventListener(
+        "error",
+        (e) => {
+          const what = e.error
+            ? (e.error.stack ?? String(e.error))
+            : `${e.message} @ ${e.filename}:${e.lineno}`;
+          window.__omagitBoot.push(what);
+          document.body.innerHTML =
+            '<pre style="padding:16px;white-space:pre-wrap;font:12px ui-monospace">' +
+            String(what).replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;")) +
+            "</pre>";
+        },
+        true,
+      );
       addEventListener("unhandledrejection", (e) => {
         window.__omagitBoot.push(String(e.reason?.stack ?? e.reason));
       });

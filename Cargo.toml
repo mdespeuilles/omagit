@@ -43,6 +43,8 @@ gix = { version = "=0.87.1", default-features = false, features = [
 anyhow = "1"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
+# Only the tests parse JSON: the wire is Tauri's job everywhere else.
+serde_json = "1"
 toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

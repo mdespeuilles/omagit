@@ -36,13 +36,22 @@ body {
 /* Square everything (DESIGN §1): no radii anywhere, borders 1px, one shadow in
    the whole app and only under a modal overlay. */
 button,
-input,
+input[type="text"],
+input[type="search"],
 textarea {
   border-radius: 0;
   font: inherit;
   color: inherit;
   background: transparent;
   border: 1px solid var(--border);
+}
+
+/* Left native, deliberately: styling a checkbox means reimplementing its
+   states, and the one restyled here came out round. `accent-color` is the
+   whole of what a token has to say about it. */
+input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 button {
@@ -128,10 +137,26 @@ button:disabled {
   border-left: 2px solid var(--danger);
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
 .shell {
   display: flex;
-  height: calc(100% - 40px);
+  flex: 1;
   min-height: 0;
+}
+
+/* The middle column: the commit box above the file list, as Board 03 has it.
+   The box is sized by its content, the list takes what is left. */
+.middle {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  flex: none;
+  min-height: 0;
+  border-right: 1px solid var(--border);
 }
 
 .sidebar {
@@ -155,10 +180,8 @@ button:disabled {
 .files {
   display: flex;
   flex-direction: column;
-  width: 320px;
-  flex: none;
+  flex: 1;
   min-height: 0;
-  border-right: 1px solid var(--border);
 }
 
 .diff {
@@ -172,6 +195,7 @@ button:disabled {
 .pane-head {
   display: flex;
   align-items: center;
+  gap: var(--gap);
   height: var(--header-height);
   flex: none;
   padding: 0 var(--pad);
@@ -199,13 +223,24 @@ button:disabled {
   flex: none;
   color: var(--text-muted);
 }
+/* The filename is what is read; the directory is what gives way. Laid out as
+   a flex row rather than one ellipsised string, because `direction: rtl` — the
+   usual trick for eliding the front of a path — reorders the two. */
 .file-path {
+  display: flex;
   flex: 1;
+  min-width: 0;
+}
+.file-path .dir {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  direction: rtl;
-  text-align: left;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+.file-path .name {
+  flex: none;
 }
 
 /* The diff. Backgrounds at the tint scale of DESIGN-TOKENS §5, never an
@@ -290,4 +325,450 @@ button:disabled {
 
 .file-row {
   height: 100%;
+}
+
+/* ── The commit box ──────────────────────────────────────────────────────── */
+
+.commit {
+  flex: none;
+  padding: var(--pad);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.commit-field {
+  position: relative;
+}
+
+/* Sized on 72 monospace columns and wrapping at its own edge: the rule is the
+   right edge of the field, never a line floating inside the text. */
+.commit-message {
+  display: block;
+  width: 100%;
+  max-width: 72ch;
+  min-height: calc(var(--row-height) * 3);
+  padding: 6px 8px;
+  resize: vertical;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.5;
+  user-select: text;
+  cursor: text;
+}
+
+.commit-message::placeholder {
+  color: var(--text-dim);
+}
+
+.commit-rule,
+.commit-count {
+  position: absolute;
+  top: -1px;
+  font-size: 10px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.commit-rule {
+  right: 4px;
+}
+.commit-count {
+  right: 28px;
+}
+.commit-count.over {
+  color: var(--warning);
+}
+
+.commit-flags {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin-top: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.toggle input {
+  margin: 0;
+}
+
+.commit-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  margin: 6px 0 0;
+  font-size: 10.5px;
+}
+
+.commit-who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+.commit-who.missing {
+  color: var(--warning);
+}
+
+.commit-hint {
+  margin-left: auto;
+  flex: none;
+  color: var(--text-dim);
+}
+
+.commit-actions {
+  display: flex;
+  gap: var(--gap);
+  margin-top: 8px;
+}
+.commit-actions button {
+  flex: 1;
+  font-size: 11.5px;
+}
+
+button.primary:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button.primary:not(:disabled):hover {
+  background: var(--surface-hover);
+}
+
+.commit-blocked {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+/* ── The file list ───────────────────────────────────────────────────────── */
+
+.pane-head-spacer {
+  flex: 1;
+}
+.pane-head-count {
+  color: var(--text-dim);
+}
+.pane-head-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.link {
+  height: auto;
+  padding: 0;
+  border: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+button.link:hover:not(:disabled) {
+  background: transparent;
+  color: var(--text);
+}
+button.link.danger {
+  color: var(--danger);
+}
+button.link.ok {
+  color: var(--success);
+}
+
+/* Three states, because the index has three. The half-staged one is the whole
+   reason this is not an <input type=checkbox>. */
+.stage-box {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+.stage-box.all {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.stage-box.partial {
+  border-color: var(--accent);
+  color: var(--text-muted);
+}
+
+.file-row.conflict .file-code {
+  color: var(--danger);
+}
+.file-code.untracked {
+  color: var(--text-dim);
+}
+.file-code.added {
+  color: var(--success);
+}
+.file-code.deleted {
+  color: var(--danger);
+}
+.file-code.modified {
+  color: var(--warning);
+}
+
+/* Revealed by pointing at the row or reaching it with the keyboard, never by
+   pointing alone: a target that only exists under the mouse is unreachable. */
+.row-action {
+  flex: none;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  opacity: 0;
+}
+.file-row:hover .row-action,
+.row-action:focus-visible {
+  opacity: 1;
+}
+.row-action.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.files-foot {
+  flex: none;
+  padding: 0 var(--pad);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+
+/* ── The diff ────────────────────────────────────────────────────────────── */
+
+.tab {
+  height: 18px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  border-color: transparent;
+}
+.tab.on {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+
+.diff-header {
+  justify-content: space-between;
+  gap: var(--gap);
+}
+.diff-header-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* At rest rather than absent (DESIGN §3): the target stays hittable and
+   focusable, it simply stops competing with the code. */
+.hunk-actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  opacity: 0.35;
+}
+.diff-header:hover .hunk-actions,
+.hunk-actions:focus-within {
+  opacity: 1;
+}
+.hunk-actions button {
+  height: 14px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 1;
+  background: var(--bg);
+}
+.hunk-actions button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.diff-line {
+  cursor: default;
+}
+.diff-line.added,
+.diff-line.removed {
+  cursor: pointer;
+}
+
+/* The word-level highlight of DESIGN-TOKENS §5, over the hunk tint rather than
+   instead of it. */
+.diff-line .word {
+  background: var(--diff-added-word);
+}
+.diff-line.removed .word {
+  background: var(--diff-deleted-word);
+}
+
+/* Picked lines read as selected, the same surface change the lists use — never
+   a second accent colour invented for this pane. */
+.diff-line.picked {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.diff-line.picked .gutter {
+  color: var(--accent);
+}
+
+.no-newline {
+  margin-left: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.picked-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  flex: none;
+  height: var(--control-height);
+  padding: 0 var(--pad);
+  font-size: 11px;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+}
+.picked-bar button {
+  height: 18px;
+  padding: 0 8px;
+  font-size: 10.5px;
+}
+.picked-bar button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ── The status bar ──────────────────────────────────────────────────────── */
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  flex: none;
+  height: 22px;
+  padding: 0 var(--pad);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.statusbar .sep {
+  color: var(--text-dim);
+}
+.statusbar .conflict {
+  color: var(--danger);
+}
+.statusbar .busy {
+  color: var(--accent);
+}
+
+/* ── The journal ─────────────────────────────────────────────────────────── */
+
+.journal {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  flex: none;
+  min-height: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+
+.journal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.journal-row {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 4px;
+  padding: 4px var(--pad);
+  font-size: 10.5px;
+  border-bottom: 1px solid var(--border);
+}
+.journal-mark {
+  color: var(--text-dim);
+}
+.journal-row.ok .journal-mark {
+  color: var(--success);
+}
+.journal-row.failed .journal-mark {
+  color: var(--danger);
+}
+.journal-command {
+  word-break: break-all;
+  user-select: text;
+}
+/* Marked before the command runs, which is what SPEC §15 risk 5 asks for. */
+.journal-command.destructive {
+  color: var(--danger);
+}
+.journal-stderr {
+  grid-column: 2;
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  color: var(--text-dim);
+  user-select: text;
+}
+
+/* ── The dialog ──────────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--bg) 70%, transparent);
+}
+
+/* The one shadow in the app, and only under a modal (DESIGN §1). */
+.dialog {
+  width: 420px;
+  max-width: calc(100vw - 64px);
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px color-mix(in oklab, var(--bg) 60%, transparent);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dialog-detail {
+  margin: 8px 0 16px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap);
+}
+button.danger.solid {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+button.danger.solid:hover {
+  background: color-mix(in oklab, var(--danger) 15%, transparent);
 }

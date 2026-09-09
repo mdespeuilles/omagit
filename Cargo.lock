@@ -3405,6 +3405,7 @@ dependencies = [
  "omagit-settings",
  "omagit-theme",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

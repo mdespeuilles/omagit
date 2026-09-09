@@ -39,6 +39,35 @@ pub fn stage_file(git: &Git, repo: &Repository, path: &RepoPath, cancel: &Cancel
         .map(drop)
 }
 
+/// Add everything to the index: modifications, deletions and untracked files.
+///
+/// One `git add -A` rather than one `git add` per row. The loop was the obvious
+/// front-end shape and it is wrong twice: it spawns a process per file, and it
+/// fills the journal with N entries for what the user asked as one thing.
+///
+/// No pathspec, because [`super::at`] runs in the work tree's root and `git add
+/// -A` with no pathspec is the whole tree. Ignored files stay ignored.
+pub fn stage_all(git: &Git, repo: &Repository, cancel: &Cancel) -> Result<()> {
+    super::at(git, repo)?
+        .args(["add", "--all"])
+        .run(cancel)
+        .map(drop)
+}
+
+/// Empty the index back to `HEAD`, leaving the working tree alone.
+///
+/// `git reset` rather than `git restore --staged -- :/`, which is the modern
+/// spelling and fails on a repository with no commits: it resolves `HEAD` and
+/// there is none. `git reset` empties the index instead, which is what
+/// "unstage everything" means there — checked against the real `git`, not
+/// assumed.
+pub fn unstage_all(git: &Git, repo: &Repository, cancel: &Cancel) -> Result<()> {
+    super::at(git, repo)?
+        .args(["reset", "--quiet"])
+        .run(cancel)
+        .map(drop)
+}
+
 /// Add part of a file to the index, through a patch.
 pub fn stage(
     git: &Git,

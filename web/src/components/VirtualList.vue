@@ -104,7 +104,10 @@ defineExpose({
         v-for="entry in window_"
         :key="entry.slot"
         class="vlist-row"
-        :style="{ height: `${rowHeight}px`, transform: `translateY(${entry.index * rowHeight}px)` }"
+        :style="{
+          height: `${rowHeight}px`,
+          transform: `translateY(${entry.index * rowHeight}px)`,
+        }"
       >
         <slot :item="entry.item" :index="entry.index" />
       </div>

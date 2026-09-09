@@ -12,7 +12,8 @@ use omagit_git::cli::Git;
 use omagit_git::diff::{DiffOptions, staged_file, unstaged_file};
 use omagit_git::journal::Outcome;
 use omagit_git::ops::{
-    CommitOptions, commit, committer_identity, discard, stage, template, unstage,
+    CommitOptions, commit, committer_identity, discard, stage, stage_all, template, unstage,
+    unstage_all,
 };
 use omagit_git::patch::Selection;
 use omagit_git::status::{Status, StatusOptions};
@@ -443,4 +444,73 @@ fn part_of_a_new_file_can_be_staged_once_git_knows_its_name() {
         "one\ntwo\nthree\n",
         "and the working tree keeps the whole file"
     );
+}
+
+#[test]
+fn staging_everything_is_one_command_over_every_kind_of_change() {
+    // The three shapes a per-file loop gets wrong or slow: a modification, a
+    // deletion, and a file `git add <path>` would need to be told about.
+    let repo = TestRepo::new();
+    repo.commit_file("kept.txt", "one\n", "seed");
+    repo.commit_file("gone.txt", "two\n", "seed the deletion");
+    repo.write("kept.txt", "one changed\n");
+    repo.remove("gone.txt");
+    repo.write("new.txt", "three\n");
+    repo.write(".gitignore", "ignored.txt\n");
+    repo.write("ignored.txt", "not this one\n");
+
+    stage_all(&git(), &repo.open(), &never()).expect("everything stages");
+
+    let staged: BTreeSet<String> = repo
+        .git(&["diff", "--cached", "--name-only"])
+        .lines()
+        .map(ToOwned::to_owned)
+        .collect();
+    assert!(staged.contains("kept.txt"), "a modification stages");
+    assert!(staged.contains("gone.txt"), "a deletion stages");
+    assert!(staged.contains("new.txt"), "an untracked file stages");
+    assert!(
+        !staged.contains("ignored.txt"),
+        "an ignored file stays ignored: --all is not --force"
+    );
+}
+
+#[test]
+fn unstaging_everything_leaves_the_working_tree_alone() {
+    let repo = TestRepo::new();
+    repo.commit_file("a.txt", "one\n", "seed");
+    repo.write("a.txt", "one changed\n");
+    repo.write("b.txt", "two\n");
+    repo.add_all();
+
+    unstage_all(&git(), &repo.open(), &never()).expect("everything unstages");
+
+    assert_eq!(
+        repo.git(&["diff", "--cached", "--name-only"]),
+        "",
+        "the index is back at HEAD"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&repo.read("a.txt")),
+        "one changed\n",
+        "the edit survives: unstaging is not discarding"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&repo.read("b.txt")),
+        "two\n",
+        "the new file survives too, as untracked"
+    );
+}
+
+#[test]
+fn unstaging_everything_works_before_the_first_commit() {
+    // The reason this is `git reset` and not `git restore --staged -- :/`:
+    // there is no HEAD to restore against, and `restore` fails outright.
+    let repo = TestRepo::new();
+    repo.write("a.txt", "one\n");
+    repo.add_all();
+
+    unstage_all(&git(), &repo.open(), &never()).expect("an unborn repository unstages");
+
+    assert_eq!(repo.git(&["status", "--short"]), "?? a.txt");
 }
