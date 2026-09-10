@@ -47,7 +47,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         </section>
 
         <section class="sheet-block">
-          <h3 class="settings-subtitle">Déplacement</h3>
+          <h3 class="settings-subtitle">{{ t("sheet.movement") }}</h3>
           <!-- Bare keys, so none of them fires while the caret is in a field —
                which is what makes a single letter safe as a binding at all. -->
           <dl class="sheet-list">
@@ -56,10 +56,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
               <dd class="sheet-label">{{ t(move.label) }}</dd>
             </template>
           </dl>
-          <p class="settings-note">
-            Aucune de ces touches ne se déclenche pendant que le curseur est dans un champ : c'est
-            ce qui rend une lettre seule utilisable comme raccourci.
-          </p>
+          <p class="settings-note">{{ t("sheet.bare") }}</p>
         </section>
       </div>
     </section>

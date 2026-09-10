@@ -60,7 +60,7 @@ export const strings = {
   "statusbar.abort": "Abort",
   "statusbar.conflicts.one": "{n} conflict",
   "statusbar.conflicts.other": "{n} conflicts",
-  "statusbar.journal": "Journal",
+  "statusbar.journal": "Commands",
 
   // ── The working copy ────────────────────────────────────────────────────
   "status.title": "Status",
@@ -119,7 +119,7 @@ export const strings = {
   "diff.clear": "Clear",
 
   // ── The journal and the bands ───────────────────────────────────────────
-  "journal.title": "Journal",
+  "journal.title": "Command log",
   "journal.close": "Close",
   "journal.empty":
     "No command yet — every Git write is recorded here with the exact line that ran.",
@@ -309,6 +309,8 @@ export const strings = {
   "palette.repositories": "Repositories",
   "palette.branches": "Branches",
   "palette.files": "Files",
+  "palette.results.one": "{n} result",
+  "palette.results.other": "{n} results",
   "palette.run": "run ⏎",
   "palette.open": "open ⏎",
   "palette.switch": "switch ⏎",
@@ -434,7 +436,7 @@ export const strings = {
   "action.palette.open": "Command palette",
   "action.help.shortcuts": "Keyboard shortcuts",
   "action.settings.open": "Settings",
-  "action.journal.toggle": "Operations journal",
+  "action.journal.toggle": "Command log",
 
   // ── Moving about ────────────────────────────────────────────────────────
   "move.zones": "The sidebar, the centre column, the detail panel",

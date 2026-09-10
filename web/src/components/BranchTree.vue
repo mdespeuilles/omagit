@@ -88,7 +88,7 @@ const leaf = (name: string): string => name.slice(name.indexOf("/") + 1);
 function divergence(row: BranchRow): string {
   const tracking = row.tracking;
   if (!tracking) return "";
-  if (tracking.gone) return "disparu";
+  if (tracking.gone) return t("card.gone");
   return [
     tracking.ahead > 0 ? `↑${tracking.ahead}` : "",
     tracking.behind > 0 ? `↓${tracking.behind}` : "",

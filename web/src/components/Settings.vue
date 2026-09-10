@@ -254,11 +254,7 @@ function on(source: string, name = ""): boolean {
 
       <section class="settings-block">
         <h2 class="settings-title">{{ t("settings.density") }}</h2>
-        <p class="settings-note">
-          Board 08 : la densité ne change ni la taille de police ni la graisse — elle change les
-          hauteurs de ligne, les marges et les écarts. Aucune cible cliquable ne descend sous 24×24
-          px, même en compact.
-        </p>
+        <p class="settings-note">{{ t("settings.densityNote") }}</p>
         <div class="settings-choice">
           <button
             class="row settings-row"
@@ -281,11 +277,7 @@ function on(source: string, name = ""): boolean {
 
       <section class="settings-block">
         <h2 class="settings-title">{{ t("settings.scale") }}</h2>
-        <p class="settings-note">
-          L'échelle de type est un contrat (DESIGN-TOKENS §8) : les proportions ne bougent pas, tout
-          grandit ensemble. Ce qui change est la taille absolue, qui est une propriété de l'écran et
-          non du dessin.
-        </p>
+        <p class="settings-note">{{ t("settings.scaleNote") }}</p>
         <div class="settings-scale">
           <button :disabled="percent <= 80" @click="scaleBy(-0.05)">−</button>
           <span class="settings-percent mono">{{ percent }} %</span>
@@ -363,7 +355,7 @@ function on(source: string, name = ""): boolean {
                 :title="t('settings.resetBinding')"
                 @click="reset(action.id)"
               >
-                Défaut
+                {{ t("settings.default") }}
               </button>
             </div>
             <p v-if="capturing === action.id && refused" class="keymap-refused">{{ refused }}</p>
@@ -376,10 +368,7 @@ function on(source: string, name = ""): boolean {
 
       <section class="settings-block">
         <h2 class="settings-title">{{ t("settings.git") }}</h2>
-        <p class="settings-note">
-          Ce que l'app lit de ta configuration, et ce qu'elle en fait. Rien ici ne s'écrit : `git
-          config` reste le seul endroit où ces choix se prennent.
-        </p>
+        <p class="settings-note">{{ t("settings.gitNote") }}</p>
         <dl class="settings-facts">
           <dt>{{ t("settings.binary") }}</dt>
           <dd class="mono">{{ prefs.git }}</dd>

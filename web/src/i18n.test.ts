@@ -5,6 +5,7 @@
 // than break. The rest is the arithmetic — plurals, placeholders — which is
 // where a hand-rolled i18n usually goes wrong.
 
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LANGUAGES, count, language, systemLanguage, t, useLanguage } from "./i18n";
 import { strings as english } from "./i18n/languages/en";
@@ -35,10 +36,10 @@ describe("the catalogues", () => {
       expect(untranslated.sort(), one.tag).toEqual(
         [
           // Git's own vocabulary, which a French terminal uses untranslated,
-          // the words that are the same in both languages, and the placeholders
-          // that are only a placeholder. Listed rather than allowed by a rule,
-          // so the set cannot grow by accident: an untranslated string is
-          // otherwise indistinguishable from one that was never translated.
+          // the words that are the same in both languages, and the two that are
+          // only a placeholder. Listed rather than allowed by a rule, so the set
+          // cannot grow by accident: an untranslated string is otherwise
+          // indistinguishable from one that was never translated.
           "action.network.fetch",
           "action.network.pull",
           "action.network.push",
@@ -64,7 +65,6 @@ describe("the catalogues", () => {
           "history.commits.one",
           "history.commits.other",
           "history.message",
-          "journal.title",
           "menu.services",
           "menu.zoom",
           "palette.actions",
@@ -74,7 +74,6 @@ describe("the catalogues", () => {
           "settings.editorPlain",
           "settings.git",
           "sidebar.workspace",
-          "statusbar.journal",
         ].sort(),
       );
     }
@@ -93,6 +92,62 @@ describe("the catalogues", () => {
       LANGUAGES.pop();
       useLanguage(null);
     }
+  });
+});
+
+describe("the source", () => {
+  // Read off the disk rather than imported: what is being checked is what is
+  // *written*, and a string that never reaches a screen is exactly the kind
+  // that stays behind when a language moves.
+  const sources = () => {
+    const found: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) walk(path);
+        else if (/\.(ts|vue)$/.test(entry.name) && !entry.name.includes(".test.")) found.push(path);
+      }
+    };
+    // `import.meta.dirname` is this file's own directory — `web/src` — which is
+    // the tree to read.
+    walk(import.meta.dirname);
+    return found.filter((path) => !path.includes("/i18n/languages/"));
+  };
+
+  /// Comments are the project's own prose and may say anything; what is checked
+  /// is the code and the markup.
+  const withoutComments = (text: string): string =>
+    text
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith("//"))
+      .join("\n");
+
+  const FRENCH = /[éèêëàâçùûôîï]/i;
+
+  it("holds no French outside the catalogues", () => {
+    // The nine strings this found the first time it ran had all been missed by
+    // hand — two notes on the Preferences screen, a "Défaut" that appears
+    // twice, a branch whose upstream is gone. Reading every file is the only
+    // way that does not depend on somebody looking.
+    const left: string[] = [];
+    for (const path of sources()) {
+      const text = withoutComments(readFileSync(path, "utf8"));
+      text.split("\n").forEach((line, at) => {
+        if (FRENCH.test(line)) left.push(`${path.split("/src/")[1]}:${at + 1}: ${line.trim()}`);
+      });
+    }
+    // `backend.fake.ts` is a test double: what it throws stands in for `git`'s
+    // own words, which are never translated.
+    expect(left.filter((one) => !one.startsWith("backend.fake.ts"))).toEqual([]);
+  });
+
+  it("keeps the reference catalogue in English", () => {
+    // A French string left in `en.ts` compiles, translates, and reads as a bug
+    // — the other catalogues are typed against it, not proof-read against it.
+    const wrong = Object.entries(english).filter(([, value]) => FRENCH.test(value));
+    expect(wrong).toEqual([]);
   });
 });
 

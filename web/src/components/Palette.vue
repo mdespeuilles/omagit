@@ -12,7 +12,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { app, closePalette, movePalette, runPaletteRow, setPaletteQuery } from "../state";
 import { ACTIONS, binding, hint, labelOf } from "../keymap";
 import { flatten, search, type Row } from "../palette";
-import { t } from "../i18n";
+import { count, t } from "../i18n";
 
 const box = ref<HTMLInputElement | null>(null);
 
@@ -110,13 +110,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           :value="app.palette.query"
           @input="setPaletteQuery(($event.target as HTMLInputElement).value)"
         />
-        <span class="palette-count"
-          >{{ rows.length }} résultat{{ rows.length > 1 ? "s" : "" }}</span
-        >
+        <span class="palette-count">{{ count("palette.results", rows.length) }}</span>
         <button class="link" @click="closePalette()">Esc</button>
       </header>
 
-      <p v-if="rows.length === 0" class="pane-empty">Rien de ce nom-là ici.</p>
+      <p v-if="rows.length === 0" class="pane-empty">{{ t("palette.nothing") }}</p>
 
       <div v-else class="palette-rows">
         <template v-for="(group, index) in groups" :key="group.name">

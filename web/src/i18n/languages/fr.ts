@@ -291,6 +291,8 @@ export const strings: Record<keyof typeof reference, string> = {
   "palette.repositories": "Dépôts",
   "palette.branches": "Branches",
   "palette.files": "Fichiers",
+  "palette.results.one": "{n} résultat",
+  "palette.results.other": "{n} résultats",
   "palette.run": "exécuter ⏎",
   "palette.open": "ouvrir ⏎",
   "palette.switch": "basculer ⏎",
