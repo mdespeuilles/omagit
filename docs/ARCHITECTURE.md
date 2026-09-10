@@ -1315,6 +1315,44 @@ are four words and fit.
 `writeError` became two fields rather than one sentence, because the band draws
 them differently and a caller that had joined them would have to be unpicked.
 
+### 2.44 M9, first slice: the bindings, and the table three things read
+
+The topbar has been drawing `⌘F`, `⌘O`, `⇧⌘N` and `⌘K` since the port, beside
+buttons that answered the mouse and nothing else. A hint that names a key which
+does nothing is worse than no hint: it says the application has a keyboard, and
+then does not.
+
+**A table, not handlers on the components.** Three things in M9 need the same
+list and none of them is the key handler: the command palette runs these actions
+by name, the `?` sheet prints them, and the macOS menu bar fires them — SPEC §9
+calls that bar mandatory, "sans elle, l'app paraît cassée". A binding declared
+inside a component is reachable by its key and by nothing else. And SPEC §11
+asks for the keymap to be *reassignable*, which over a table is a settings
+screen and over handlers is a rewrite.
+
+**The three rules that keep a shortcut from firing where it must not**, each of
+them a bug this project has already shipped in some form:
+
+* A binding with a modifier fires while you are typing — `⌘F` in a text box is
+  still Fetch, as it is in every application on both platforms — and a bare key
+  never does. That is what will make the movement letters of the next slice
+  safe: M3's version of them put a `j` in the filter box *and* moved the
+  selection (§5, eleventh defect).
+* The other platform's modifier is never answered. `Ctrl+F` on macOS moves the
+  caret forward a character.
+* A key claimed by an action that cannot run *now* is still swallowed; a key
+  claimed by nothing is left alone. Otherwise `⌘F` during a fetch falls through
+  to the webview and opens a find bar over the application.
+
+**The hints are read from the table.** They were written out beside each label,
+so nothing tied them to the binding that answers — and nothing would have said
+so when one moved.
+
+`docs/KEYMAP.md` is rewritten to describe what ships, which closes the fifteenth
+known defect: it had been pointing at `crates/omagit-app/src/actions.rs`, a file
+the port deleted, and listing M3's movement keys, which this front end never
+had.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -1582,8 +1620,12 @@ that adds one. The fixture moved to `~`; the app still has one door. Drag and
 drop belongs with M9's keyboard work, where a command palette gives paths a
 second way in.
 
-A fifteenth, from M8: **`docs/KEYMAP.md` describes a build that no longer
-exists.** It says the bindings live in `crates/omagit-app/src/actions.rs`, which
+A fifteenth, from M8, now **closed by M9's first slice** (§2.44): `KEYMAP.md`
+described a build that no longer existed. It is rewritten against
+`web/src/keymap.ts`, and the bindings it lists are answered. What follows is the
+defect as it stood.
+
+**`docs/KEYMAP.md` describes a build that no longer exists.** It says the bindings live in `crates/omagit-app/src/actions.rs`, which
 the port to Tauri deleted along with the rest of the GPUI interface, and it
 lists M3's Repositories bindings — `j`/`k`, `/`, `1`/`2`/`3`, `Esc` — none of
 which the web front end has. What the window answers today is the browser's own

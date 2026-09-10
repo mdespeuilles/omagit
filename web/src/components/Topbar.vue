@@ -43,8 +43,19 @@ import {
   showScreen,
 } from "../state";
 import { tildify } from "../format";
+import { ACTIONS, hint } from "../keymap";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
+
+/// The hint a button prints, read from the table that answers the key.
+///
+/// Not written out beside the label: this bar has been drawing `⌘F` and `⌘O`
+/// since the port beside buttons that answered the mouse and nothing else, and
+/// a hint nobody can check against the binding drifts the moment one moves.
+function shortcut(id: string): string {
+  const action = ACTIONS.find((entry) => entry.id === id);
+  return action ? hint(action.binding, modifier.value) : "";
+}
 
 /// The window buttons the app has to draw, and on which edge (board 02). None
 /// until the platform has answered, and none at all on macOS.
@@ -140,7 +151,7 @@ const where = computed(() => {
       <!-- Board 02's three, and each carries the number that is the reason to
            press it. -->
       <button :disabled="busy || !!app.gitUnusable" @click="fetchRemote()">
-        Fetch<span class="hint">{{ modifier }}F</span>
+        Fetch<span class="hint">{{ shortcut("network.fetch") }}</span>
       </button>
       <button
         :disabled="busy || !!app.gitUnusable || !tracking"
@@ -162,10 +173,10 @@ const where = computed(() => {
     </template>
     <template v-else>
       <button @click="addRepository()">
-        Ajouter un dépôt local<span class="hint">{{ modifier }}O</span>
+        Ajouter un dépôt local<span class="hint">{{ shortcut("repository.add") }}</span>
       </button>
       <button :disabled="busy || !!app.gitUnusable" @click="openClone()">
-        Cloner…<span class="hint">⇧{{ modifier }}N</span>
+        Cloner…<span class="hint">{{ shortcut("repository.clone") }}</span>
       </button>
     </template>
 

@@ -25,7 +25,20 @@ import StashList from "./components/StashList.vue";
 import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
 import Topbar from "./components/Topbar.vue";
+import { onBeforeUnmount, onMounted } from "vue";
 import { app, paneWidth } from "./state";
+import { dispatch } from "./keymap";
+
+// One listener for the whole window, on the shell rather than on a screen —
+// the same reason the topbar and the sidebar live here (§2.28). A binding
+// registered by a screen would stop working the moment you left it, which is
+// exactly what a shortcut is for.
+function onKey(event: KeyboardEvent): void {
+  if (dispatch(event)) event.preventDefault();
+}
+
+onMounted(() => window.addEventListener("keydown", onKey));
+onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
 /// The stylesheet's own widths, and the floor a column may be dragged to. The
 /// floor is per pane because what has to stay readable differs: a file list can

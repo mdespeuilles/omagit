@@ -1612,6 +1612,22 @@ export function address(row: { index: number }): string {
   return `stash@{${row.index}}`;
 }
 
+/// Re-read everything the open screen shows.
+///
+/// The watcher does this on its own when the repository moves; this is the key
+/// for when you want to be sure — after a rebase run in a terminal, or a
+/// repository rebuilt underneath the window. On the Repositories screen there
+/// is no open repository to re-read, so it re-reads the list instead: the same
+/// key, the same meaning, on whatever is on screen.
+export async function refresh(): Promise<void> {
+  if (state.screen === "repositories" || !state.open) {
+    await readLibrary();
+    return;
+  }
+  await settle();
+  if (state.screen === "history") await loadHistory();
+}
+
 // ── Writing ─────────────────────────────────────────────────────────────────
 
 /// Run one write, then put the screen back in agreement with the repository.
