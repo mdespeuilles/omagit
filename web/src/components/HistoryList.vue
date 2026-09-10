@@ -15,9 +15,11 @@ import {
   markCompareFrom,
   moreHistory,
   selectCommit,
+  goToZone,
   setQuery,
   showHeadHistory,
   toggleFilters,
+  zoneActive,
 } from "../state";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
@@ -124,6 +126,10 @@ function open(id: string, extend: boolean): void {
         class="row commit-row"
         :class="{
           selected: app.commit.status === 'ready' && app.commit.value.id.full === item.id.full,
+          focused:
+            zoneActive(2) &&
+            app.commit.status === 'ready' &&
+            app.commit.value.id.full === item.id.full,
           'compare-from': app.compareFrom === item.id.full && app.compare.status !== 'idle',
           'compare-to':
             app.compare.status === 'ready' && app.compare.value.to.full === item.id.full,
@@ -133,7 +139,10 @@ function open(id: string, extend: boolean): void {
             ? `Maj-clic : comparer avec ${app.compareFrom.slice(0, 7)}`
             : ''
         "
-        @click="open(item.id.full, $event.shiftKey)"
+        @click="
+          goToZone(2);
+          open(item.id.full, $event.shiftKey);
+        "
       >
         <GraphGutter v-if="item.graph" :row="item" :height="ROW_HEIGHT" />
         <span v-else class="gutter-none" />

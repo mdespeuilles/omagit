@@ -16,13 +16,14 @@
 // *reassignable*, which is a settings screen over this table rather than a
 // rewrite.
 //
-// ## What is not here
+// ## The bare keys
 //
-// Movement — `j` `k`, `1` `2` `3`, `/`, the tab-stop order of DESIGN §5 — which
-// needs a notion of zones and focus this app does not have yet. It is the next
-// slice, and it is why the table already carries a `where`: those bindings are
-// bare letters, and a bare letter is only safe when something says which zone
-// is listening.
+// Movement — `j` `k`, `1` `2` `3`, `/`, `Esc` — is here too, and it is bare:
+// no modifier, one letter. That is only safe because of the rule below that a
+// bare key never fires while the caret is in a field. M3's version of these
+// bindings did not have it and put a `j` in the filter box *and* moved the
+// selection (§5, eleventh defect); this one is a table, so the rule is written
+// once rather than remembered at each call site.
 
 import { app } from "./state";
 import * as store from "./state";
@@ -53,6 +54,23 @@ export type Action = {
 
 const inRepository = (): boolean => !!app.open;
 const idle = (): boolean => !app.busy && !app.running;
+
+/// The bare keys of DESIGN §5. Kept apart from the table above because they are
+/// movement rather than commands: the palette does not list them — pressing `j`
+/// from a palette row would be absurd — and the `?` sheet prints them in their
+/// own block.
+///
+/// They answer in order, and the first one that claims the event ends it.
+const MOVES: { keys: string[]; run: () => boolean }[] = [
+  { keys: ["1"], run: () => (store.goToZone(1), true) },
+  { keys: ["2"], run: () => (store.goToZone(2), true) },
+  { keys: ["3"], run: () => (store.goToZone(3), true) },
+  { keys: ["j", "ArrowDown"], run: () => store.moveInZone(1) },
+  { keys: ["k", "ArrowUp"], run: () => store.moveInZone(-1) },
+  { keys: ["G"], run: () => store.jumpInZone("end") },
+  { keys: ["Enter"], run: () => store.activateInZone() },
+  { keys: ["Escape"], run: () => store.escapeLevel() },
+];
 
 export const ACTIONS: Action[] = [
   {
@@ -228,11 +246,37 @@ function overlaid(): boolean {
 /// still Fetch, and every application on both platforms behaves that way. A
 /// bare key never does, which is what will make the movement letters of the
 /// next slice safe.
+/// `g` twice is the top — vim's own doubling, and the reason it needs a memory
+/// of the last key rather than a table entry.
+let lastKey = "";
+let lastAt = 0;
+
 export function dispatch(event: KeyboardEvent): boolean {
   if (overlaid()) return false;
   const primary = app.platform?.modifier === "command" ? "meta" : "control";
   const bare = !event.metaKey && !event.ctrlKey && !event.altKey;
   if (bare && typing(event.target)) return false;
+
+  if (bare) {
+    // `/` puts the caret in whichever filter this screen has. A DOM act, done
+    // here rather than in the store: focus is the one piece of interface state
+    // the browser owns, and the store deliberately owns none of it.
+    if (event.key === "/" && focusFilter()) return true;
+    if (event.key === "g") {
+      const doubled = lastKey === "g" && event.timeStamp - lastAt < 600;
+      lastKey = doubled ? "" : "g";
+      lastAt = event.timeStamp;
+      return doubled ? store.jumpInZone("start") : true;
+    }
+    lastKey = "";
+    for (const move of MOVES) {
+      if (!move.keys.includes(event.key)) continue;
+      if (move.run()) return true;
+      // Claimed by movement but with nothing to move: the key stops here all
+      // the same, so `j` on an empty list does not scroll the webview.
+      return event.key.length === 1;
+    }
+  }
 
   for (const action of ACTIONS) {
     if (!matches(action.binding, event, primary)) continue;
@@ -242,6 +286,31 @@ export function dispatch(event: KeyboardEvent): boolean {
     return true;
   }
   return false;
+}
+
+/// Put the caret in this screen's filter, and say whether there was one.
+///
+/// The History filter row is folded away by default, so `/` unfolds it first:
+/// a key that focused a box nobody can see would be a key that does nothing.
+function focusFilter(): boolean {
+  if (app.screen === "repositories") {
+    return focus(".library-filter input");
+  }
+  if (app.screen === "history") {
+    if (!app.showFilters) store.toggleFilters();
+    // After the row has been drawn, not before it exists.
+    queueMicrotask(() => focus(".filter-box"));
+    return true;
+  }
+  return false;
+}
+
+function focus(selector: string): boolean {
+  const box = document.querySelector<HTMLInputElement>(selector);
+  if (!box) return false;
+  box.focus();
+  box.select();
+  return true;
 }
 
 /// The binding as the interface prints it: `⌘F`, `⇧⌘N`, `Ctrl F`.

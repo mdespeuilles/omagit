@@ -771,6 +771,14 @@ button.icon {
   box-shadow: inset 0 0 0 1px var(--border-focus);
 }
 
+/* Where the keyboard is (DESIGN §1 and §5, board 09). Selected is a surface
+   change and survives the keyboard leaving the zone; focus is this ring, and
+   only one zone has it. Drawn *inside* the row so a virtualised container
+   cannot clip it. */
+.focused {
+  box-shadow: inset 0 0 0 1px var(--border-focus);
+}
+
 /* ── The commit box ──────────────────────────────────────────────────────── */
 
 .commit {

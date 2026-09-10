@@ -200,7 +200,26 @@ type State = {
   /// The command palette, while it is up. `at` is the row ⏎ would run, counted
   /// across the groups in the order they are drawn.
   palette: { query: string; at: number } | null;
+
+  /// Which of DESIGN §5's three zones the keyboard is in — sidebar, centre
+  /// column, detail panel — with the same meaning on every screen.
+  ///
+  /// In the state rather than in the DOM, like every other selection here: the
+  /// lists are virtualised, so the row the keyboard is on is routinely *not*
+  /// rendered, and `document.activeElement` cannot be the record of where the
+  /// keyboard is when the element under it comes and goes with the scroll.
+  zone: Zone;
+  /// Where the keyboard is inside the branch tree. Its own cursor because a
+  /// branch has no "selected" of its own: moving through them must not re-walk
+  /// a history per keystroke, so `⏎` is what asks for one.
+  branchCursor: string | null;
+  /// What narrows the repository list. Board 06 draws the box; it was disabled
+  /// and labelled M9 until now, and `/` needs somewhere to land.
+  libraryFilter: string;
 };
+
+/// The three columns, numbered as DESIGN §5 numbers them.
+export type Zone = 1 | 2 | 3;
 
 /// What the conflict dialog is holding.
 export type Resolving = {
@@ -309,6 +328,9 @@ const state = reactive<State>({
   sides: null,
   resolving: null,
   palette: null,
+  zone: 1,
+  branchCursor: null,
+  libraryFilter: "",
 });
 
 export const app = readonly(state);
@@ -1683,6 +1705,229 @@ export function runPaletteRow(row: PaletteRow, actions: KeymapAction[]): void {
       void selectFile(row.key, false);
       return;
   }
+}
+
+// ── Moving about (M9, DESIGN §5 and board 09) ───────────────────────────────
+//
+// One zone is one tab stop; `1` `2` `3` mean the sidebar, the centre column and
+// the detail panel on every screen; movement inside a zone is `j`/`k` or the
+// arrows; `Esc` goes up one level. What follows is that vocabulary, expressed
+// against the state rather than against the DOM — the lists are virtualised, so
+// the row the keyboard is on is often not rendered at all, and focus cannot be
+// where the browser thinks it is.
+
+/// One zone's list, as the keyboard sees it: how long, where the cursor is, how
+/// to move it, and what `⏎` does.
+type Walkable = {
+  length: number;
+  at: number;
+  select: (at: number) => void;
+  activate?: () => void;
+};
+
+/// The list the keyboard is walking, or `null` where a zone has none — the diff
+/// panel on the Working Copy, which has its own line picking, and the card on
+/// the Repositories screen, which is a reading surface rather than a list.
+function walkable(): Walkable | null {
+  const zone = state.zone;
+  if (state.screen === "repositories") {
+    if (zone !== 1) return null;
+    const rows = visibleRepositories();
+    return {
+      length: rows.length,
+      at: Math.max(
+        0,
+        rows.findIndex((row) => row.path === state.card),
+      ),
+      select: (at) => showCard(rows[at]!.path),
+      activate: () => {
+        const row = rows.find((entry) => entry.path === state.card);
+        if (row && !row.missing) void openRepository(row.path);
+      },
+    };
+  }
+
+  if (zone === 1) {
+    const branches = state.refs.status === "ready" ? state.refs.value.branches : [];
+    if (branches.length === 0) return null;
+    const at = Math.max(
+      0,
+      branches.findIndex((row) => row.name === state.branchCursor),
+    );
+    return {
+      length: branches.length,
+      at,
+      // Moving does not walk a history: that is what `⏎` is for. A list whose
+      // every keystroke started a walk of a hundred thousand commits would be
+      // the filter box's old mistake in another place.
+      select: (to) => {
+        state.branchCursor = branches[to]!.name;
+      },
+      activate: () => {
+        if (state.branchCursor) showBranchHistory(state.branchCursor);
+      },
+    };
+  }
+
+  if (state.screen === "working-copy") {
+    if (zone !== 2) return null;
+    const rows = state.status.status === "ready" ? state.status.value : [];
+    if (rows.length === 0) return null;
+    return {
+      length: rows.length,
+      at: Math.max(
+        0,
+        rows.findIndex((row) => row.path === state.selected?.path),
+      ),
+      select: (to) => void selectFile(rows[to]!.path, rows[to]!.staged !== null),
+      activate: () => {
+        const row = rows.find((entry) => entry.path === state.selected?.path);
+        if (row) stageFile(row, row.staged !== null && row.unstaged === null);
+      },
+    };
+  }
+
+  if (state.screen === "history") {
+    const rows = state.history.status === "ready" ? state.history.value : [];
+    if (zone === 2) {
+      if (rows.length === 0) return null;
+      const open = state.commit.status === "ready" ? state.commit.value.id.full : null;
+      return {
+        length: rows.length,
+        at: Math.max(
+          0,
+          rows.findIndex((row) => row.id.full === open),
+        ),
+        select: (to) => void selectCommit(rows[to]!.id.full),
+      };
+    }
+    const files = state.commit.status === "ready" ? state.commit.value.files : [];
+    if (files.length === 0) return null;
+    return {
+      length: files.length,
+      at: Math.max(
+        0,
+        files.findIndex((file) => file.path === state.commitFile),
+      ),
+      select: (to) => void selectCommitFile(files[to]!.path),
+    };
+  }
+
+  // The shelf.
+  const shelf = state.stashes.status === "ready" ? state.stashes.value : [];
+  if (zone === 2) {
+    if (shelf.length === 0) return null;
+    return {
+      length: shelf.length,
+      at: Math.max(
+        0,
+        shelf.findIndex((row) => row.id.full === state.stash),
+      ),
+      select: (to) => void selectStash(shelf[to]!.id.full),
+    };
+  }
+  const files = state.stashFiles.status === "ready" ? state.stashFiles.value : [];
+  if (files.length === 0) return null;
+  return {
+    length: files.length,
+    at: Math.max(
+      0,
+      files.findIndex((file) => file.path === state.stashFile),
+    ),
+    select: (to) => void selectStashFile(files[to]!.path),
+  };
+}
+
+/// The repositories the list is drawing, filter included.
+export function visibleRepositories(): LibraryRow[] {
+  const wanted = state.libraryFilter.trim().toLowerCase();
+  if (wanted === "") return state.repositories;
+  return state.repositories.filter(
+    (row) =>
+      row.name.toLowerCase().includes(wanted) ||
+      row.path.toLowerCase().includes(wanted) ||
+      row.description.toLowerCase().includes(wanted),
+  );
+}
+
+export function setLibraryFilter(text: string): void {
+  state.libraryFilter = text;
+  // The card has to follow the list: one showing a repository the filter has
+  // hidden is a panel about something nobody can see.
+  const rows = visibleRepositories();
+  if (!rows.some((row) => row.path === state.card)) state.card = rows[0]?.path ?? null;
+}
+
+/// Go to one of the three zones. A zone with nothing in it still takes the
+/// keyboard: `3` on the Working Copy means "the diff", and the diff is there
+/// even when no list is.
+export function goToZone(zone: Zone): void {
+  state.zone = zone;
+}
+
+/// `Tab` and `Shift+Tab`, wrapping. DESIGN §5: after the last stop, focus
+/// returns to the first — it never escapes into the window decoration.
+export function nextZone(by: 1 | -1): void {
+  state.zone = (((state.zone - 1 + by + 3) % 3) + 1) as Zone;
+}
+
+/// `j` `k`, and the arrows. Stops at the ends rather than wrapping: a list of
+/// commits that jumped from the oldest back to the newest would lose the place
+/// a reader was holding.
+export function moveInZone(by: number): boolean {
+  const list = walkable();
+  if (!list) return false;
+  const to = Math.min(Math.max(list.at + by, 0), list.length - 1);
+  if (to !== list.at) list.select(to);
+  return true;
+}
+
+/// The ends, for `g` and `G`.
+export function jumpInZone(to: "start" | "end"): boolean {
+  const list = walkable();
+  if (!list) return false;
+  list.select(to === "start" ? 0 : list.length - 1);
+  return true;
+}
+
+/// `⏎` on whatever the keyboard is holding. Not every zone has an answer — a
+/// commit is already open by the time it is selected — and a key that does
+/// nothing there is better than one that invents something.
+export function activateInZone(): boolean {
+  const list = walkable();
+  if (!list?.activate) return false;
+  list.activate();
+  return true;
+}
+
+/// `Esc`, one level at a time (DESIGN §5).
+///
+/// A filter first, because it is the thing most likely to be hiding what
+/// somebody is looking for; then back to the sidebar. It never leaves the
+/// repository: "up one level" is not "out".
+export function escapeLevel(): boolean {
+  if (state.screen === "repositories" && state.libraryFilter !== "") {
+    setLibraryFilter("");
+    return true;
+  }
+  if (state.screen === "history" && isFiltered(state.query)) {
+    void clearFilters();
+    return true;
+  }
+  if (state.zone !== 1) {
+    state.zone = 1;
+    return true;
+  }
+  return false;
+}
+
+/// Whether the keyboard is in this zone — what decides which selected row wears
+/// the focus ring.
+///
+/// DESIGN §1 keeps the two apart: selected is a surface change and survives the
+/// keyboard leaving; focus is a ring, and only one zone has it.
+export function zoneActive(zone: Zone): boolean {
+  return state.zone === zone;
 }
 
 // ── Writing ─────────────────────────────────────────────────────────────────

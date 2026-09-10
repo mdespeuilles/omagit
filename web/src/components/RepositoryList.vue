@@ -13,14 +13,18 @@ import {
   app,
   dismissAddError,
   forgetRepository,
+  goToZone,
   openClone,
   openRepository,
+  setLibraryFilter,
   showCard,
+  visibleRepositories,
+  zoneActive,
 } from "../state";
 
 const groups = computed(() => {
   const seen = new Map<number, { name: string; rows: LibraryRow[] }>();
-  for (const row of app.repositories) {
+  for (const row of visibleRepositories()) {
     const group = seen.get(row.group) ?? { name: row.group_name, rows: [] };
     group.rows.push(row as LibraryRow);
     seen.set(row.group, group);
@@ -82,7 +86,14 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
 <template>
   <nav class="library">
     <div class="library-filter">
-      <input type="search" placeholder="Filtrer les dépôts" disabled title="Filtre — jalon M9" />
+      <input
+        type="search"
+        placeholder="Filtrer les dépôts"
+        title="Filtrer par nom, chemin ou description — /"
+        spellcheck="false"
+        :value="app.libraryFilter"
+        @input="setLibraryFilter(($event.target as HTMLInputElement).value)"
+      />
     </div>
 
     <!-- A folder that turned out not to be a repository, or a clone that
@@ -116,8 +127,15 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
           v-for="row in group.rows"
           :key="row.path"
           class="row library-row"
-          :class="{ selected: app.card === row.path, gone: row.missing }"
-          @click="showCard(row.path)"
+          :class="{
+            selected: app.card === row.path,
+            focused: app.card === row.path && zoneActive(1),
+            gone: row.missing,
+          }"
+          @click="
+            goToZone(1);
+            showCard(row.path);
+          "
           @dblclick="openRepository(row.path)"
         >
           <span class="library-icon" aria-hidden="true">{{ row.missing ? "⊘" : "▤" }}</span>

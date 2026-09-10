@@ -15,12 +15,14 @@ import {
   app,
   closeStashForm,
   dropStash,
+  goToZone,
   openStashForm,
   restoreStash,
   selectStash,
   setStashMessage,
   setStashUntracked,
   stashChanges,
+  zoneActive,
 } from "../state";
 import { when } from "../format";
 
@@ -96,9 +98,18 @@ function origin(row: StashRow): string {
         v-for="row in rows"
         :key="row.id.full"
         class="stash-entry"
-        :class="{ selected: app.stash === row.id.full }"
+        :class="{
+          selected: app.stash === row.id.full,
+          focused: app.stash === row.id.full && zoneActive(2),
+        }"
       >
-        <button class="row stash-row" @click="selectStash(row.id.full)">
+        <button
+          class="row stash-row"
+          @click="
+            goToZone(2);
+            selectStash(row.id.full);
+          "
+        >
           <span class="stash-lines">
             <span class="stash-line">
               <span class="stash-address mono">{{ address(row) }}</span>

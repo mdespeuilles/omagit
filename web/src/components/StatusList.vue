@@ -11,6 +11,7 @@ import type { StatusRow } from "../ipc";
 import {
   app,
   discardFile,
+  goToZone,
   openConflict,
   plural,
   resolveConflict,
@@ -19,6 +20,7 @@ import {
   stageEverything,
   stageFile,
   unstagedCount,
+  zoneActive,
 } from "../state";
 import { rowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
@@ -134,9 +136,13 @@ function name(path: string): string {
         class="file-row"
         :class="{
           selected: app.selected?.path === item.path,
+          focused: app.selected?.path === item.path && zoneActive(2),
           conflict: item.conflict !== null,
         }"
-        @click="open(item)"
+        @click="
+          goToZone(2);
+          open(item);
+        "
       >
         <!-- A button rather than an <input type=checkbox>: the third state is
              not something a checkbox can be told to draw, and this one is a

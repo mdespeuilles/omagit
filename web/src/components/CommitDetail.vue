@@ -3,7 +3,14 @@
 
 import { computed } from "vue";
 import { authored, exact, when } from "../format";
-import { app, selectCommitFile, selectCompareFile, stopComparing } from "../state";
+import {
+  app,
+  goToZone,
+  selectCommitFile,
+  selectCompareFile,
+  stopComparing,
+  zoneActive,
+} from "../state";
 
 const detail = computed(() => (app.commit.status === "ready" ? app.commit.value : null));
 const comparison = computed(() => (app.compare.status === "ready" ? app.compare.value : null));
@@ -57,8 +64,14 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
             v-for="file in comparison.files"
             :key="file.path"
             class="file-row"
-            :class="{ selected: app.commitFile === file.path }"
-            @click="selectCompareFile(file.path)"
+            :class="{
+              selected: app.commitFile === file.path,
+              focused: app.commitFile === file.path && zoneActive(3),
+            }"
+            @click="
+              goToZone(3);
+              selectCompareFile(file.path);
+            "
           >
             <span class="file-code mono" :class="file.change">{{ file.change.charAt(0) }}</span>
             <span class="file-path mono">
@@ -114,8 +127,14 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
           v-for="file in detail.files"
           :key="file.path"
           class="file-row"
-          :class="{ selected: app.commitFile === file.path }"
-          @click="selectCommitFile(file.path)"
+          :class="{
+            selected: app.commitFile === file.path,
+            focused: app.commitFile === file.path && zoneActive(3),
+          }"
+          @click="
+            goToZone(3);
+            selectCommitFile(file.path);
+          "
         >
           <span class="file-code mono" :class="file.change">{{ file.change.charAt(0) }}</span>
           <span class="file-path mono">

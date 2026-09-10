@@ -34,6 +34,20 @@ always shows one or the other, never both, and never spells them together:
 | `Shift`+`Primary`+`J` | Journal des opérations | anywhere |
 | `Primary`+`⏎` | Commiter | in the commit box |
 
+## Moving about
+
+Bare keys, so none of them fires while the caret is in a field.
+
+| Key | What it does |
+|---|---|
+| `1` `2` `3` | The sidebar, the centre column, the detail panel — the same three on every screen |
+| `Tab` / `Shift`+`Tab` | The next zone, wrapping; focus never leaves for the window decoration |
+| `j` `↓` / `k` `↑` | Down and up inside the zone; stops at the ends rather than wrapping |
+| `g` `g` / `G` | The first row / the last |
+| `⏎` | What the row is for: open a repository, show a branch's history, stage a file |
+| `/` | The filter this screen has — the repository list's, or History's, which unfolds first |
+| `Esc` | Up one level: a filter, then back to the sidebar. Never out of the repository |
+
 A dialog answers its own keys while it is up — `Esc` closes every one of them,
 `⌘⏎` applies the conflict dialog's answers, `n` moves to its next conflict — and
 the table above stays quiet behind it.
@@ -60,10 +74,10 @@ which is the same reason the topbar and the sidebar belong to `App.vue` (§2.28)
 
 ## Not yet bound
 
-Movement — `j` `k`, `1` `2` `3` bare, `/`, and the tab-stop order of DESIGN §5
-and board 09 — which needs a notion of zones and focus the window does not have
-yet. It is M9's next slice, and it is why every action already carries the
-context it fires in.
+The `?` sheet, the reassignment screen, and the tab stops *inside* a zone —
+board 09 draws Working Copy with eleven of them, where this has three zones and
+a cursor in each. What is here is the vocabulary; the last stops are M9's own
+finishing.
 
 Inside the palette: `↑` `↓` (or `Ctrl`+`P` / `Ctrl`+`N`) walk the rows across
 its groups and wrap, `⏎` runs the row, `Esc` closes. What `⏎` *does* depends on

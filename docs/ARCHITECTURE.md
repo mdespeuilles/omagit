@@ -1384,6 +1384,44 @@ how far they have diverged.
 600, and on the selected row — whose ground is already accent — they go to
 weight alone. The same colour twice over itself says nothing.
 
+### 2.46 M9, third slice: three zones, and a cursor that is not the browser's
+
+DESIGN §5 and board 09 ask for one vocabulary across the screens: one zone is
+one tab stop, `1` `2` `3` mean the sidebar, the centre column and the detail
+panel everywhere, movement inside a zone is `j`/`k` or the arrows, and `Esc`
+goes up one level.
+
+**Where the keyboard is lives in the state, not in the DOM.** Every list here is
+virtualised: the row the keyboard is on is routinely not rendered at all, so
+`document.activeElement` cannot be the record of it — it would be `null` the
+moment somebody scrolled past the cursor. So a zone is a number in the store, a
+`Walkable` says how long the zone's list is and how to move in it, and the ring
+is a class on the row that is selected *in the active zone*. DESIGN §1's
+distinction falls out of that: selected is a surface change and survives the
+keyboard leaving, focus is the ring and only one zone has it.
+
+**Moving through branches does not walk a history.** The branch tree has its own
+cursor rather than reusing the "which history is shown" selection, because
+selecting *is* the walk there — `j` held down would start one per row, which is
+the filter box's old mistake (§2.41's neighbour) in another place. `⏎` asks for
+the walk.
+
+**A bare key is only safe because of the table.** M3's version of these bindings
+put a `j` in the filter box *and* moved the selection (§5, eleventh defect).
+Here the rule that a bare key never fires while the caret is in a field is
+written once, in `dispatch`, rather than remembered at each call site — which is
+the whole argument for §2.44's table restated.
+
+**`/` is a DOM act and stays out of the store.** Focus is the one piece of
+interface state the browser owns; the store deliberately owns none of it. On
+History the filter row is folded by default, so `/` unfolds it first: a key that
+focused a box nobody can see would be a key that does nothing.
+
+**The repository filter is no longer drawn disabled.** Board 06 has it and it
+carried a "jalon M9" label since M3 — `/` needed somewhere to land, and the card
+follows the list, because a panel about a repository the filter has hidden is a
+panel about something nobody can see.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

@@ -7,7 +7,7 @@
 // were never tracked starts to.
 
 import { computed } from "vue";
-import { app, selectStashFile } from "../state";
+import { app, goToZone, selectStashFile, zoneActive } from "../state";
 import { when } from "../format";
 
 const entry = computed(() =>
@@ -63,8 +63,14 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
           v-for="file in files"
           :key="file.path"
           class="file-row"
-          :class="{ selected: app.stashFile === file.path }"
-          @click="selectStashFile(file.path)"
+          :class="{
+            selected: app.stashFile === file.path,
+            focused: app.stashFile === file.path && zoneActive(3),
+          }"
+          @click="
+            goToZone(3);
+            selectStashFile(file.path);
+          "
         >
           <span class="file-code mono" :class="file.change">{{ file.change.charAt(0) }}</span>
           <span class="file-path mono">
