@@ -2115,6 +2115,26 @@ Re-read at every milestone (SPEC §15).
 
 ### Known defects, open
 
+**Nothing but a person can drive the interface.** Not a defect in the app — a
+limit in how it is verified, and the one that has cost the most. The suites run
+in jsdom, which has no cascade and no layout, so every question of *shape* goes
+to a probe page (§2.31): a fragment of markup with the real tokens, rendered
+headless, measured or looked at. That catches geometry inside one component and
+nothing about the window as a whole — an icon off-centre, a heading with the
+wrong air around it, a control that vanished behind another are all found by
+somebody opening the app and saying so.
+
+The tooling that would close most of it: a **development-only bridge** in
+`ipc.ts` that routes to `backend.fake.ts` when `window.__TAURI_INTERNALS__` is
+absent, under `import.meta.env.DEV`. The front end would then run in an ordinary
+browser — clickable, screenshotable, drivable — against the same fake the tests
+already use, which is what keeps it from drifting from the real backend.
+
+Its limits, so nobody expects more of it than it gives: no real Git, so
+behaviour still needs the fixture repository; and Chrome is not WKWebView, so
+what it shows is not what macOS ships. It would not replace looking at the real
+window. It would mean far fewer round trips to get there.
+
 **The three-column Working Copy does not fit below ~1100px.** The sidebar and
 the file column are fixed widths and the diff panel has a floor, so under that
 the diff header's right-hand content falls outside the window and is clipped.
