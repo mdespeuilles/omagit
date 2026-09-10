@@ -206,6 +206,7 @@ export const strings: Record<keyof typeof reference, string> = {
   "conflict.unanswered": "Chaque conflit attend une réponse",
 
   // ── L'écran des dépôts ──────────────────────────────────────────────────
+  "library.recents": "Récents",
   "library.filter": "Filtrer les dépôts",
   "library.noMatch": "Aucun dépôt ne correspond",
   "library.noMatchText": "{n} dans la liste, aucun qui contienne « {needle} ».",
@@ -467,6 +468,49 @@ export const strings: Record<keyof typeof reference, string> = {
   "settings.binary": "Binaire",
   "settings.editor": "Éditeur",
   "settings.credentials": "Identifiants",
+
+  // ── La barre de menus native (macOS) ────────────────────────────────────
+  "menu.about": "À propos d'omagit",
+  "menu.services": "Services",
+  "menu.hide": "Masquer omagit",
+  "menu.hideOthers": "Masquer les autres",
+  "menu.showAll": "Tout afficher",
+  "menu.quit": "Quitter omagit",
+  "menu.file": "Fichier",
+  "menu.closeWindow": "Fermer la fenêtre",
+  "menu.edit": "Édition",
+  "menu.undo": "Annuler",
+  "menu.redo": "Rétablir",
+  "menu.cut": "Couper",
+  "menu.copy": "Copier",
+  "menu.paste": "Coller",
+  "menu.selectAll": "Tout sélectionner",
+  "menu.view": "Affichage",
+  "menu.fullscreen": "Plein écran",
+  "menu.repository": "Dépôt",
+  "menu.window": "Fenêtre",
+  "menu.minimize": "Réduire",
+  "menu.zoom": "Zoom",
+  "menu.help": "Aide",
+
+  // ── Ce que le backend refuse, et ce qu'il a ouvert ──────────────────────
+  "refuse.networkBusy": "{0} est déjà en cours",
+  "refuse.noOperation": "aucune opération n'est en cours",
+  "refuse.noSide": "{0} n'a pas de diff de ce côté",
+  "refuse.themeSource": "source de thème inconnue : {0}",
+  "refuse.density": "densité inconnue : {0}",
+  "said.opened": "{0} ouvert dans {1}",
+  "said.openedByOpener": "{0} ouvert avec {1} — aucun éditeur configuré",
+  "said.openedNotInTerminal":
+    "{0} ouvert avec {1} — {2} est un éditeur de terminal, et cette fenêtre n'en a pas",
+  "conflict.theBase": "la base",
+  "conflict.cherryPicked": "le commit picoré",
+  "conflict.reverted": "le commit annulé",
+  "conflict.patched": "le patch appliqué",
+  "settings.editorPlain": "{program}",
+  "settings.editorNone": "{program} — aucun éditeur configuré",
+  "settings.editorTerminal":
+    "{program} — {editor} est un éditeur de terminal, et cette fenêtre n'en a pas",
 
   // ── Dates ───────────────────────────────────────────────────────────────
   "date.today": "aujourd'hui {time}",

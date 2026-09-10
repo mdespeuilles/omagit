@@ -38,6 +38,21 @@ pub struct Sides {
 /// Never fails on a missing file: an operation whose marker is half-written is
 /// still an operation, and a side that cannot be named falls back to the short
 /// hash rather than taking the screen down.
+/// The names for a side that has no name.
+///
+/// A conflict's two sides are branches wherever `git` gives one. Where it does
+/// not — a cherry-pick, a revert, an `am` — the side has to be *called*
+/// something, and this crate has no locale by rule (SPEC §8): it sends seconds
+/// rather than dates and codes rather than sentences.
+///
+/// So it sends a key, marked with the prefix the window uses to tell our words
+/// from `git`'s. A key is a name, not a translation — the same discipline as
+/// `Head::Detached` being a variant rather than the string "detached".
+const WORDED_BASE: &str = "omagit:conflict.theBase";
+const WORDED_CHERRY_PICK: &str = "omagit:conflict.cherryPicked";
+const WORDED_REVERT: &str = "omagit:conflict.reverted";
+const WORDED_PATCH: &str = "omagit:conflict.patched";
+
 pub fn sides(repo: &Repository) -> Result<Option<Sides>> {
     assert_off_render_thread();
     let Some(operation) = repo.operation() else {
@@ -69,7 +84,7 @@ pub fn sides(repo: &Repository) -> Result<Option<Sides>> {
                 ours: read("onto")
                     .and_then(|line| line.parse::<ObjectId>().ok())
                     .map(|id| name_of(repo, id))
-                    .unwrap_or_else(|| "la base".to_owned()),
+                    .unwrap_or_else(|| WORDED_BASE.to_owned()),
                 theirs: read("head-name")
                     .map(|name| short_ref_name(name.as_str().into()))
                     .unwrap_or(here),
@@ -80,19 +95,19 @@ pub fn sides(repo: &Repository) -> Result<Option<Sides>> {
             ours: here,
             theirs: read_id(git_dir, "CHERRY_PICK_HEAD")
                 .map(|id| name_of(repo, id))
-                .unwrap_or_else(|| "le commit picoré".to_owned()),
+                .unwrap_or_else(|| WORDED_CHERRY_PICK.to_owned()),
             replayed: true,
         },
         Operation::Revert => Sides {
             ours: here,
             theirs: read_id(git_dir, "REVERT_HEAD")
                 .map(|id| name_of(repo, id))
-                .unwrap_or_else(|| "le commit annulé".to_owned()),
+                .unwrap_or_else(|| WORDED_REVERT.to_owned()),
             replayed: true,
         },
         Operation::ApplyMailbox => Sides {
             ours: here,
-            theirs: "le patch appliqué".to_owned(),
+            theirs: WORDED_PATCH.to_owned(),
             replayed: true,
         },
         // Nothing conflicts during a bisect: it only ever checks commits out.

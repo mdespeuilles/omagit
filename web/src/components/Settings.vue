@@ -29,6 +29,7 @@ import {
 } from "../state";
 import { ACTIONS, binding, capture, hint, reassigned, refuse } from "../keymap";
 import { LANGUAGES, systemLanguage, t } from "../i18n";
+import type { Editor as EditorFact } from "../ipc";
 
 const prefs = computed(() => (app.preferences.status === "ready" ? app.preferences.value : null));
 
@@ -98,6 +99,17 @@ function onKey(event: KeyboardEvent): void {
 function reset(id: string): void {
   setBinding(id, null);
   stopCapture();
+}
+
+/// What "Open in the editor" will launch, said rather than sent as a sentence:
+/// the backend gives the program, what `core.editor` held and why they differ.
+function editor(fact: EditorFact): string {
+  const parts = { program: fact.program, editor: fact.configured ?? "" };
+  if (fact.instead === "nothing-configured") return t("settings.editorNone", parts);
+  if (fact.instead === "lives-in-a-terminal") {
+    return t("settings.editorTerminal", parts);
+  }
+  return fact.program;
 }
 
 /// A language's own name for itself, for the row that follows the system: "the
@@ -372,7 +384,7 @@ function on(source: string, name = ""): boolean {
           <dt>{{ t("settings.binary") }}</dt>
           <dd class="mono">{{ prefs.git }}</dd>
           <dt>{{ t("settings.editor") }}</dt>
-          <dd class="mono">{{ prefs.editor }}</dd>
+          <dd class="mono">{{ editor(prefs.editor) }}</dd>
           <dt>{{ t("settings.credentials") }}</dt>
           <dd class="mono">{{ prefs.credential_helper }}</dd>
         </dl>

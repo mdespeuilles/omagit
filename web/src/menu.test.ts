@@ -61,6 +61,17 @@ describe("the menu bar", () => {
     expect(lastSent()).toBeNull();
   });
 
+  it("sends the platform's own words with the actions", async () => {
+    // Quitter, Coller, Plein écran and the menu titles are not omagit actions,
+    // and they still have to be said in the language the window is in — which
+    // the backend does not know.
+    await started("macos");
+    const call = backend.current.calls.filter((one) => one.command === "set_menu").at(-1)!;
+    const labels = call.args["labels"] as Record<string, string>;
+    expect(labels["menu.quit"]).toBe("Quit omagit");
+    expect(labels["menu.edit"]).toBe("Edit");
+  });
+
   it("sends the keymap table, every action with a menu", async () => {
     const { menu } = await started("macos");
     const keymap = await import("./keymap");

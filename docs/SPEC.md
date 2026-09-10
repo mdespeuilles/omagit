@@ -478,6 +478,26 @@ signaler clairement plutôt que d'échouer silencieusement à l'authentification
   stapling, DMG. Compte développeur Apple requis. Traité au jalon M10, mais le build macOS
   doit passer en CI dès M0.
 
+### 9.1 Langue de l'interface
+
+> **Amendement (2026-09-10).** La langue n'était spécifiée nulle part, et
+> l'interface était écrite en français en dur. Elle est bilingue à partir
+> d'ici : **anglais par défaut**, français à côté.
+
+- La langue est celle du système au premier lancement, et se change dans
+  Réglages. Le choix est stocké dans `settings.toml` ; `None` veut dire « suivre
+  le système ».
+- **Ajouter une langue, c'est ajouter un fichier** dans
+  `web/src/i18n/languages/`. Rien ne les importe par leur nom.
+- L'anglais est la langue de référence : les autres catalogues sont typés contre
+  lui, et une clé absente d'une traduction est une erreur de compilation.
+- **Le backend ne formule pas.** Ce qu'une commande renvoie est soit les mots de
+  `git`, montrés tels quels (§3 règle 3), soit une clé marquée `omagit:` que la
+  fenêtre habille. `omagit-git` n'a pas de locale, par règle : il envoie des
+  secondes et des codes.
+- Les mots de `git` restent dans la langue de `git`. Les traduire serait
+  inventer.
+
 ## 10. Modèle de données et flux
 
 ```

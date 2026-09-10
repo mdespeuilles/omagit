@@ -5,6 +5,7 @@
 // error to be cleaned up — an unmounted disk comes back, and a list that tidied
 // itself would lose an entry the user arranged.
 
+import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Repository } from "./backend.fake";
 import type { LibraryRow } from "./ipc";
@@ -28,7 +29,7 @@ function entry(path: string, over: Partial<LibraryRow> = {}): LibraryRow {
   return {
     group: 0,
     index: 0,
-    group_name: "Récents",
+    group_name: "omagit:library.recents",
     path,
     name: path.split("/").pop() ?? path,
     description: "",
@@ -94,6 +95,22 @@ describe("reading the library", () => {
     release();
     await settled(state);
     expect(state.app.library["/two"]?.status).toBe("ready");
+  });
+
+  it("says the default group in the language the window is in", async () => {
+    // A group's name is data — SPEC §11 lets it be renamed — so the default one
+    // is stored as a key and worded on the way to the screen. Renamed, it is a
+    // plain word and is shown verbatim.
+    await open([entry("/a"), { ...entry("/b"), group: 1, group_name: "Mes clients" }]);
+    const RepositoryList = (await import("./components/RepositoryList.vue")).default;
+    const heads = mount(RepositoryList)
+      .findAll(".group-head")
+      .map((one) => one.text())
+      .join(" ");
+
+    expect(heads).toContain("Recent");
+    expect(heads).not.toContain("omagit:");
+    expect(heads).toContain("Mes clients");
   });
 
   it("keeps a missing repository's row and says why", async () => {

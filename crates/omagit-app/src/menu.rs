@@ -35,6 +35,24 @@ pub struct Entry {
     pub enabled: bool,
 }
 
+/// The words for everything in the bar that is *not* an omagit action.
+///
+/// Quitter, Masquer, Annuler, Coller, Plein écran and the menu titles are the
+/// platform's items, not the table's — and they still have to be said in the
+/// language the window is in, which this side does not know. So the front end
+/// sends them with the actions, from the same catalogue.
+///
+/// A map rather than twenty fields: the set will change with the bar, and a
+/// missing entry falls back to English rather than refusing to build a menu.
+#[derive(Debug, Default, Clone, serde::Deserialize)]
+pub struct Labels(std::collections::BTreeMap<String, String>);
+
+impl Labels {
+    fn get<'a>(&'a self, key: &str, fallback: &'a str) -> &'a str {
+        self.0.get(key).map(String::as_str).unwrap_or(fallback)
+    }
+}
+
 /// Which menu an action belongs under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -84,13 +102,21 @@ pub fn accelerator(binding: &str) -> Option<String> {
 /// is, in the action's own `enabled()`, because the alternative is rebuilding
 /// the menu bar on every state change, including while one of its menus is
 /// pulled down.
-pub fn install<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<()> {
-    let menu = build(app, entries)?;
+pub fn install<R: Runtime>(
+    app: &AppHandle<R>,
+    entries: &[Entry],
+    labels: &Labels,
+) -> tauri::Result<()> {
+    let menu = build(app, entries, labels)?;
     app.set_menu(menu)?;
     Ok(())
 }
 
-fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Menu<R>> {
+fn build<R: Runtime>(
+    app: &AppHandle<R>,
+    entries: &[Entry],
+    labels: &Labels,
+) -> tauri::Result<Menu<R>> {
     let info = app.package_info();
     let about = AboutMetadata {
         name: Some(info.name.clone()),
@@ -113,12 +139,18 @@ fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Men
     let separator = PredefinedMenuItem::separator(app)?;
 
     let mut app_items: Vec<&dyn IsMenuItem<R>> = Vec::new();
-    let about_item = PredefinedMenuItem::about(app, Some("À propos d'omagit"), Some(about))?;
-    let services = PredefinedMenuItem::services(app, Some("Services"))?;
-    let hide = PredefinedMenuItem::hide(app, Some("Masquer omagit"))?;
-    let hide_others = PredefinedMenuItem::hide_others(app, Some("Masquer les autres"))?;
-    let show_all = PredefinedMenuItem::show_all(app, Some("Tout afficher"))?;
-    let quit = PredefinedMenuItem::quit(app, Some("Quitter omagit"))?;
+    let about_item = PredefinedMenuItem::about(
+        app,
+        Some(labels.get("menu.about", "About omagit")),
+        Some(about),
+    )?;
+    let services =
+        PredefinedMenuItem::services(app, Some(labels.get("menu.services", "Services")))?;
+    let hide = PredefinedMenuItem::hide(app, Some(labels.get("menu.hide", "Hide omagit")))?;
+    let hide_others =
+        PredefinedMenuItem::hide_others(app, Some(labels.get("menu.hideOthers", "Hide others")))?;
+    let show_all = PredefinedMenuItem::show_all(app, Some(labels.get("menu.showAll", "Show all")))?;
+    let quit = PredefinedMenuItem::quit(app, Some(labels.get("menu.quit", "Quit omagit")))?;
     app_items.push(&about_item);
     app_items.push(&separator);
     push(&mut app_items, &app_own);
@@ -131,7 +163,10 @@ fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Men
     app_items.push(&separator);
     app_items.push(&quit);
 
-    let close = PredefinedMenuItem::close_window(app, Some("Fermer la fenêtre"))?;
+    let close = PredefinedMenuItem::close_window(
+        app,
+        Some(labels.get("menu.closeWindow", "Close window")),
+    )?;
     let mut file_items: Vec<&dyn IsMenuItem<R>> = Vec::new();
     push(&mut file_items, &file_own);
     file_items.push(&separator);
@@ -139,15 +174,16 @@ fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Men
 
     // Nothing of ours in Édition: these are the platform's own, and that is the
     // point of the menu — without it the web view has no undo and no select-all.
-    let undo = PredefinedMenuItem::undo(app, Some("Annuler"))?;
-    let redo = PredefinedMenuItem::redo(app, Some("Rétablir"))?;
-    let cut = PredefinedMenuItem::cut(app, Some("Couper"))?;
-    let copy = PredefinedMenuItem::copy(app, Some("Copier"))?;
-    let paste = PredefinedMenuItem::paste(app, Some("Coller"))?;
-    let select_all = PredefinedMenuItem::select_all(app, Some("Tout sélectionner"))?;
+    let undo = PredefinedMenuItem::undo(app, Some(labels.get("menu.undo", "Undo")))?;
+    let redo = PredefinedMenuItem::redo(app, Some(labels.get("menu.redo", "Redo")))?;
+    let cut = PredefinedMenuItem::cut(app, Some(labels.get("menu.cut", "Cut")))?;
+    let copy = PredefinedMenuItem::copy(app, Some(labels.get("menu.copy", "Copy")))?;
+    let paste = PredefinedMenuItem::paste(app, Some(labels.get("menu.paste", "Paste")))?;
+    let select_all =
+        PredefinedMenuItem::select_all(app, Some(labels.get("menu.selectAll", "Select all")))?;
     let edit = Submenu::with_items(
         app,
-        "Édition",
+        labels.get("menu.edit", "Edit"),
         true,
         &[
             &undo,
@@ -161,7 +197,8 @@ fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Men
         ],
     )?;
 
-    let fullscreen = PredefinedMenuItem::fullscreen(app, Some("Plein écran"))?;
+    let fullscreen =
+        PredefinedMenuItem::fullscreen(app, Some(labels.get("menu.fullscreen", "Full screen")))?;
     let mut view_items: Vec<&dyn IsMenuItem<R>> = Vec::new();
     push(&mut view_items, &view_own);
     view_items.push(&separator);
@@ -172,19 +209,26 @@ fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Men
 
     // The two ids macOS looks for: the Window menu is where the system puts its
     // own window list, and the Help menu is where its search field goes.
-    let minimize = PredefinedMenuItem::minimize(app, Some("Réduire"))?;
-    let maximize = PredefinedMenuItem::maximize(app, Some("Zoom"))?;
+    let minimize =
+        PredefinedMenuItem::minimize(app, Some(labels.get("menu.minimize", "Minimise")))?;
+    let maximize = PredefinedMenuItem::maximize(app, Some(labels.get("menu.zoom", "Zoom")))?;
     let window = Submenu::with_id_and_items(
         app,
         WINDOW_SUBMENU_ID,
-        "Fenêtre",
+        labels.get("menu.window", "Window"),
         true,
         &[&minimize, &maximize, &separator, &close],
     )?;
 
     let mut help_items: Vec<&dyn IsMenuItem<R>> = Vec::new();
     push(&mut help_items, &help_own);
-    let help = Submenu::with_id_and_items(app, HELP_SUBMENU_ID, "Aide", true, &help_items)?;
+    let help = Submenu::with_id_and_items(
+        app,
+        HELP_SUBMENU_ID,
+        labels.get("menu.help", "Help"),
+        true,
+        &help_items,
+    )?;
 
     Menu::with_items(
         app,
@@ -192,10 +236,15 @@ fn build<R: Runtime>(app: &AppHandle<R>, entries: &[Entry]) -> tauri::Result<Men
             // macOS ignores this title and prints the bundle name, which is why
             // it is the application's own name here rather than a word.
             &Submenu::with_items(app, &info.name, true, &app_items)?,
-            &Submenu::with_items(app, "Fichier", true, &file_items)?,
+            &Submenu::with_items(app, labels.get("menu.file", "File"), true, &file_items)?,
             &edit,
-            &Submenu::with_items(app, "Affichage", true, &view_items)?,
-            &Submenu::with_items(app, "Dépôt", true, &repository_items)?,
+            &Submenu::with_items(app, labels.get("menu.view", "View"), true, &view_items)?,
+            &Submenu::with_items(
+                app,
+                labels.get("menu.repository", "Repository"),
+                true,
+                &repository_items,
+            )?,
             &window,
             &help,
         ],

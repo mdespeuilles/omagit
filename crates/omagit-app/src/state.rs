@@ -271,7 +271,7 @@ impl AppState {
     pub fn start_network(&self, what: &str) -> std::result::Result<NetworkSlot<'_>, String> {
         let mut running = self.lock(&self.running);
         if let Some(current) = running.as_ref() {
-            return Err(format!("{} est déjà en cours", current.what));
+            return Err(format!("omagit:refuse.networkBusy|{}", current.what));
         }
         let cancel = Cancel::new();
         *running = Some(Running {

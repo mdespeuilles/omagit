@@ -224,6 +224,7 @@ export const strings = {
   "conflict.unanswered": "Every conflict is waiting for an answer",
 
   // ── The repositories screen ─────────────────────────────────────────────
+  "library.recents": "Recent",
   "library.filter": "Filter the repositories",
   "library.noMatch": "No repository matches",
   "library.noMatchText": '{n} in the list, none holding "{needle}".',
@@ -492,6 +493,55 @@ export const strings = {
   "settings.binary": "Binary",
   "settings.editor": "Editor",
   "settings.credentials": "Credentials",
+
+  // ── The native menu bar (macOS) ─────────────────────────────────────────
+  //
+  // The platform's own items, not omagit's — but they are still said in the
+  // language the window is in, so they are sent to the backend with the
+  // actions. The keys are the ones `menu.rs` looks for.
+  "menu.about": "About omagit",
+  "menu.services": "Services",
+  "menu.hide": "Hide omagit",
+  "menu.hideOthers": "Hide others",
+  "menu.showAll": "Show all",
+  "menu.quit": "Quit omagit",
+  "menu.file": "File",
+  "menu.closeWindow": "Close window",
+  "menu.edit": "Edit",
+  "menu.undo": "Undo",
+  "menu.redo": "Redo",
+  "menu.cut": "Cut",
+  "menu.copy": "Copy",
+  "menu.paste": "Paste",
+  "menu.selectAll": "Select all",
+  "menu.view": "View",
+  "menu.fullscreen": "Full screen",
+  "menu.repository": "Repository",
+  "menu.window": "Window",
+  "menu.minimize": "Minimise",
+  "menu.zoom": "Zoom",
+  "menu.help": "Help",
+
+  // ── What the backend refuses, and what it opened ────────────────────────
+  //
+  // These reach the window as `omagit:<key>|<arg>` — its own words, told apart
+  // from Git's, which are shown verbatim. `{0}`, `{1}` are the parts.
+  "refuse.networkBusy": "{0} is already running",
+  "refuse.noOperation": "no operation is in progress",
+  "refuse.noSide": "{0} has no diff on that side",
+  "refuse.themeSource": "unknown theme source: {0}",
+  "refuse.density": "unknown density: {0}",
+  "said.opened": "{0} opened in {1}",
+  "said.openedByOpener": "{0} opened with {1} — no editor configured",
+  "said.openedNotInTerminal":
+    "{0} opened with {1} — {2} lives in a terminal, and this window has none",
+  "conflict.theBase": "the base",
+  "conflict.cherryPicked": "the cherry-picked commit",
+  "conflict.reverted": "the reverted commit",
+  "conflict.patched": "the applied patch",
+  "settings.editorPlain": "{program}",
+  "settings.editorNone": "{program} — no editor configured",
+  "settings.editorTerminal": "{program} — {editor} lives in a terminal, and this window has none",
 
   // ── Dates ───────────────────────────────────────────────────────────────
   "date.today": "today {time}",

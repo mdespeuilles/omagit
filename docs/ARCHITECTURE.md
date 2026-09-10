@@ -1892,6 +1892,62 @@ nothing anyone can act on. It says what it resolves *through* now — Omarchy,
 then the system, then the embedded theme — and the line above it already says
 what that came out as.
 
+### 2.60 Internationalisation: English by default, French beside it
+
+Asked for whole: two languages at the start, English the default, the system's
+language chosen at first launch, changeable in Preferences, and a third language
+added by adding a file.
+
+**English is the reference.** `web/src/i18n/languages/en.ts` declares the keys
+and every other catalogue is typed against it, so a key missing from a
+translation is a compile error and a key that no longer exists is one at its call
+site. A catalogue that misses one anyway — a file somebody else wrote, half
+finished — falls back to English rather than showing a raw key, which is what
+makes "drop a file in" safe.
+
+**Adding a language is adding a file.** `import.meta.glob` reads the directory;
+nothing imports a catalogue by name. A list of imports would be a second place to
+remember, and the requirement was explicit about this.
+
+**`t()` is reactive.** It reads the language through Vue, so every string on
+screen changes in the same tick the choice does — no reload, no re-read, and the
+macOS menu bar is rebuilt because its signature includes the language.
+
+**Plurals are `Intl.PluralRules`'.** One catalogue entry per category. What it
+replaces was `n > 1 ? "s" : ""`, which knew exactly one language — and got French
+wrong at zero, which is singular there and plural in English. A language with
+four categories needs four entries and no code.
+
+**The backend stopped wording things**, which is the half that took the thinking:
+
+* what a command fails with is either *`git`'s own words* — shown verbatim,
+  because they are the truth and translating them would be inventing — or one of
+  ours, which crosses as `omagit:<key>|<arg>` and is worded by the window. The
+  prefix is the whole of the distinction;
+* the same marker carries the three conflict sides `omagit-git` cannot name — a
+  cherry-picked commit, a reverted one, an applied patch. A key is a *name*, not
+  a translation, which is why a crate with no locale may hold one: the same
+  discipline as `Head::Detached` being a variant rather than the string
+  "detached";
+* "Open in the editor" answers with a fact — the program, what `core.editor`
+  held, and why they differ — instead of a sentence;
+* the macOS menu bar's own items (Quit, Paste, Full screen, and the menu titles)
+  are sent from the catalogue with the actions, and an action's `label` is a key
+  now, read by four things through `labelOf()`;
+* and the library's default group name is a key *in the stored file*. A group
+  name is data — SPEC §11 lets it be renamed — so it cannot be translated on the
+  way out or a rename would be undone at every launch, and stored as a word it
+  would be frozen in the language of the day. Stored as a key it is said in the
+  language in force, and the moment somebody renames it the new name is a plain
+  word, shown verbatim.
+
+Deleted on the way: `omagit-app/src/time.rs`, a second date formatter with French
+month names written out by hand, which nothing had called since the port to
+Tauri. `format.ts` builds its formatters from the language in force instead.
+
+The one place a French window still shows English is `git`'s own output, and that
+is deliberate.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

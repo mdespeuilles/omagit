@@ -321,6 +321,29 @@ pub struct Identity {
     pub inherited: bool,
 }
 
+/// One of the window's own sentences, sent as its name and its parts.
+///
+/// The wire format is `omagit:<key>|<arg>|<arg>…`, and the front end fills
+/// `{0}`, `{1}` with the parts. Everything else a command sends back is `git`'s
+/// own words, shown verbatim (SPEC §3 rule 3); the prefix is how the two are
+/// told apart.
+pub fn worded(key: &str, args: &[&str]) -> String {
+    let mut said = format!("omagit:{key}");
+    for arg in args {
+        said.push('|');
+        said.push_str(arg);
+    }
+    said
+}
+
+/// What `open_in_editor` will launch, and why it may not be what was configured.
+#[derive(Debug, serde::Serialize)]
+pub struct Editor {
+    pub program: String,
+    pub configured: Option<String>,
+    pub instead: Option<crate::editor::Instead>,
+}
+
 /// What changed under a repository, as the window is told (SPEC §10).
 ///
 /// The two booleans are the invalidations, not the events: the front end has no
@@ -516,7 +539,9 @@ pub struct Preferences {
     pub catalogue: Vec<ThemeRow>,
     /// What "Ouvrir dans l'éditeur" will actually launch, and why it is not
     /// always what `core.editor` says (`editor.rs`).
-    pub editor: String,
+    /// What "Open in the editor" will actually launch, as a fact rather than a
+    /// sentence: the program, what `core.editor` held, and why the two differ.
+    pub editor: Editor,
     /// SPEC §9's helper for this platform, and the `git` that answers.
     pub credential_helper: &'static str,
     pub git: String,

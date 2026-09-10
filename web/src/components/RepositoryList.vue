@@ -21,7 +21,7 @@ import {
   visibleRepositories,
   zoneActive,
 } from "../state";
-import { count, t } from "../i18n";
+import { count, t, worded } from "../i18n";
 import Glyph from "./Glyph.vue";
 
 /// What the filter leaves, which is what the empty state has to talk about.
@@ -30,7 +30,9 @@ const rows = computed(() => visibleRepositories());
 const groups = computed(() => {
   const seen = new Map<number, { name: string; rows: LibraryRow[] }>();
   for (const row of rows.value) {
-    const group = seen.get(row.group) ?? { name: row.group_name, rows: [] };
+    // A group's name is data — renameable — and the default one is a key
+    // until somebody renames it.
+    const group = seen.get(row.group) ?? { name: worded(row.group_name), rows: [] };
     group.rows.push(row as LibraryRow);
     seen.set(row.group, group);
   }

@@ -298,7 +298,7 @@ describe("board 07's conflict dialog", () => {
 
     expect(sent("open_in_editor")).toEqual([{ path: "/repo", file: "shared.txt" }]);
     expect(state.app.resolving).toBeNull();
-    expect(state.app.notes).toContain("ouvert dans code");
+    expect(state.app.notes).toContain("opened in code");
   });
 
   it("says when the markers cannot be read rather than drawing nothing", async () => {

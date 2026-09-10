@@ -113,6 +113,22 @@ export function count(key: Plural, n: number, params?: Record<string, string | n
   return fill(text, { n, ...params });
 }
 
+/// A message from the backend, said in this language when it is ours.
+///
+/// Everything a command fails with is either `git`'s own words — shown verbatim,
+/// because they are the truth and translating them would be inventing — or one
+/// of our own sentences, which crosses as `omagit:<key>|<arg>|<arg>…` and is
+/// filled in here. The prefix is the whole of the distinction.
+export function worded(text: string): string {
+  if (!text.startsWith(MARK)) return text;
+  const [key, ...args] = text.slice(MARK.length).split("|");
+  const params: Record<string, string> = {};
+  args.forEach((arg, at) => (params[String(at)] = arg));
+  return t(key as Key, params);
+}
+
+const MARK = "omagit:";
+
 function fill(text: string, params?: Record<string, string | number>): string {
   if (!params) return text;
   return text.replace(/\{(\w+)\}/g, (whole, name: string) =>

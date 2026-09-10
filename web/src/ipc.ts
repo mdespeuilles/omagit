@@ -69,6 +69,14 @@ export type Identity = {
 /// knowing that `.git/index.lock` exists.
 export type Changed = { path: string; status: boolean; refs: boolean };
 
+/// What "Open in the editor" will launch — a fact, not a sentence: the window
+/// is what words it.
+export type Editor = {
+  program: string;
+  configured: string | null;
+  instead: "nothing-configured" | "lives-in-a-terminal" | null;
+};
+
 export type RepoSummary = {
   path: string;
   name: string;
@@ -203,7 +211,7 @@ export type Preferences = {
   omarchy: boolean;
   system_appearance: boolean;
   catalogue: { name: string; mode: "dark" | "light" }[];
-  editor: string;
+  editor: Editor;
   credential_helper: string;
   git: string;
 };
@@ -345,7 +353,8 @@ export type MenuEntry = {
 
 export const api = {
   platform: () => invoke<PlatformFacts>("platform"),
-  setMenu: (entries: MenuEntry[]) => invoke<void>("set_menu", { entries }),
+  setMenu: (entries: MenuEntry[], labels: Record<string, string>) =>
+    invoke<void>("set_menu", { entries, labels }),
   theme: () => invoke<string>("theme"),
 
   // Preferences (M9). Each setter answers with the stylesheet its change

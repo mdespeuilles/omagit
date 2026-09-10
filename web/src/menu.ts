@@ -13,6 +13,7 @@ import { watch } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { api } from "./ipc";
 import { ACTIONS, binding, labelOf, runAction } from "./keymap";
+import { t } from "./i18n";
 import { app } from "./state";
 
 /// One item, as the backend needs it.
@@ -39,6 +40,38 @@ export function entries(): Entry[] {
     menu: action.menu,
     enabled: action.where === "always" || !!app.open,
   }));
+}
+
+/// The words for everything in the bar that is not an action of ours: the menu
+/// titles, and the platform's own items. `menu.rs` looks these keys up and
+/// falls back to English, so a catalogue that misses one still builds a bar.
+const LABELS = [
+  "menu.about",
+  "menu.services",
+  "menu.hide",
+  "menu.hideOthers",
+  "menu.showAll",
+  "menu.quit",
+  "menu.file",
+  "menu.closeWindow",
+  "menu.edit",
+  "menu.undo",
+  "menu.redo",
+  "menu.cut",
+  "menu.copy",
+  "menu.paste",
+  "menu.selectAll",
+  "menu.view",
+  "menu.fullscreen",
+  "menu.repository",
+  "menu.window",
+  "menu.minimize",
+  "menu.zoom",
+  "menu.help",
+] as const;
+
+export function labels(): Record<string, string> {
+  return Object.fromEntries(LABELS.map((key) => [key, t(key)]));
 }
 
 /// Whether this platform wants a menu bar at all.
@@ -74,9 +107,11 @@ export async function installMenu(): Promise<void> {
 /// Rebuilding a menu bar is cheap but not free, and doing it on every state
 /// change would mean doing it while one of its menus is pulled down.
 function signature(): string {
-  return entries()
-    .map((entry) => `${entry.id}:${entry.binding}:${entry.enabled}`)
-    .join(" ");
+  // The language is in it: the bar is words, and words change with it.
+  return [
+    ...entries().map((entry) => `${entry.id}:${entry.binding}:${entry.enabled}`),
+    t("menu.file"),
+  ].join(" ");
 }
 
 let sent = "";
@@ -85,7 +120,7 @@ async function send(): Promise<void> {
   const now = signature();
   if (now === sent) return;
   sent = now;
-  await api.setMenu(entries());
+  await api.setMenu(entries(), labels());
 }
 
 /// For tests: the bar has no memory of a previous window.

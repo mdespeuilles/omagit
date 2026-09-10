@@ -106,7 +106,15 @@ impl Library {
     pub const FILE_NAME: &'static str = "repositories.toml";
 
     /// The group a newly added repository lands in when the user has made none.
-    pub const DEFAULT_GROUP: &'static str = "Récents";
+    ///
+    /// A key rather than a word, marked the way every sentence this side sends
+    /// is marked. A group name is *data* — SPEC §11 lets it be renamed — so it
+    /// cannot be translated on the way out or a rename would be undone at every
+    /// launch. Stored as a name, it would be frozen in the language of the day
+    /// it was first written. Stored as a key, the window says it in the
+    /// language it is in, and the moment somebody renames it, the new name is a
+    /// plain word and is shown verbatim.
+    pub const DEFAULT_GROUP: &'static str = "omagit:library.recents";
 
     /// Read the library.
     ///

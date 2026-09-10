@@ -26,9 +26,25 @@ use omagit_git::{Cancel, GitError, RepoPath, Repository, Result};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Launch {
     pub program: String,
+    /// What `core.editor` held, when it held anything. Kept beside the reason
+    /// because the sentence the window builds names it.
+    pub configured: Option<String>,
     /// Set when the configured editor was *not* used, so the answer can say so
     /// rather than leaving someone waiting for a window that is not coming.
-    pub instead: Option<String>,
+    pub instead: Option<Instead>,
+}
+
+/// Why the configured editor was not the one used.
+///
+/// A reason rather than a sentence: the window says it, in the language it is
+/// in, and this side has no business holding French.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Instead {
+    /// `core.editor` is empty, so the desktop's opener answers instead.
+    NothingConfigured,
+    /// It is an editor that lives in a terminal, and this window has none.
+    LivesInATerminal,
 }
 
 /// Editors that live in a terminal, by the name they are invoked as.
@@ -69,20 +85,21 @@ pub fn decide(configured: Option<&str>, opener: &str) -> Launch {
     else {
         return Launch {
             program: opener.to_owned(),
-            instead: Some("aucun éditeur configuré".to_owned()),
+            configured: None,
+            instead: Some(Instead::NothingConfigured),
         };
     };
 
     if is_terminal(editor) {
         return Launch {
             program: opener.to_owned(),
-            instead: Some(format!(
-                "{editor} est un éditeur de terminal, et cette fenêtre n'en a pas"
-            )),
+            configured: Some(editor.to_owned()),
+            instead: Some(Instead::LivesInATerminal),
         };
     }
     Launch {
         program: editor.to_owned(),
+        configured: Some(editor.to_owned()),
         instead: None,
     }
 }
@@ -178,12 +195,20 @@ pub fn open(
     })?;
     tracing::info!(program = %launch.program, file = %full.display(), "opened in an editor");
 
+    // A key and its two parts, not a sentence: the window says it (§2.60).
     Ok(match launch.instead {
-        None => format!("{} ouvert dans {}", path.display_lossy(), launch.program),
-        Some(why) => format!(
-            "{} ouvert avec {} — {why}",
-            path.display_lossy(),
-            launch.program
+        None => crate::dto::worded("said.opened", &[&path.display_lossy(), &launch.program]),
+        Some(Instead::NothingConfigured) => crate::dto::worded(
+            "said.openedByOpener",
+            &[&path.display_lossy(), &launch.program],
+        ),
+        Some(Instead::LivesInATerminal) => crate::dto::worded(
+            "said.openedNotInTerminal",
+            &[
+                &path.display_lossy(),
+                &launch.program,
+                launch.configured.as_deref().unwrap_or_default(),
+            ],
         ),
     })
 }

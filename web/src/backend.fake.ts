@@ -105,7 +105,7 @@ export class Repository {
     {
       group: 0,
       index: 0,
-      group_name: "Récents",
+      group_name: "omagit:library.recents",
       path: "/repo",
       name: "repo",
       description: "",
@@ -137,7 +137,7 @@ export class Repository {
   holdWrite: Promise<void> | null = null;
   /// What `open_in_editor` says it launched. Not always what is configured —
   /// a terminal editor is handed to the desktop's opener instead.
-  editorSays = "shared.txt ouvert dans code";
+  editorSays = "omagit:said.opened|shared.txt|code";
   /// Set to make a conflicted file unreadable as one: markers that do not pair
   /// up, or a binary file.
   unreadableConflict: string | null = null;
@@ -164,7 +164,7 @@ export class Repository {
       { name: "Tokyo Night", mode: "dark" },
       { name: "Rosé Pine Dawn", mode: "light" },
     ],
-    editor: "open — aucun éditeur configuré",
+    editor: { program: "open", configured: null, instead: "nothing-configured" },
     credential_helper: "osxkeychain",
     git: "2.50.1",
   };
@@ -290,7 +290,7 @@ export class Repository {
         this.library.push({
           group: 0,
           index: this.library.length,
-          group_name: "Récents",
+          group_name: "omagit:library.recents",
           path,
           name: path.split("/").pop() ?? path,
           description: "",
@@ -373,7 +373,7 @@ export class Repository {
         this.library.push({
           group: request.group ?? 0,
           index: this.library.length,
-          group_name: "Récents",
+          group_name: "omagit:library.recents",
           path,
           name: request.name,
           description: "",

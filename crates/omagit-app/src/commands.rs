@@ -34,6 +34,22 @@ type Answer<T> = Result<T, String>;
 /// error crosses.
 ///
 /// The exact line is not lost: the journal records it, marked, before it runs.
+/// A refusal in the window's own words, sent as a key rather than a sentence.
+///
+/// Everything else a command fails with is `git`'s own words, shown verbatim —
+/// SPEC §3 rule 3, and translating them would be inventing. These few are ours,
+/// and ours have to be said in the language the window is in, which this side
+/// does not know. So what crosses is the *name* of the refusal, marked with a
+/// prefix the front end can tell from a sentence.
+fn refusal(key: &str) -> String {
+    format!("omagit:{key}")
+}
+
+/// The same, with the one thing the sentence needs — a path, a value.
+fn refusal_about(key: &str, what: &str) -> String {
+    format!("omagit:{key}|{what}")
+}
+
 fn say(error: omagit_git::GitError) -> String {
     error.reason()
 }
@@ -65,11 +81,15 @@ pub fn platform() -> crate::platform::PlatformFacts {
 /// Linux, and a command that would build a GTK menu anyway if someone did is a
 /// trap rather than a convenience.
 #[tauri::command]
-pub fn set_menu(app: tauri::AppHandle, entries: Vec<crate::menu::Entry>) -> Result<(), String> {
+pub fn set_menu(
+    app: tauri::AppHandle,
+    entries: Vec<crate::menu::Entry>,
+    labels: crate::menu::Labels,
+) -> Result<(), String> {
     if !crate::platform::current().native_menus() {
         return Ok(());
     }
-    crate::menu::install(&app, &entries).map_err(|error| {
+    crate::menu::install(&app, &entries, &labels).map_err(|error| {
         tracing::warn!(%error, "the menu bar could not be built");
         error.to_string()
     })
@@ -552,7 +572,11 @@ pub fn preferences(state: State<'_, AppState>) -> dto::Preferences {
     let editor = git
         .as_ref()
         .map(|git| describe_editor(git, &state))
-        .unwrap_or_else(|| "git est indisponible".to_owned());
+        .unwrap_or_else(|| dto::Editor {
+            program: crate::platform::current().opener().to_owned(),
+            configured: None,
+            instead: None,
+        });
 
     dto::Preferences {
         source: match &settings.theme {
@@ -604,18 +628,24 @@ pub fn preferences(state: State<'_, AppState>) -> dto::Preferences {
 /// Not always what `core.editor` holds: a terminal editor is handed to the
 /// desktop's opener instead (`editor.rs`), and the screen that admits it is
 /// cheaper than the surprise.
-fn describe_editor(git: &omagit_git::cli::Git, state: &AppState) -> String {
-    let open = state.settings();
-    let _ = open;
+fn describe_editor(git: &omagit_git::cli::Git, state: &AppState) -> dto::Editor {
     let opener = crate::platform::current().opener();
+    // No repository open: `core.editor` is read from one, so there is nothing
+    // to read yet. The window says so — the opener is what it would fall back
+    // to, and `configured: None` is the honest answer to "what is set".
     let Some(repo) = state.any_open() else {
-        return format!("{opener} — ouvre un dépôt pour lire sa configuration");
+        return dto::Editor {
+            program: opener.to_owned(),
+            configured: None,
+            instead: None,
+        };
     };
     let configured = crate::editor::configured(git, &repo, &state.cancel());
     let launch = crate::editor::decide(configured.as_deref(), opener);
-    match launch.instead {
-        None => launch.program,
-        Some(why) => format!("{} — {why}", launch.program),
+    dto::Editor {
+        program: launch.program,
+        configured: launch.configured,
+        instead: launch.instead,
     }
 }
 
@@ -633,7 +663,7 @@ pub fn set_theme(state: State<'_, AppState>, source: String, name: String) -> An
         },
         "user-override" => omagit_theme::ThemeSource::UserOverride { name },
         "automatic" => omagit_theme::ThemeSource::Automatic,
-        other => return Err(format!("source de thème inconnue : {other}")),
+        other => return Err(refusal_about("refuse.themeSource", other)),
     };
     state.with_settings(|settings| settings.theme = chosen);
     Ok(stylesheet(&state.settings()))
@@ -645,7 +675,7 @@ pub fn set_density(state: State<'_, AppState>, density: String) -> Answer<String
     let chosen = match density.as_str() {
         "compact" => omagit_theme::DensityMode::Compact,
         "comfortable" => omagit_theme::DensityMode::Comfortable,
-        other => return Err(format!("densité inconnue : {other}")),
+        other => return Err(refusal_about("refuse.density", other)),
     };
     state.with_settings(|settings| settings.density = chosen);
     Ok(stylesheet(&state.settings()))
@@ -699,7 +729,7 @@ pub fn continue_operation(state: State<'_, AppState>, path: String) -> Answer<St
     let operation = open
         .repo
         .operation()
-        .ok_or("aucune opération n'est en cours")?;
+        .ok_or_else(|| refusal("refuse.noOperation"))?;
 
     let _serialised = open.write_lock.lock();
     omagit_git::ops::resume(&git, &open.repo, operation, &state.cancel()).map_err(say)
@@ -1177,7 +1207,7 @@ pub fn abort_operation(state: State<'_, AppState>, path: String) -> Answer<()> {
     let operation = open
         .repo
         .operation()
-        .ok_or("aucune opération n'est en cours")?;
+        .ok_or_else(|| refusal("refuse.noOperation"))?;
 
     let _serialised = open.write_lock.lock();
     omagit_git::ops::abort(&git, &open.repo, operation, &state.cancel()).map_err(say)

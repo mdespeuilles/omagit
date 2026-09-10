@@ -15,7 +15,7 @@ import { reactive, readonly } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { measure } from "./metrics";
-import { count as plural, preference, t, useLanguage } from "./i18n";
+import { count as plural, preference, t, useLanguage, worded } from "./i18n";
 import type { Row as PaletteRow } from "./palette";
 import type { Action as KeymapAction } from "./keymap";
 import {
@@ -1579,7 +1579,7 @@ export function openInEditor(): void {
   void write(`Ouvrir ${file}`, async () => {
     // What was launched, which is not always what was configured: a terminal
     // editor started from a window with no terminal is a process nobody sees.
-    state.notes = await api.openInEditor(path, file);
+    state.notes = worded(await api.openInEditor(path, file));
   });
 }
 
@@ -2503,5 +2503,5 @@ function firstLine(text: string): string {
 }
 
 function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return worded(error instanceof Error ? error.message : String(error));
 }

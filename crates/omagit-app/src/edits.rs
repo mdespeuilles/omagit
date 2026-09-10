@@ -189,10 +189,7 @@ pub fn file_side(
     }?;
 
     diff.ok_or_else(|| {
-        omagit_git::GitError::NotFound(format!(
-            "{} n'a pas de diff de ce côté",
-            path.display_lossy()
-        ))
+        omagit_git::GitError::NotFound(format!("omagit:refuse.noSide|{}", path.display_lossy()))
     })
 }
 
