@@ -62,7 +62,13 @@ type DiffValue = {
 /// A question the user has to answer before something irreversible happens
 /// (SPEC §3 rule 7). The action itself is *not* in here: a closure inside
 /// reactive state is a thing that cannot be inspected, compared or logged.
-type Question = { title: string; detail: string; verb: string };
+/// A question the user has to answer before something happens (SPEC §3 rule 7).
+///
+/// Usually two ways out — do it, or do not. `alternative` adds a second way of
+/// doing it, for the one question that is not "are you sure": a pull on a
+/// diverged branch with nothing configured has to choose between merging and
+/// rebasing, and neither is the dangerous one.
+type Question = { title: string; detail: string; verb: string; alternative?: string };
 
 type State = {
   platform: PlatformFacts | null;
@@ -863,10 +869,52 @@ export function fetchRemote(remote = ""): void {
   void overNetwork("Fetch", () => api.fetch(path, remote));
 }
 
+/// Pull, asking how to reconcile only when nothing already says.
+///
+/// Since 2.27 `git pull` refuses on a diverged branch when neither
+/// `pull.rebase`, `pull.ff` nor the branch's own setting answers, and it prints
+/// twelve lines of hints whose every suggestion is a `git config` command —
+/// none of which can be run from this window (there is no preferences screen
+/// until M9). So the question is asked here, before the pull, and the answer
+/// travels with that one pull: nothing is written to the configuration, because
+/// what to do *every* time is a decision this app has no business taking for
+/// somebody (§2.33).
 export function pullRemote(): void {
   const path = state.open;
   if (!path) return;
-  void overNetwork("Pull", () => api.pull(path));
+  const tracking = state.summary?.tracking;
+  const diverged = !!tracking && tracking.ahead > 0 && tracking.behind > 0;
+  if (!diverged) {
+    void overNetwork("Pull", () => api.pull(path));
+    return;
+  }
+
+  void (async () => {
+    let configured = true;
+    try {
+      configured = await api.pullReconcileConfigured(path);
+    } catch (error) {
+      // Unreadable configuration is not a reason to refuse to pull: let `git`
+      // answer for itself, as it did before this question existed.
+      void api.log("warn", `stratégie de pull illisible : ${message(error)}`);
+    }
+    if (state.open !== path) return;
+    if (configured) {
+      void overNetwork("Pull", () => api.pull(path));
+      return;
+    }
+
+    ask(
+      {
+        title: "Fusionner ou rebaser ?",
+        detail: `${state.summary?.head ?? "cette branche"} a ${plural(tracking.ahead, "commit")} que ${tracking.upstream} n'a pas, et ${tracking.upstream} en a ${tracking.behind} de son côté. Rien dans la configuration ne dit comment les réconcilier, et git refuse de choisir. Fusionner garde les deux histoires et ajoute un commit de fusion ; rebaser rejoue tes commits par-dessus les siens, donc les réécrit. Ce choix ne vaut que pour ce pull : rien n'est enregistré.`,
+        verb: "Fusionner",
+        alternative: "Rebaser",
+      },
+      () => void overNetwork("Pull", () => api.pull(path, "merge")),
+      () => void overNetwork("Pull", () => api.pull(path, "rebase")),
+    );
+  })();
 }
 
 /// Push the current branch to its upstream's remote, or to `origin`.
@@ -1664,17 +1712,29 @@ export function stagePicked(unstage: boolean): void {
 // render it, serialise it or compare it.
 
 let pending: (() => void) | null = null;
+let pendingAlternative: (() => void) | null = null;
 
-function ask(question: Question, action: () => void): void {
+function ask(question: Question, action: () => void, alternative?: () => void): void {
   state.question = question;
   pending = action;
+  pendingAlternative = alternative ?? null;
 }
 
 export function answer(yes: boolean): void {
   const action = pending;
   pending = null;
+  pendingAlternative = null;
   state.question = null;
   if (yes) action?.();
+}
+
+/// The second way of doing it, when the question offers one.
+export function answerAlternative(): void {
+  const action = pendingAlternative;
+  pending = null;
+  pendingAlternative = null;
+  state.question = null;
+  action?.();
 }
 
 /// What rejecting this row would actually do.

@@ -6,7 +6,7 @@
 // its default is Cancel — the destructive button is never what Enter presses.
 
 import { onMounted, onBeforeUnmount, ref } from "vue";
-import { answer, app } from "../state";
+import { answer, answerAlternative, app } from "../state";
 
 const cancel = ref<HTMLButtonElement | null>(null);
 
@@ -31,7 +31,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       <p class="dialog-detail">{{ app.question?.detail }}</p>
       <div class="dialog-actions">
         <button ref="cancel" @click="answer(false)">Annuler</button>
-        <button class="danger solid" @click="answer(true)">
+        <!-- A second way of doing it, for the question that is a choice rather
+             than a warning: neither merging nor rebasing is the dangerous one,
+             so neither wears `danger`. -->
+        <button v-if="app.question?.alternative" @click="answerAlternative()">
+          {{ app.question.alternative }}
+        </button>
+        <button
+          :class="app.question?.alternative ? 'primary' : 'danger solid'"
+          @click="answer(true)"
+        >
           {{ app.question?.verb }}
         </button>
       </div>

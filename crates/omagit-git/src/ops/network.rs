@@ -90,9 +90,70 @@ pub fn fetch(
 /// `--rebase` or `--no-rebase` of its own would quietly override a decision
 /// someone made for the repository. What it does pass is `--progress`, and
 /// nothing else.
+/// How a pull should reconcile a divergence.
+///
+/// Only ever passed when *nothing* configures it. `pull.rebase`, `pull.ff` and
+/// a branch's own `branch.<name>.rebase` are the user's decisions, and a client
+/// that sent a flag of its own would quietly override one somebody made for the
+/// repository (§2.33). What this covers is the case where there is no decision
+/// to override and `git` refuses to guess: since 2.27 it stops on a diverged
+/// branch with a wall of hints, and the only way to answer them is a terminal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reconcile {
+    /// A merge commit, `git`'s own historical default.
+    Merge,
+    /// Replay our commits on top of theirs, rewriting them.
+    Rebase,
+}
+
+impl Reconcile {
+    fn flag(self) -> &'static str {
+        match self {
+            Reconcile::Merge => "--no-rebase",
+            Reconcile::Rebase => "--rebase",
+        }
+    }
+}
+
+/// Whether anything already says how this branch reconciles a divergence.
+///
+/// Three places can, in the order `git` reads them, and any one of them is an
+/// answer: the branch's own setting, then `pull.rebase`, then `pull.ff`. Asked
+/// rather than deduced from a failure message, because that message is
+/// translated on a machine whose `git` speaks the user's language, and matching
+/// English against it would work everywhere it was written and nowhere else.
+pub fn reconcile_configured(
+    git: &Git,
+    repo: &Repository,
+    branch: &str,
+    cancel: &Cancel,
+) -> Result<bool> {
+    for key in [
+        format!("branch.{branch}.rebase"),
+        "pull.rebase".to_owned(),
+        "pull.ff".to_owned(),
+    ] {
+        let answered = match super::at(git, repo)?
+            .args(["config", "--get", &key])
+            .run(cancel)
+        {
+            Ok(output) => !output.text().trim().is_empty(),
+            // `git config --get` exits 1 for a key nobody set, which is the
+            // ordinary case here rather than a failure.
+            Err(crate::GitError::CommandFailed { .. }) => false,
+            Err(error) => return Err(error),
+        };
+        if answered {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 pub fn pull(
     git: &Git,
     repo: &Repository,
+    reconcile: Option<Reconcile>,
     watch: Option<Progress>,
     cancel: &Cancel,
 ) -> Result<String> {
@@ -101,6 +162,9 @@ pub fn pull(
         // It can rewrite the working tree and can leave a conflict behind.
         .destructive()
         .timeout(NETWORK_TIMEOUT);
+    if let Some(reconcile) = reconcile {
+        invocation = invocation.arg(reconcile.flag());
+    }
     if let Some(watch) = watch {
         invocation = invocation.watching(watch);
     }

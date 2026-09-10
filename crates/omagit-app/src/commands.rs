@@ -738,11 +738,47 @@ pub fn fetch(
     .map_err(say)
 }
 
-/// Fetch and integrate, the way the repository is configured to.
+/// Whether anything says how this branch reconciles a divergence.
+///
+/// Asked before pulling rather than deduced from the failure afterwards: since
+/// 2.27 `git pull` refuses on a diverged branch when nothing configures it, and
+/// the wall of hints it prints can only be answered from a terminal. The window
+/// has no preferences screen yet, so it asks instead — and it asks on facts,
+/// not on a message that is translated on a machine whose `git` speaks another
+/// language.
 #[tauri::command(async)]
-pub fn pull(app: tauri::AppHandle, state: State<'_, AppState>, path: String) -> Answer<String> {
+pub fn pull_reconcile_configured(state: State<'_, AppState>, path: String) -> Answer<bool> {
     let open = state.open(&PathBuf::from(path)).map_err(say)?;
     let git = state.git().map_err(say)?.clone();
+    let head = open.repo.head().map_err(say)?;
+    let omagit_git::Head::Branch { branch, .. } = head else {
+        // Detached or unborn: there is no branch to pull into, and `git` will
+        // say so better than a guess made here.
+        return Ok(true);
+    };
+    omagit_git::ops::reconcile_configured(&git, &open.repo, &branch, &state.cancel()).map_err(say)
+}
+
+/// Fetch and integrate, the way the repository is configured to.
+///
+/// `reconcile` is sent only when nothing configures one — see above. Passing it
+/// otherwise would override a decision somebody made for the repository
+/// (§2.33), and it is never written to the configuration: it answers this pull
+/// and no other.
+#[tauri::command(async)]
+pub fn pull(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+    reconcile: Option<String>,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let reconcile = match reconcile.as_deref() {
+        Some("merge") => Some(omagit_git::ops::Reconcile::Merge),
+        Some("rebase") => Some(omagit_git::ops::Reconcile::Rebase),
+        _ => None,
+    };
     let slot = state.start_network("Pull")?;
 
     // A pull writes the working tree, so it takes the same lock every other
@@ -751,6 +787,7 @@ pub fn pull(app: tauri::AppHandle, state: State<'_, AppState>, path: String) -> 
     omagit_git::ops::pull(
         &git,
         &open.repo,
+        reconcile,
         Some(reporting(&app, "Pull")),
         &slot.cancel,
     )

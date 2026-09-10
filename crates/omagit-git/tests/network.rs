@@ -144,7 +144,7 @@ fn pulling_brings_the_commits_into_the_working_tree() {
     other.commit_file("theirs.txt", "theirs\n", "from somewhere else");
     other.git(&["push", "origin", "main"]);
 
-    network::pull(&git(), &pair.local.open(), None, &never()).expect("pulled");
+    network::pull(&git(), &pair.local.open(), None, None, &never()).expect("pulled");
 
     assert!(
         pair.local.path().join("theirs.txt").exists(),
@@ -530,4 +530,101 @@ fn a_reachable_remote_answers_and_a_missing_one_says_so() {
         !refused.to_string().is_empty(),
         "the probe says why: {refused}"
     );
+}
+
+// ── Reconciling a divergence ────────────────────────────────────────────────
+
+/// A remote and a clone that have each gained a commit the other has not.
+fn diverged() -> Pair {
+    let pair = pair();
+    let other = second_clone(&pair);
+    other.commit_file("theirs.txt", "theirs\n", "theirs");
+    other.git(&["push", "origin", "main"]);
+    pair.local.commit_file("ours.txt", "ours\n", "ours");
+    pair.local.git(&["fetch", "origin"]);
+    pair
+}
+
+#[test]
+fn a_diverged_branch_with_nothing_configured_is_where_git_refuses_to_guess() {
+    // The situation the question exists for, pinned against the real binary:
+    // since 2.27 `git pull` stops rather than choosing, and every hint it
+    // prints is a `git config` command — none of which a window can run.
+    let pair = diverged();
+
+    let refused = network::pull(&git(), &pair.local.open(), None, None, &never())
+        .expect_err("git will not choose");
+
+    assert!(
+        refused.to_string().contains("reconcile"),
+        "git says what it needs: {refused}"
+    );
+}
+
+#[test]
+fn told_to_merge_it_pulls() {
+    let pair = diverged();
+
+    network::pull(
+        &git(),
+        &pair.local.open(),
+        Some(network::Reconcile::Merge),
+        None,
+        &never(),
+    )
+    .expect("merging reconciles it");
+
+    assert_eq!(
+        pair.local.git(&["rev-list", "--count", "--merges", "HEAD"]),
+        "1",
+        "merging a divergence makes a merge commit"
+    );
+}
+
+#[test]
+fn told_to_rebase_it_replays_ours_on_top_instead() {
+    let pair = diverged();
+
+    network::pull(
+        &git(),
+        &pair.local.open(),
+        Some(network::Reconcile::Rebase),
+        None,
+        &never(),
+    )
+    .expect("rebasing reconciles it too");
+
+    assert_eq!(
+        pair.local.git(&["rev-list", "--count", "--merges", "HEAD"]),
+        "0",
+        "a rebase leaves no merge commit"
+    );
+    assert_eq!(
+        pair.local.git(&["log", "--format=%s", "-1"]),
+        "ours",
+        "our commit is on top, replayed"
+    );
+}
+
+#[test]
+fn any_of_the_three_settings_counts_as_an_answer() {
+    // The order `git` reads them in, and any one of them means there is nothing
+    // to ask: the branch's own setting, then `pull.rebase`, then `pull.ff`.
+    let pair = diverged();
+    let git = git();
+    let asked =
+        || network::reconcile_configured(&git, &pair.local.open(), "main", &never()).expect("read");
+
+    assert!(!asked(), "a fresh clone configures none of them");
+
+    pair.local.git(&["config", "pull.ff", "only"]);
+    assert!(asked());
+    pair.local.git(&["config", "--unset", "pull.ff"]);
+
+    pair.local.git(&["config", "pull.rebase", "false"]);
+    assert!(asked());
+    pair.local.git(&["config", "--unset", "pull.rebase"]);
+
+    pair.local.git(&["config", "branch.main.rebase", "true"]);
+    assert!(asked());
 }

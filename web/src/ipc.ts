@@ -322,7 +322,12 @@ export const api = {
   // progress arrives as `progress` events rather than in the answer, which
   // only comes back at the end.
   fetch: (path: string, remote: string) => invoke<string>("fetch", { path, remote }),
-  pull: (path: string) => invoke<string>("pull", { path }),
+  pull: (path: string, reconcile?: "merge" | "rebase") =>
+    invoke<string>("pull", { path, reconcile }),
+  /// Whether anything already says how a diverged branch reconciles. Asked
+  /// before pulling, because `git`'s refusal can only be answered from a
+  /// terminal — and because its wording is translated on some machines.
+  pullReconcileConfigured: (path: string) => invoke<boolean>("pull_reconcile_configured", { path }),
   push: (path: string, remote: string, branch: string, force: boolean, setUpstream: boolean) =>
     invoke<string>("push", { path, remote, branch, force, setUpstream }),
   cancelOperation: () => invoke<string | null>("cancel_operation"),

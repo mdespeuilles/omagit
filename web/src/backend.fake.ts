@@ -130,6 +130,9 @@ export class Repository {
   failNetwork: string | null = null;
   /// What `git` said. Real operations answer with their stderr.
   networkSays = "Everything up-to-date";
+  /// Whether anything configures how a diverged branch reconciles. False is
+  /// the fresh-repository case, where `git pull` refuses to guess.
+  reconcileConfigured = true;
 
   /// What `check_remote` says when the dialog asks. `null` means it answers.
   unreachable: string | null = null;
@@ -250,6 +253,8 @@ export class Repository {
         return "le message précédent";
       case "journal":
         return [] satisfies JournalRow[];
+      case "pull_reconcile_configured":
+        return this.reconcileConfigured;
       case "fetch":
       case "pull":
       case "push": {

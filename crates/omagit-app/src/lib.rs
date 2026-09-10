@@ -80,6 +80,7 @@ pub fn run() {
             commands::delete_branch,
             commands::fetch,
             commands::pull,
+            commands::pull_reconcile_configured,
             commands::push,
             commands::clone_directory,
             commands::check_remote,

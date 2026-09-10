@@ -30,7 +30,8 @@ pub use branch::{checkout, checkout_detached, create, delete, merged, rename};
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
 pub use integrate::{MergeOptions, abort, merge, rebase, resume};
 pub use network::{
-    CloneOptions, Push, PushForce, Step, clone, directory_for, fetch, pull, push, reachable,
+    CloneOptions, Push, PushForce, Reconcile, Step, clone, directory_for, fetch, pull, push,
+    reachable, reconcile_configured,
 };
 pub use stage::{
     discard, discard_file, stage, stage_all, stage_file, unstage, unstage_all, unstage_file,

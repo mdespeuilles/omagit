@@ -72,6 +72,60 @@ beforeEach(() => {
   backend.listeners = [];
 });
 
+describe("a pull that has to choose", () => {
+  it("asks how to reconcile when nothing says, and sends the answer once", async () => {
+    // Since 2.27 `git pull` refuses on a diverged branch when neither
+    // `pull.rebase`, `pull.ff` nor the branch's own setting answers — and every
+    // hint it prints is a `git config` line this window cannot run.
+    const state = await running({ ahead: 3, behind: 1 });
+    backend.current.reconcileConfigured = false;
+
+    state.pullRemote();
+    await settled(state);
+
+    expect(state.app.question?.title).toContain("Fusionner ou rebaser");
+    expect(state.app.question?.verb).toBe("Fusionner");
+    expect(state.app.question?.alternative).toBe("Rebaser");
+    // Nothing has run yet.
+    expect(backend.current.calls.filter((call) => call.command === "pull")).toHaveLength(0);
+
+    state.answerAlternative();
+    await settled(state);
+
+    const pulls = backend.current.calls.filter((call) => call.command === "pull");
+    expect(pulls).toHaveLength(1);
+    expect(pulls[0]!.args).toMatchObject({ reconcile: "rebase" });
+  });
+
+  it("asks nothing when the repository already decided", async () => {
+    const state = await running({ ahead: 3, behind: 1 });
+    backend.current.reconcileConfigured = true;
+
+    state.pullRemote();
+    await settled(state);
+
+    expect(state.app.question).toBeNull();
+    const pulls = backend.current.calls.filter((call) => call.command === "pull");
+    expect(pulls).toHaveLength(1);
+    expect(pulls[0]!.args["reconcile"]).toBeUndefined();
+  });
+
+  it("asks nothing when the branch has not diverged", async () => {
+    // Only a divergence needs reconciling: behind alone fast-forwards, and
+    // ahead alone has nothing to bring in.
+    const state = await running({ ahead: 0, behind: 2 });
+    backend.current.reconcileConfigured = false;
+
+    state.pullRemote();
+    await settled(state);
+
+    expect(state.app.question).toBeNull();
+    expect(
+      backend.current.calls.filter((call) => call.command === "pull_reconcile_configured"),
+    ).toHaveLength(0);
+  });
+});
+
 describe("running something on the network", () => {
   it("raises the overlay for its duration and lowers it after", async () => {
     const state = await running();

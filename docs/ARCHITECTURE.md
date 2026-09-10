@@ -1225,6 +1225,37 @@ retirer" and "Supprimer" now, which is longer and says which of three things is
 about to happen. The titles spell out the rest, and the note repeats the answer
 at the moment the question actually arises — just after the click.
 
+### 2.42 The one question that is not "are you sure"
+
+`git pull` on a diverged branch refuses when nothing says how to reconcile it —
+since 2.27 — and prints twelve lines of hints whose every suggestion is a
+`git config` command. From a terminal that is a nudge. From a window with no
+preferences screen (M9) it is a dead end: the button can only fail, and the wall
+of text says so in a way that reads as the app's fault.
+
+§2.33's decision stands: **omagit does not pass a strategy of its own**, because
+`pull.rebase`, `pull.ff` and a branch's own setting are decisions somebody made
+for the repository and a flag would quietly override them. What was missing is
+the case where there is *no* decision to override. There, the app asks — before
+the pull, not after the refusal — and the answer travels with that one pull.
+Nothing is written to the configuration: what to do *every* time is exactly the
+decision this app has no business taking for somebody.
+
+**Asked on facts, not on the message.** The failure could be matched — it says
+"Need to specify how to reconcile divergent branches" — but that sentence is
+translated on a machine whose `git` speaks the user's language, and matching
+English against it would work everywhere it was written and nowhere else. So
+the two conditions are read instead: the branch has diverged (ahead *and*
+behind, which the summary already knows) and `reconcile_configured` finds
+nothing in the three places `git` looks.
+
+**And it gave the confirmation dialog a second verb.** Every question until now
+was "are you sure", where the two ways out are do-it and don't. This one is a
+choice between two things, neither of them the dangerous one, so neither wears
+`danger`: "Fusionner" is primary, "Rebaser" is ordinary, and cancelling is
+still cancelling. `Question.alternative` is optional and nothing else uses it —
+a shape earns its second half when a second case turns up, and this is it.
+
 ### 2.40 A failure gets a band, not a modal
 
 Reported from the fixture: "les messages d'erreur en rouge en bas ne sont pas
