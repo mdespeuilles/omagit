@@ -1,13 +1,18 @@
 <script setup lang="ts">
 // SPEC §11's filters: author, message, path, date range.
 //
-// Two rules shape it. Typing does not re-walk the history on every keystroke —
+// Two rules shape it. Typing re-walks the history — but not once per keystroke:
 // a walk of a hundred thousand commits per letter is not a filter, it is a
-// hang — so the text boxes commit on Enter or on leaving the field. And a
-// filtered history says so: the graph is gone while one is on, and a bar that
-// did not explain that would look like a bug.
+// hang. The first version answered that by waiting for Enter or for the field
+// to be left, and that was the wrong end of the trade: you type, the list does
+// not move, nothing on screen says it is waiting, and the box reads as broken.
+// A quarter of a second after the last keystroke is one walk per pause in the
+// typing rather than one per letter, and Enter still applies at once.
+//
+// And a filtered history says so: the graph is gone while one is on, and a bar
+// that did not explain that would look like a bug.
 
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { app, clearFilters, isFilteringHistory, setQuery } from "../state";
 
 const author = ref(app.query.author);
@@ -32,7 +37,22 @@ watch(
 
 const filtering = computed(() => isFilteringHistory());
 
+/// Long enough that a burst of typing is one walk, short enough that the list
+/// answers while the hand is still on the keyboard.
+const PAUSE = 250;
+let pending: ReturnType<typeof setTimeout> | undefined;
+
+function applySoon(): void {
+  clearTimeout(pending);
+  pending = setTimeout(apply, PAUSE);
+}
+
+// A walk asked for by a screen nobody is looking at any more is a walk nobody
+// will read.
+onBeforeUnmount(() => clearTimeout(pending));
+
 function apply(): void {
+  clearTimeout(pending);
   void setQuery({
     author: author.value,
     text: text.value,
@@ -67,6 +87,7 @@ function asSeconds(value: string, offset: number): number {
       type="text"
       placeholder="Auteur"
       spellcheck="false"
+      @input="applySoon()"
       @keydown.enter="apply()"
       @blur="apply()"
     />
@@ -76,6 +97,7 @@ function asSeconds(value: string, offset: number): number {
       type="text"
       placeholder="Message"
       spellcheck="false"
+      @input="applySoon()"
       @keydown.enter="apply()"
       @blur="apply()"
     />
@@ -85,6 +107,7 @@ function asSeconds(value: string, offset: number): number {
       type="text"
       placeholder="Chemin"
       spellcheck="false"
+      @input="applySoon()"
       @keydown.enter="apply()"
       @blur="apply()"
     />

@@ -294,6 +294,38 @@ describe("filtering", () => {
     expect(state.isFilteringHistory()).toBe(true);
   });
 
+  it("filters while you type, and walks once per pause rather than per letter", async () => {
+    // The box used to wait for Enter or for the field to be left: you typed,
+    // nothing moved, and nothing said it was waiting. It reads as broken. The
+    // other extreme is a walk of the whole history per letter, so the box waits
+    // a quarter of a second after the last keystroke.
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+    const walks = () => backend.current.calls.filter((call) => call.command === "history").length;
+    const before = walks();
+
+    const { mount } = await import("@vue/test-utils");
+    const HistoryFilters = (await import("./components/HistoryFilters.vue")).default;
+    const filters = mount(HistoryFilters);
+    const box = filters.findAll("input[type=text]")[1]!;
+
+    // Three keystrokes in a burst, the way typing arrives.
+    await box.setValue("li");
+    await box.setValue("lic");
+    await box.setValue("licence");
+    expect(walks()).toBe(before);
+
+    // Real timers rather than fake ones: the pause is the behaviour under test,
+    // and the store's own awaits are easier to let run than to drive.
+    await new Promise((resume) => setTimeout(resume, 350));
+    await settled(state);
+
+    expect(walks()).toBe(before + 1);
+    expect(state.app.query.text).toBe("licence");
+    filters.unmount();
+  });
+
   it("stops filtering when the box is cleared", async () => {
     // An empty box is not a filter. If it were, clearing one would leave the
     // screen filtering on the empty string — which matches everything, so
