@@ -119,7 +119,7 @@ describe("reading the library", () => {
     expect(state.app.repositories.map((row) => row.path)).toEqual(["/gone", "/here"]);
     const gone = state.app.library["/gone"];
     expect(gone?.status).toBe("failed");
-    expect(gone?.status === "failed" && gone.error).toContain("introuvable");
+    expect(gone?.status === "failed" && gone.error).toContain("not on the disk");
   });
 
   it("opens on the Repositories screen and opens nothing by itself", async () => {

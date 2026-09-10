@@ -88,7 +88,7 @@ function open(id: string, extend: boolean): void {
         /><span class="check" aria-hidden="true">✓</span>
         {{ t("history.allBranches") }}
       </label>
-      <label class="toggle" title="Ne suivre que le premier parent de chaque fusion">
+      <label class="toggle" :title="t('history.firstParent')">
         <input
           type="checkbox"
           :checked="app.query.firstParent"

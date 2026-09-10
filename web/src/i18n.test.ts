@@ -123,6 +123,17 @@ describe("the source", () => {
 
   const FRENCH = /[éèêëàâçùûôîï]/i;
 
+  /// French without an accent in it, which the letters above cannot see —
+  /// "introuvable sur le disque" has none, and hid in `state.ts` through the
+  /// whole conversion. Two of these words in one string, with a space in it, is
+  /// a sentence: none of them is an English word, so a match is not a
+  /// coincidence.
+  const FRENCH_WORDS = new RegExp(
+    String.raw`\b(le|la|les|des|du|une|dans|sur|pas|aucun|aucune|est|sont|avec` +
+      String.raw`|pour|par|cette|ces|qui|que|sans|plus|tout|toute|comme|mais|au|aux)\b`,
+    "gi",
+  );
+
   it("holds no French outside the catalogues", () => {
     // The nine strings this found the first time it ran had all been missed by
     // hand — two notes on the Preferences screen, a "Défaut" that appears
@@ -139,6 +150,25 @@ describe("the source", () => {
     // `backend.fake.ts` is a test double: what it throws stands in for `git`'s
     // own words, which are never translated.
     expect(left.filter((one) => !one.startsWith("./backend.fake.ts"))).toEqual([]);
+  });
+
+  it("holds no accent-free French either", () => {
+    const left: string[] = [];
+    for (const [path, text] of sources()) {
+      if (path.includes("backend.fake")) continue;
+      withoutComments(text)
+        .split("\n")
+        .forEach((line, at) => {
+          for (const match of line.matchAll(/"([^"\n]{6,160})"/g)) {
+            const quoted = match[1] ?? "";
+            if (!quoted.includes(" ")) continue;
+            if ((quoted.match(FRENCH_WORDS) ?? []).length >= 2) {
+              left.push(`${path}:${at + 1}: ${quoted}`);
+            }
+          }
+        });
+    }
+    expect(left).toEqual([]);
   });
 
   it("keeps the reference catalogue in English", () => {

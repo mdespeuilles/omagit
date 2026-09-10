@@ -194,7 +194,7 @@ function stop(name: string): 0 | -1 {
               v-if="!row.head"
               class="row-action"
               :tabindex="stop(row.name)"
-              :title="`Rebaser la branche courante sur ${row.name}`"
+              :title="t('branches.rebase', { branch: row.name })"
               @click.stop="rebaseOnto(row.name)"
             >
               {{ t("branches.rebaseShort") }}
@@ -259,7 +259,7 @@ function stop(name: string): 0 | -1 {
                   v-if="!row.head"
                   class="row-action"
                   :tabindex="stop(row.name)"
-                  :title="`Rebaser la branche courante sur ${row.name}`"
+                  :title="t('branches.rebase', { branch: row.name })"
                   @click.stop="rebaseOnto(row.name)"
                 >
                   {{ t("branches.rebaseShort") }}

@@ -99,7 +99,7 @@ function state(row: LibraryRow): State {
       <input
         type="search"
         :placeholder="t('library.filter')"
-        title="Filtrer par nom, chemin ou description — /"
+        :title="t('library.filterTitle')"
         spellcheck="false"
         :value="app.libraryFilter"
         @input="setLibraryFilter(($event.target as HTMLInputElement).value)"

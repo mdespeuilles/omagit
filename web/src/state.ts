@@ -449,7 +449,7 @@ async function readSummary(row: LibraryRow): Promise<void> {
   if (row.missing) {
     // Not an error to be reported: DESIGN §4 says the row stays and says
     // "introuvable", because a repository on an unmounted disk comes back.
-    state.library[row.path] = { status: "failed", error: "introuvable sur le disque" };
+    state.library[row.path] = { status: "failed", error: t("library.missing") };
     return;
   }
   state.library[row.path] = { status: "loading" };
@@ -662,7 +662,7 @@ export async function selectFile(file: string, staged: boolean): Promise<void> {
     if (!diff) {
       state.diff = {
         status: "failed",
-        error: "ce fichier n'est plus dans le statut",
+        error: t("diff.goneFromStatus"),
       };
       return;
     }
@@ -865,7 +865,7 @@ export async function selectCommitFile(file: string): Promise<void> {
     const diff = await api.commitFileDiff(path, id, file);
     if (state.commitFile !== file) return;
     if (!diff) {
-      state.diff = { status: "failed", error: "ce fichier n'est pas dans ce commit" };
+      state.diff = { status: "failed", error: t("diff.goneFromCommit") };
       return;
     }
     state.diff = {
@@ -938,7 +938,7 @@ export async function selectCompareFile(file: string): Promise<void> {
     const diff = await api.compareFileDiff(path, ends.from.full, ends.to.full, file);
     if (state.commitFile !== file) return;
     if (!diff) {
-      state.diff = { status: "failed", error: "ce fichier n'est pas dans cette comparaison" };
+      state.diff = { status: "failed", error: t("diff.goneFromComparison") };
       return;
     }
     state.diff = {
@@ -1274,7 +1274,7 @@ export function cloneBlocker(form: CloneForm): string | null {
   if (!form.name.trim()) return t("clone.needName");
   // A name with a separator in it would put the clone somewhere other than
   // where the destination line says.
-  if (/[/\\]/.test(form.name.trim())) return "Le nom du dossier ne peut pas contenir de /";
+  if (/[/\\]/.test(form.name.trim())) return t("clone.slashInName");
   return null;
 }
 
@@ -1687,7 +1687,7 @@ export async function selectStashFile(file: string): Promise<void> {
     const diff = await api.stashFileDiff(path, id, file);
     if (state.stash !== id || state.stashFile !== file) return;
     if (!diff) {
-      state.diff = { status: "failed", error: "ce fichier n'est plus dans cette remise" };
+      state.diff = { status: "failed", error: t("diff.goneFromStash") };
       return;
     }
     state.diff = {
