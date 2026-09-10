@@ -35,3 +35,7 @@ jiff = { workspace = true }
 [dev-dependencies]
 tempfile = { workspace = true }
 serde_json = { workspace = true }
+# Tauri's own mock application, for the one thing no other suite can reach: that
+# a repository opened through `AppState` really does report its changes to the
+# window. Dev-only — the feature adds `tauri::test` and nothing to the bundle.
+tauri = { workspace = true, features = ["test"] }

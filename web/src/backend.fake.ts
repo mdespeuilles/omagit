@@ -130,6 +130,9 @@ export class Repository {
   remoteBranches: RemoteBranchRow[] = [];
   /// Held open so a test can watch the overlay while an operation runs.
   holdNetwork: Promise<void> | null = null;
+  /// The same, for a write: held open so a test can see the window while one is
+  /// in flight — which is when the filesystem watcher must stay out of the way.
+  holdWrite: Promise<void> | null = null;
   /// What `open_in_editor` says it launched. Not always what is configured —
   /// a terminal editor is handed to the desktop's opener instead.
   editorSays = "shared.txt ouvert dans code";
@@ -579,6 +582,7 @@ export class Repository {
       case "log":
         return undefined;
       case "stage":
+        if (this.holdWrite) await this.holdWrite;
         return this.stage(args);
       case "stage_all":
         return this.stageAll(args["unstage"] as boolean);

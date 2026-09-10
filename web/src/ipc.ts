@@ -64,6 +64,11 @@ export type Identity = {
   inherited: boolean;
 };
 
+/// What changed under a repository, as the backend reports it (SPEC §10). The
+/// two booleans are invalidations, not events: the window has no business
+/// knowing that `.git/index.lock` exists.
+export type Changed = { path: string; status: boolean; refs: boolean };
+
 export type RepoSummary = {
   path: string;
   name: string;

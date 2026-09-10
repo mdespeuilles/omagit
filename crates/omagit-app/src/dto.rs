@@ -321,6 +321,20 @@ pub struct Identity {
     pub inherited: bool,
 }
 
+/// What changed under a repository, as the window is told (SPEC §10).
+///
+/// The two booleans are the invalidations, not the events: the front end has no
+/// business knowing that `.git/index.lock` exists, only that its status is now
+/// out of date. `omagit_git::watch::Changes` is what decides.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct Changed {
+    pub path: String,
+    /// The working copy or the index moved: re-read the status.
+    pub status: bool,
+    /// A ref moved: re-read the branch tree and its divergence counts.
+    pub refs: bool,
+}
+
 pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
     RepoSummary {
         path: path.display().to_string(),

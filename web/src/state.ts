@@ -20,6 +20,7 @@ import type { Action as KeymapAction } from "./keymap";
 import {
   api,
   isFiltered,
+  type Changed,
   type CommitDetail,
   type Comparison,
   type DiffRow,
@@ -957,6 +958,32 @@ async function refreshJournal(): Promise<void> {
 export async function watchProgress(): Promise<void> {
   await listen<Progress>("progress", (event) => {
     state.running = event.payload;
+  });
+}
+
+/// Notice that the repository changed underneath us (SPEC §10).
+///
+/// A client that only refreshes when clicked is wrong every time you touch a
+/// terminal — commit from the shell, switch a branch, run a formatter — and
+/// that is what this window was: `omagit-git`'s watcher has been written since
+/// M2, debounced and targeted, and nothing had ever called it.
+///
+/// Three rules on this side, and all three are about *not* re-reading:
+///
+/// * **only the repository on screen.** Every open tab is watched, because the
+///   handle is what carries the watch, and a change in another one is not
+///   something this screen can show;
+/// * **not during our own write.** `settle()` re-reads at the end of one
+///   anyway, and the events a `git commit` produces would otherwise land in the
+///   middle of it;
+/// * **status or refs, not everything.** The backend says which, and a branch
+///   moving does not cost a status walk.
+export async function watchRepository(): Promise<void> {
+  await listen<Changed>("changed", (event) => {
+    const { path, status, refs } = event.payload;
+    if (path !== state.open || state.busy) return;
+    if (status) void settle();
+    else if (refs) void readRefs();
   });
 }
 

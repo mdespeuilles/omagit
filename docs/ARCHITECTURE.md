@@ -1829,6 +1829,41 @@ if any of them comes back to either left-hand bar. That is a narrower rule than
 checkbox and `⚠` beside a conflict count are typography doing a typographic job,
 not a picture standing in for an object.
 
+### 2.58 The watcher nobody had ever called
+
+Reported from use, and it is the same shape as §2.8's theme defect: the code was
+written, tested, and never asked. `omagit-git/src/watch.rs` has done the hard
+half since M2 — debounced at 150 ms, `.gitignore` respected so a build writing
+into `target/` costs nothing, `.git/index.lock` ignored so we do not react to
+Git reacting to us, and every change set labelled by what it invalidates — and
+no line of the application had ever constructed a `Watcher`. The window
+refreshed when clicked, which is wrong every time you touch a terminal.
+
+**The watch lives on the repository handle.** `Open` holds it, so it starts when
+a repository is opened and stops when the handle is dropped — which is what
+closing a tab does (§2.56). No registry to keep in step, and no thread outliving
+the screen that wanted it.
+
+**What crosses is the invalidation, not the event.** `Changed { path, status,
+refs }`: the front end has no business knowing `.git/index.lock` exists, only
+that its status is out of date. A branch that moved re-reads the tree and does
+not walk the status.
+
+**Three rules on the window's side, all of them about not re-reading.** Only the
+repository on screen — every open tab is watched, because the watch travels with
+the handle, and a change elsewhere is not something this screen can show. Not
+during our own write, because `settle()` re-reads at the end of one anyway and a
+`git commit`'s burst would otherwise land in the middle of it. And status or
+refs, never both by default.
+
+**`AppState` holds an announcer, not an `AppHandle`.** The handle is generic
+over the runtime and this state is not — and that genericity is what makes the
+bridge testable: `tests/watching.rs` builds a real Tauri application on the mock
+runtime, opens a real repository through `AppState`, writes a file, and waits
+for the event. It is the one thing neither suite could reach, and it is exactly
+the kind of wiring that compiles, type-checks and silently does nothing. Which
+is what it did for seven milestones.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

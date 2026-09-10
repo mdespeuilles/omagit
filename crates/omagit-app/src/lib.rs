@@ -51,6 +51,12 @@ pub fn run() {
             let _ = app.emit("menu", event.id().as_ref());
         })
         .setup(|app| {
+            // Before anything can be opened: a repository opened without the
+            // window to report to would be one that never refreshes itself.
+            {
+                use tauri::Manager as _;
+                app.state::<AppState>().attach(app.handle().clone());
+            }
             if let Some(dir) = platform::current().omarchy_state_dir() {
                 follow_system_palette(app.handle().clone(), dir);
             }

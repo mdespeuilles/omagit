@@ -33,6 +33,13 @@ pub struct Open {
     /// incremental — restarting it per page would move a long-running branch
     /// to a different column every time the list scrolled.
     pub history: Mutex<Option<crate::log::Session>>,
+    /// The filesystem watch on this repository (SPEC §10).
+    ///
+    /// Held here so it lives exactly as long as the handle does: closing a tab
+    /// drops the handle, which drops the watcher, which stops its thread. Never
+    /// read — the work happens on the other end of its channel — hence the
+    /// underscore.
+    _watch: Option<omagit_git::watch::Watcher>,
 }
 
 pub struct AppState {
@@ -46,6 +53,15 @@ pub struct AppState {
     library: Mutex<Library>,
     settings: Mutex<Settings>,
     config_dir: Option<PathBuf>,
+    /// How a change reaches the window, once there is one.
+    ///
+    /// A closure rather than the `AppHandle` itself, for two reasons that turn
+    /// out to be the same one: the handle is generic over the runtime and this
+    /// state is not, and it is that genericity that lets the bridge be tested
+    /// against Tauri's mock runtime (`tests/watching.rs`). Set in `setup`,
+    /// because `AppState` is built before the window exists — SPEC §8 wants the
+    /// `git` check before anything is drawn.
+    window: Mutex<Option<Announce>>,
     /// The token of the network operation in flight, if one is.
     ///
     /// One at a time, and that is a product decision as much as a technical
@@ -54,6 +70,9 @@ pub struct AppState {
     /// neither. The second caller is refused with the name of the first.
     running: Mutex<Option<Running>>,
 }
+
+/// How a change under a repository is announced to the window.
+type Announce = Arc<dyn Fn(crate::dto::Changed) + Send + Sync>;
 
 /// A network operation in flight.
 pub struct Running {
@@ -93,8 +112,18 @@ impl AppState {
             library: Mutex::new(library),
             settings: Mutex::new(settings),
             config_dir,
+            window: Mutex::new(None),
             running: Mutex::new(None),
         }
+    }
+
+    /// Hand the window over, once it exists. Called from `setup`.
+    pub fn attach<R: tauri::Runtime>(&self, app: tauri::AppHandle<R>) {
+        *self.lock(&self.window) = Some(Arc::new(move |changed| {
+            use tauri::Emitter as _;
+            // The window may be gone; nothing here depends on it arriving.
+            let _ = app.emit("changed", changed);
+        }));
     }
 
     /// The `git` binary, or the reason there is none.
@@ -118,11 +147,13 @@ impl AppState {
             return Ok(held.clone());
         }
         let repo = Repository::open(&path)?;
+        let watch = self.watch(&repo, &path);
         let handle = Arc::new(Open {
             repo,
             path: path.clone(),
             write_lock: Mutex::new(()),
             history: Mutex::new(None),
+            _watch: watch,
         });
         open.insert(path, handle.clone());
         Ok(handle)
@@ -140,6 +171,48 @@ impl AppState {
     pub fn close(&self, path: &Path) {
         let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_owned());
         self.lock(&self.open).remove(&path);
+    }
+
+    /// Watch a repository, and tell the window what changed in it (SPEC §10).
+    ///
+    /// `omagit_git::watch` has done the hard half since M2 — debounced at
+    /// 150 ms, `.gitignore` respected, `index.lock` ignored, and each change set
+    /// labelled by what it invalidates — and nothing had ever called it. A
+    /// client that only refreshes when clicked is wrong every time you touch a
+    /// terminal, which is what this was.
+    ///
+    /// A failure is logged and left: the app still works, it just stops
+    /// noticing. The most likely cause is the platform's watch limit, which is
+    /// something the person can act on once told.
+    fn watch(&self, repo: &Repository, path: &Path) -> Option<omagit_git::watch::Watcher> {
+        let announce = self.lock(&self.window).clone()?;
+        let (watcher, changes) = match omagit_git::watch::Watcher::start(repo) {
+            Ok(started) => started,
+            Err(error) => {
+                tracing::warn!(%error, path = ?path, "no watch: this repository will not refresh itself");
+                return None;
+            }
+        };
+
+        let path = path.display().to_string();
+        let started = std::thread::Builder::new()
+            .name("omagit-watch-bridge".into())
+            .spawn(move || {
+                // Ends when the channel closes, which is when the watcher is
+                // dropped — so the thread dies with the repository handle.
+                while let Ok(changes) = changes.recv_blocking() {
+                    announce(crate::dto::Changed {
+                        path: path.clone(),
+                        status: changes.invalidates_status(),
+                        refs: changes.invalidates_refs(),
+                    });
+                }
+            });
+        if let Err(error) = started {
+            tracing::warn!(%error, "no watch bridge: this repository will not refresh itself");
+            return None;
+        }
+        Some(watcher)
     }
 
     pub fn with_library<T>(&self, act: impl FnOnce(&mut Library) -> T) -> T {

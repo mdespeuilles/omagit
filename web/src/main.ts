@@ -5,7 +5,7 @@ import App from "./App.vue";
 import { api } from "./ipc";
 import { watchDrops } from "./drop";
 import { installMenu } from "./menu";
-import { boot, watchProgress, watchTheme } from "./state";
+import { boot, watchProgress, watchRepository, watchTheme } from "./state";
 
 const app = createApp(App);
 
@@ -49,3 +49,6 @@ watchProgress().catch(report);
 // Same reasoning, and the same independence: the system palette can change
 // while the window is open, and SPEC §6.1's second source is a live one.
 watchTheme().catch(report);
+// And the repositories themselves: a client that only refreshes when clicked is
+// wrong every time you touch a terminal (SPEC §10).
+watchRepository().catch(report);
