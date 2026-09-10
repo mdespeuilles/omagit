@@ -68,6 +68,9 @@ export type RepoSummary = {
   path: string;
   name: string;
   head: string;
+  /// Which of the three shapes `head` is: on a branch, on a commit with no
+  /// branch to move, or on a branch that does not exist yet.
+  head_kind: "branch" | "detached" | "unborn";
   /// A half-finished merge, rebase or cherry-pick. Shown *instead* of the
   /// branch: "on main" is misleading while a merge is stuck.
   operation: string | null;

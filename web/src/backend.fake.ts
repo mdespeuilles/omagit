@@ -80,6 +80,10 @@ export class Repository {
   committer: string | null = "Test <test@omagit.test>";
   template: string | null = null;
   head = "main";
+  /// Which of `Head`'s three shapes the window is told about. A test that is
+  /// about SPEC §13's edge cases — a repository with no commit, a detached
+  /// checkout — sets this rather than dressing the label to look like one.
+  headKind: "branch" | "detached" | "unborn" = "branch";
   commits: { message: string; amend: boolean }[] = [];
   /// Set to make the next write fail, the way `git apply` does on a patch
   /// whose context has moved.
@@ -592,6 +596,7 @@ export class Repository {
       path,
       name: row?.name ?? "repo",
       head: this.head,
+      head_kind: this.headKind,
       operation: this.operation,
       tracking: this.tracking,
       counts: {

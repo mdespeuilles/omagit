@@ -1596,6 +1596,40 @@ being pressed used the accent *fill*, which took the key button's colour with it
 and printed "Appuie…" in accent on accent. It lifts to the hover surface instead.
 A filled row cannot hold a control that has a state of its own.
 
+### 2.51 M9, eighth slice: which empty it is
+
+SPEC §11 asks for "états vides et d'erreur partout", and every list already drew
+something when it was empty. What none of them did was say **which** empty it
+was, and that is where an empty state stops being useful and starts being wrong:
+
+* **"Aucun commit" under a filter reads as an empty repository.** The filter row
+  is above it, folded on some screens, and small on all of them. History now
+  distinguishes three: nothing matches (with the way to lift it in the sentence),
+  a repository whose first commit has not been made, and a genuinely empty walk.
+* **A filtered library offered "Ajouter un dépôt local".** The repositories were
+  still there, one word away; the offer answered a question nobody had asked.
+* **A branch tree with a count of zero and no rows reads as a tree that failed to
+  load.** It says the branch will be born with the first commit.
+* **The journal said "Aucune commande"** to somebody who had gone looking for it,
+  and left them unsure whether it records anything.
+
+Behind them are two of SPEC §13's mandatory edge cases, which the Rust side has
+handled since M2 and the window had no words for.
+
+**`HEAD`'s shape crosses the wire as a state now, not as a label to be sniffed.**
+`RepoSummary.head_kind` is `branch`, `detached` or `unborn`. The front end was
+reading `head.startsWith("detached")` in two places, which is one branch name
+away from being wrong — and `detached-head-fix` is a branch somebody writes while
+fixing exactly this. There is a test with that name in it.
+
+**A commit on a detached `HEAD` warns.** `repo.rs` has said since M2 that
+`Head::Detached` "has to warn before a commit is made here (M5)", and M5 never
+built it: the commit is made, no branch moves, and it is reachable by hash alone
+until something points at it. Not blocked — it is a legitimate thing to do — and
+not painted as an error either, which would teach people to fear a state they may
+have chosen. It is a `--warning` line under the box. Amend in a repository with
+no commit *is* blocked, with the reason.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

@@ -938,6 +938,14 @@ button.icon {
   font-size: var(--text-meta);
   color: var(--text-dim);
 }
+/* Not `--danger`: a detached commit is a legitimate thing to make, and painting
+   it as an error would teach people to fear a state they may have chosen. It is
+   the colour of something worth reading, which dim is not. */
+.commit-caution {
+  margin: 6px 0 0;
+  font-size: var(--text-meta);
+  color: var(--warning);
+}
 
 /* ── The file list ───────────────────────────────────────────────────────── */
 

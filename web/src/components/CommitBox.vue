@@ -47,8 +47,24 @@ const label = computed(() =>
 /// Why the button is off, in the words of the thing that is wrong. An
 /// explanation belongs next to the control it disables, not in a dialog after
 /// the fact.
+/// What is worth saying before a commit that will work anyway.
+///
+/// A detached `HEAD` was promised a warning at M5 — `Head::Detached` says so in
+/// `repo.rs` — and never got one: the commit is made, no branch moves, and it
+/// is reachable only by hash until something else points at it. Not blocked,
+/// because it is a legitimate thing to do; said, because it is not what most
+/// people mean.
+const caution = computed(() => {
+  if (app.summary?.head_kind !== "detached") return null;
+  return `${app.summary.head} : ce commit n'appartiendra à aucune branche.`;
+});
+
 const blocked = computed(() => {
   if (app.gitUnusable) return `git indisponible — ${app.gitUnusable}`;
+  // Nothing to amend in a repository whose first commit has not been made.
+  if (app.amend && app.summary?.head_kind === "unborn") {
+    return "Aucun commit à corriger : celui-ci sera le premier";
+  }
   if (!app.committer)
     return "Aucune identité Git : git config --global user.name && git config --global user.email";
   if (staged.value === 0 && !app.amend) return "Rien n'est indexé";
@@ -127,6 +143,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
       </button>
     </div>
 
+    <p v-if="caution" class="commit-caution">{{ caution }}</p>
     <p v-if="blocked" class="commit-blocked">{{ blocked }}</p>
   </section>
 </template>

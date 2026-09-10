@@ -254,6 +254,13 @@ pub struct RepoSummary {
     pub name: String,
     /// The branch, or `detached at 9f3c1a2`.
     pub head: String,
+    /// Which of `Head`'s three shapes that label is.
+    ///
+    /// Sent as its own field because the front end has to draw the three
+    /// differently and was reading `head.starts_with("detached")` to tell —
+    /// which is a branch name away from being wrong, and `detached-head-fix` is
+    /// a branch somebody writes while fixing exactly this.
+    pub head_kind: &'static str,
     /// A half-finished merge, rebase or cherry-pick. The row says so *instead*
     /// of the branch, because "on main" is misleading while a merge is stuck.
     pub operation: Option<String>,
@@ -322,6 +329,11 @@ pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default(),
         head: summary.head.label().to_string(),
+        head_kind: match summary.head {
+            omagit_git::Head::Branch { .. } => "branch",
+            omagit_git::Head::Detached { .. } => "detached",
+            omagit_git::Head::Unborn { .. } => "unborn",
+        },
         operation: summary.operation.map(|operation| operation.to_string()),
         tracking: summary.tracking.as_ref().map(|tracking| Tracking {
             upstream: tracking.upstream.clone(),

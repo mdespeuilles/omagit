@@ -22,9 +22,12 @@ import {
   zoneActive,
 } from "../state";
 
+/// What the filter leaves, which is what the empty state has to talk about.
+const rows = computed(() => visibleRepositories());
+
 const groups = computed(() => {
   const seen = new Map<number, { name: string; rows: LibraryRow[] }>();
-  for (const row of visibleRepositories()) {
+  for (const row of rows.value) {
     const group = seen.get(row.group) ?? { name: row.group_name, rows: [] };
     group.rows.push(row as LibraryRow);
     seen.set(row.group, group);
@@ -47,14 +50,16 @@ function state(row: LibraryRow): State {
   if (held.status === "failed") return { text: held.error, kind: "gone" };
   if (held.status !== "ready") return { text: "", kind: "clean" };
 
-  const { head, operation, counts, tracking } = held.value;
+  const { head, head_kind, operation, counts, tracking } = held.value;
   const where = operation ?? head;
   if (counts.conflicted > 0) {
     return { text: `${where} · ${plural(counts.conflicted, "conflit")}`, kind: "conflict" };
   }
 
   const changed = counts.modified + counts.added + counts.deleted + counts.renamed;
-  const detached = head.startsWith("detached");
+  // The backend's answer, not a sniff at the label: a branch called
+  // `detached-head-fix` was drawn as a detached HEAD.
+  const detached = head_kind === "detached";
   const divergence =
     tracking && !tracking.gone
       ? [
@@ -103,8 +108,22 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
       {{ app.addError }} ✗
     </button>
 
+    <!-- A filter with nothing behind it is not an empty library, and offering
+         "Ajouter un dépôt local" there would answer a question nobody asked:
+         the repositories are still in the list, one word away. -->
+    <div v-if="rows.length === 0 && app.libraryFilter.trim() !== ''" class="library-empty">
+      <p class="library-empty-title">Aucun dépôt ne correspond</p>
+      <p class="library-empty-text">
+        {{ plural(app.repositories.length, "dépôt") }} dans la liste, aucun qui contienne «
+        {{ app.libraryFilter.trim() }} ».
+      </p>
+      <span class="library-empty-actions">
+        <button @click="setLibraryFilter('')">Effacer le filtre</button>
+      </span>
+    </div>
+
     <!-- Board 06's empty state: what to do, not just that there is nothing. -->
-    <div v-if="app.repositories.length === 0" class="library-empty">
+    <div v-else-if="app.repositories.length === 0" class="library-empty">
       <p class="library-empty-title">Aucun dépôt pour l'instant</p>
       <p class="library-empty-text">
         Ajoute un dossier déjà versionné. Il reste sur le disque : cette liste n'en garde que le

@@ -10,6 +10,7 @@ import { computed } from "vue";
 import { when, exact } from "../format";
 import {
   app,
+  clearFilters,
   compareWith,
   isFilteringHistory,
   markCompareFrom,
@@ -112,6 +113,17 @@ function open(id: string, extend: boolean): void {
     <p v-else-if="app.history.status === 'loading'" class="pane-empty">Lecture de l'historique…</p>
     <p v-else-if="app.history.status === 'failed'" class="pane-error mono">
       {{ app.history.error }}
+    </p>
+    <!-- Three ways to have no commits, and only one of them means the list is
+         telling you about the repository. "Aucun commit" under a filter reads
+         as an empty repository, which is a lie the filter row is too small to
+         correct on its own. -->
+    <p v-else-if="rows.length === 0 && isFilteringHistory()" class="pane-empty">
+      Aucun commit ne correspond.
+      <button class="link" @click="clearFilters()">Effacer les filtres</button>
+    </p>
+    <p v-else-if="rows.length === 0 && app.summary?.head_kind === 'unborn'" class="pane-empty">
+      Ce dépôt n'a pas encore de commit — le premier se fait depuis la copie de travail.
     </p>
     <p v-else-if="rows.length === 0" class="pane-empty">Aucun commit</p>
 

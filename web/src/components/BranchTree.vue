@@ -122,6 +122,12 @@ function submit(): void {
       <span class="pane-head-count">{{ total }}</span>
     </div>
 
+    <!-- SPEC §13's repository with no commit: `git init` and nothing since.
+         There is no branch yet — `main` is a name `HEAD` points at, not a ref —
+         and a count of 0 with no rows under it reads as a tree that failed to
+         load rather than as a repository waiting for its first commit. -->
+    <p v-if="total === 0" class="pane-empty">Aucune branche : elle naîtra du premier commit.</p>
+
     <!-- A `<div>` for the same reason as the library row: these rows hold
          their own action buttons, and a button inside a button is invalid. -->
     <div

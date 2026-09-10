@@ -70,7 +70,10 @@ const drawsCaption = computed(
 /// Nothing on the network while something else is.
 const busy = computed(() => app.running !== null);
 const tracking = computed(() => app.summary?.tracking ?? null);
-const detached = computed(() => app.summary?.head.startsWith("detached") ?? false);
+/// Read from the backend's own answer, not sniffed out of the label it prints:
+/// `head.startsWith("detached")` is one branch name away from being wrong, and
+/// `detached-head-fix` is a branch somebody writes while fixing exactly this.
+const detached = computed(() => app.summary?.head_kind === "detached");
 
 /// The counts are the reason to press Pull and Push.
 const behind = computed(() => (tracking.value && !tracking.value.gone ? tracking.value.behind : 0));
