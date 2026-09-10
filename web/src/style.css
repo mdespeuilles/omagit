@@ -2260,10 +2260,13 @@ select:focus {
   color: var(--text);
 }
 
-.group-head.nested,
+/* A prefix head sits between two lists — the loose branches above, its own
+   below — and needs air on both sides to read as the start of one rather than
+   as a row of the other. Less than a section head's 8px, because it is one rung
+   down and the rhythm should say so; not zero, which is what it had. */
 .group-head.as-button.prefix {
   padding-left: 22px;
-  margin-top: 0;
+  margin: 8px 0 3px;
   text-transform: none;
   letter-spacing: 0;
   font-family: var(--font-mono);
