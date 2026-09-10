@@ -1692,6 +1692,35 @@ its default. It is not decoration: the same switch disables HTML drag and drop
 reorderable by drag. Whoever builds that will have to reconcile the two, and the
 line in the config is where they will find out.
 
+### 2.54 The window that said `undefined @ undefined:undefined`
+
+The first launch after M9's last slice opened on a white page with one line on
+it: `undefined @ undefined:undefined`. Two defects behind it, and the second is
+the one worth the entry.
+
+**The module never loaded.** `drop.ts` added the first import of
+`@tauri-apps/api/webview`, and Vite pre-bundles a dependency the first time it
+sees an import of it — a module imported by a file written *after* the dev server
+started is discovered late, and until the server has re-optimised its URL 404s.
+In a browser that is a red line in a console nobody has open; in a web view it is
+a window that shows nothing. Every Tauri module the front end imports is named in
+`optimizeDeps.include` now, so a cold start prepares all four — and the list
+doubles as the record of what the front end asks of Tauri.
+
+**The guard that exists to explain a start-up failure could not explain this
+one.** `index.html` registers an `error` listener before the module loads,
+precisely so a failure to load *it* is caught. It knew two shapes — a script that
+threw, and a script that ran and broke — and read `e.message`, `e.filename`,
+`e.lineno` for the second. A resource that fails to load has none of the three:
+it is a plain `Event` whose `target` is the tag that failed. So the one screen
+whose whole job is to say what went wrong printed the word "undefined" three
+times. It names the tag and its URL now, which is what the user had in front of
+them and could not read.
+
+Verified the way §2.31 verifies anything: a probe page with the old expression
+prints `undefined @ undefined:undefined` against a missing module, and the new
+one prints `SCRIPT n'a pas pu être chargé : …`.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

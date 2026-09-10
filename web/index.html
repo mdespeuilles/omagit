@@ -15,9 +15,19 @@
       addEventListener(
         "error",
         (e) => {
+          // Three shapes, and the third is why this is not one line. A script
+          // that threw brings an `error`. A script that *ran* but broke brings
+          // message/filename/lineno. And a resource that failed to load brings
+          // none of the three — it is a plain Event whose `target` is the tag
+          // that failed, so reading `e.message` there printed
+          // "undefined @ undefined:undefined", which is what this guard exists
+          // not to do.
+          const tag = e.target && e.target !== window ? e.target : null;
           const what = e.error
             ? (e.error.stack ?? String(e.error))
-            : `${e.message} @ ${e.filename}:${e.lineno}`;
+            : tag
+              ? `${tag.tagName || "?"} n'a pas pu être chargé : ${tag.src || tag.href || "?"}`
+              : `${e.message} @ ${e.filename}:${e.lineno}`;
           window.__omagitBoot.push(what);
           document.body.innerHTML =
             '<pre style="padding:16px;white-space:pre-wrap;font:12px ui-monospace">' +
