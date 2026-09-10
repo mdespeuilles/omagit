@@ -134,6 +134,26 @@ export class Repository {
   /// the fresh-repository case, where `git pull` refuses to guess.
   reconcileConfigured = true;
 
+  /// What the Preferences screen reads. A machine with no Omarchy, which is
+  /// the case the screen has to say out loud rather than hide.
+  preferences: import("./ipc").Preferences = {
+    source: "automatic",
+    theme: "",
+    mode: "dark",
+    density: "comfortable",
+    scale: 1.15,
+    resolved: "Tokyo Night",
+    omarchy: false,
+    system_appearance: true,
+    catalogue: [
+      { name: "Tokyo Night", mode: "dark" },
+      { name: "Rosé Pine Dawn", mode: "light" },
+    ],
+    editor: "open — aucun éditeur configuré",
+    credential_helper: "osxkeychain",
+    git: "2.50.1",
+  };
+
   /// What `check_remote` says when the dialog asks. `null` means it answers.
   unreachable: string | null = null;
   cancelled = 0;
@@ -190,6 +210,28 @@ export class Repository {
     this.calls.push({ command, args });
     switch (command) {
       case "theme":
+        return "--bg: #000; --text: #fff;";
+      case "preferences":
+        return { ...this.preferences };
+      case "set_theme": {
+        const source = args["source"] as string;
+        this.preferences = {
+          ...this.preferences,
+          source: source.startsWith("embedded") ? "embedded" : source,
+          mode: source === "embedded-light" ? "light" : "dark",
+          theme: (args["name"] as string) ?? "",
+          resolved: (args["name"] as string) || this.preferences.resolved,
+        } as typeof this.preferences;
+        return "--bg: #111; --text: #eee;";
+      }
+      case "set_density":
+        this.preferences = {
+          ...this.preferences,
+          density: args["density"] as "compact" | "comfortable",
+        };
+        return "--bg: #000; --text: #fff; --row-height: 26px;";
+      case "set_scale":
+        this.preferences = { ...this.preferences, scale: args["scale"] as number };
         return "--bg: #000; --text: #fff;";
       case "platform":
         return {

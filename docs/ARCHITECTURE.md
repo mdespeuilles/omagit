@@ -1422,6 +1422,43 @@ carried a "jalon M9" label since M3 — `/` needed somewhere to land, and the ca
 follows the list, because a panel about a repository the filter has hidden is a
 panel about something nobody can see.
 
+### 2.47 M9, fourth slice: the Preferences screen, which nothing draws
+
+DESIGN §7 lists it as not yet designed, so it is built from the vocabulary the
+window already has — pane heads, rows, the commit box's toggles, no invented
+control — and the two rules it turns on are worth keeping whoever draws it
+later.
+
+**A source this machine cannot offer is drawn disabled, with the reason.**
+"There is no Omarchy here" is an answer. Hidden, it becomes a thing nobody can
+ask about — on the very screen somebody opens *because* the theme is not what
+they expected. SPEC §6.1's four sources fall back silently by design; this is
+where that silence gets a voice.
+
+**It names the theme that is on screen, not the one that was asked for.**
+Asking for Omarchy on a machine without it resolves to something else, and a
+screen showing the request would be lying about what you are looking at. The
+same distinction `Resolved::source` makes on the Rust side (§2.8), drawn.
+
+**Every setter answers with the stylesheet its change renders to**, and the
+window wears it in the same tick. The alternative — save, then ask for the theme
+again — is two round trips where the second can fail on its own, and a
+preference you cannot see the effect of is one nobody trusts. `measure()` goes
+with it, always: the tokens carry the row heights, so a density change without
+it leaves every virtualised list measuring against the old ones.
+
+**The Git block is read-only on purpose.** It says which binary answers, what
+"Ouvrir dans l'éditeur" will actually launch — including the case where that is
+*not* `core.editor`, because a terminal editor goes to the desktop's opener
+(§2.37) — and which credential helper this platform uses. Those are `git`'s
+settings, not omagit's, and a screen that wrote them would be a second place
+where they live.
+
+Found on the probe page and fixed with it: the dimmed half of a *filled* row was
+still `--text-dim`, a colour chosen against a surface, which on accent reads as
+noise. It takes the fill's own text colour, faded — the §2.31 lesson, once more,
+in the place where a screen full of two-line rows made it obvious.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

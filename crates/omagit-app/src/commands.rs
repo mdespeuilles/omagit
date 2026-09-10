@@ -462,6 +462,131 @@ pub fn delete_branch(
     omagit_git::ops::delete(&git, &open.repo, &name, force, &state.cancel()).map_err(say)
 }
 
+// ── Preferences (M9) ────────────────────────────────────────────────────────
+//
+// The screen that replaces editing `settings.toml` by hand. Everything here
+// answers with the freshly rendered stylesheet as well as with the state,
+// because a preference nobody can see the effect of is a preference nobody
+// trusts: the window applies it in the same tick it is set.
+
+/// Everything the Preferences screen draws.
+#[tauri::command(async)]
+pub fn preferences(state: State<'_, AppState>) -> dto::Preferences {
+    let settings = state.settings();
+    let sources = crate::platform::theme_sources();
+    let resolved = sources.resolve(&settings.theme);
+    let git = state.git().ok().cloned();
+    let editor = git
+        .as_ref()
+        .map(|git| describe_editor(git, &state))
+        .unwrap_or_else(|| "git est indisponible".to_owned());
+
+    dto::Preferences {
+        source: match &settings.theme {
+            omagit_theme::ThemeSource::UserOverride { .. } => "user-override",
+            omagit_theme::ThemeSource::Omarchy => "omarchy",
+            omagit_theme::ThemeSource::SystemAppearance => "system-appearance",
+            omagit_theme::ThemeSource::Embedded { .. } => "embedded",
+            omagit_theme::ThemeSource::Automatic => "automatic",
+        },
+        theme: match &settings.theme {
+            omagit_theme::ThemeSource::UserOverride { name } => name.clone(),
+            _ => String::new(),
+        },
+        mode: match &settings.theme {
+            omagit_theme::ThemeSource::Embedded {
+                mode: omagit_theme::Mode::Light,
+            } => "light",
+            _ => "dark",
+        },
+        density: match settings.density {
+            omagit_theme::DensityMode::Compact => "compact",
+            omagit_theme::DensityMode::Comfortable => "comfortable",
+        },
+        scale: settings.scale(),
+        resolved: resolved.theme.name.clone(),
+        omarchy: sources.omarchy_state.is_some(),
+        system_appearance: sources.system_appearance.is_some()
+            || crate::platform::current().reports_system_appearance(),
+        catalogue: omagit_theme::embedded::catalogue()
+            .into_iter()
+            .map(|theme| dto::ThemeRow {
+                mode: match theme.mode() {
+                    omagit_theme::Mode::Light => "light",
+                    omagit_theme::Mode::Dark => "dark",
+                },
+                name: theme.name.clone(),
+            })
+            .collect(),
+        editor,
+        credential_helper: crate::platform::current().credential_helper(),
+        git: git
+            .map(|git| git.version().to_string())
+            .unwrap_or_else(|| "absent".to_owned()),
+    }
+}
+
+/// What "Ouvrir dans l'éditeur" will launch, said before anyone presses it.
+///
+/// Not always what `core.editor` holds: a terminal editor is handed to the
+/// desktop's opener instead (`editor.rs`), and the screen that admits it is
+/// cheaper than the surprise.
+fn describe_editor(git: &omagit_git::cli::Git, state: &AppState) -> String {
+    let open = state.settings();
+    let _ = open;
+    let opener = crate::platform::current().opener();
+    let Some(repo) = state.any_open() else {
+        return format!("{opener} — ouvre un dépôt pour lire sa configuration");
+    };
+    let configured = crate::editor::configured(git, &repo, &state.cancel());
+    let launch = crate::editor::decide(configured.as_deref(), opener);
+    match launch.instead {
+        None => launch.program,
+        Some(why) => format!("{} — {why}", launch.program),
+    }
+}
+
+/// Choose a theme source, and hand back the stylesheet it renders to.
+#[tauri::command(async)]
+pub fn set_theme(state: State<'_, AppState>, source: String, name: String) -> Answer<String> {
+    let chosen = match source.as_str() {
+        "omarchy" => omagit_theme::ThemeSource::Omarchy,
+        "system-appearance" => omagit_theme::ThemeSource::SystemAppearance,
+        "embedded-dark" => omagit_theme::ThemeSource::Embedded {
+            mode: omagit_theme::Mode::Dark,
+        },
+        "embedded-light" => omagit_theme::ThemeSource::Embedded {
+            mode: omagit_theme::Mode::Light,
+        },
+        "user-override" => omagit_theme::ThemeSource::UserOverride { name },
+        "automatic" => omagit_theme::ThemeSource::Automatic,
+        other => return Err(format!("source de thème inconnue : {other}")),
+    };
+    state.with_settings(|settings| settings.theme = chosen);
+    Ok(stylesheet(&state.settings()))
+}
+
+/// Compact or comfortable (board 08).
+#[tauri::command(async)]
+pub fn set_density(state: State<'_, AppState>, density: String) -> Answer<String> {
+    let chosen = match density.as_str() {
+        "compact" => omagit_theme::DensityMode::Compact,
+        "comfortable" => omagit_theme::DensityMode::Comfortable,
+        other => return Err(format!("densité inconnue : {other}")),
+    };
+    state.with_settings(|settings| settings.density = chosen);
+    Ok(stylesheet(&state.settings()))
+}
+
+/// How large the interface is drawn. Clamped by `Settings::scale`, not here: a
+/// value typed into a file by hand has to be held to the same range as one
+/// chosen on screen.
+#[tauri::command(async)]
+pub fn set_scale(state: State<'_, AppState>, scale: f32) -> Answer<String> {
+    state.with_settings(|settings| settings.ui_scale = scale);
+    Ok(stylesheet(&state.settings()))
+}
+
 // ── Conflicts (M8) ──────────────────────────────────────────────────────────
 
 /// Name the two versions a conflicted file has, or nothing when no operation is

@@ -180,6 +180,26 @@ export type Refs = {
   remotes: RemoteRow[];
 };
 
+/// What the Preferences screen reads. The theme *source*, never the resolved
+/// palette — a stored palette goes stale the moment the system theme changes.
+export type Preferences = {
+  source: "automatic" | "omarchy" | "system-appearance" | "embedded" | "user-override";
+  theme: string;
+  mode: "dark" | "light";
+  density: "compact" | "comfortable";
+  scale: number;
+  /// Which theme is on screen now, whatever was asked for.
+  resolved: string;
+  /// What this machine can offer (SPEC §6.1). A source it cannot is drawn
+  /// disabled with the reason, not hidden.
+  omarchy: boolean;
+  system_appearance: boolean;
+  catalogue: { name: string; mode: "dark" | "light" }[];
+  editor: string;
+  credential_helper: string;
+  git: string;
+};
+
 /// The two versions a conflicted file has, named.
 ///
 /// The names matter more than the words: during a rebase `--ours` is the branch
@@ -308,6 +328,14 @@ export type CloneRequest = {
 export const api = {
   platform: () => invoke<PlatformFacts>("platform"),
   theme: () => invoke<string>("theme"),
+
+  // Preferences (M9). Each setter answers with the stylesheet its change
+  // renders to, so the window applies it in the same tick it is set: a
+  // preference nobody can see the effect of is one nobody trusts.
+  preferences: () => invoke<Preferences>("preferences"),
+  setTheme: (source: string, name: string) => invoke<string>("set_theme", { source, name }),
+  setDensity: (density: string) => invoke<string>("set_density", { density }),
+  setScale: (scale: number) => invoke<string>("set_scale", { scale }),
   panes: () => invoke<Record<string, number>>("panes"),
   setPane: (name: string, width: number) => invoke<void>("set_pane", { name, width }),
   gitStatus: () => invoke<string | null>("git_status"),

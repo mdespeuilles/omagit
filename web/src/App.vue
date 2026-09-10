@@ -19,6 +19,7 @@ import Palette from "./components/Palette.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
 import Progress from "./components/Progress.vue";
+import Settings from "./components/Settings.vue";
 import Sidebar from "./components/Sidebar.vue";
 import Splitter from "./components/Splitter.vue";
 import StashDetail from "./components/StashDetail.vue";
@@ -86,6 +87,12 @@ const widths = {
           <CommitDetail />
           <DiffView />
         </section>
+      </template>
+
+      <!-- Preferences: one column, because it is a form and not a browse. The
+           sidebar stays, so the way back is where it always is. -->
+      <template v-else-if="app.screen === 'settings'">
+        <Settings />
       </template>
 
       <!-- The shelf, in the shape History already has: the list in the middle

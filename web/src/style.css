@@ -728,11 +728,25 @@ button.icon {
    the pair. */
 .sidebar-row.selected,
 .library-row.selected,
-.palette-row.selected {
+.palette-row.selected,
+.settings-row.selected,
+.settings-swatch.selected {
   background: var(--accent);
   color: var(--on-accent);
   --row-bg: var(--accent);
   font-weight: 500;
+}
+/* The dimmed half of a filled row takes the *fill's* text colour, faded — not
+   `--text-dim`, which was chosen against a surface and reads as noise on
+   accent. Every filled row in the app that carries a second line has to answer
+   this, so it is answered here with the fill. */
+.settings-row.selected .settings-detail,
+.settings-swatch.selected .settings-detail,
+.library-row.selected .library-state,
+.palette-row.selected .palette-detail,
+.palette-row.selected .palette-hint {
+  color: var(--on-accent);
+  opacity: 0.78;
 }
 
 /* Hover, for every kind of row, here rather than beside each list — the same
@@ -753,7 +767,9 @@ button.icon {
 }
 .sidebar-row.selected:hover,
 .library-row.selected:hover,
-.palette-row.selected:hover {
+.palette-row.selected:hover,
+.settings-row.selected:hover,
+.settings-swatch.selected:hover {
   background: color-mix(in srgb, var(--accent) 84%, var(--text));
   color: var(--on-accent);
 }
@@ -2677,4 +2693,121 @@ select:focus {
    is one nobody learns. */
 .palette-row.off {
   color: var(--text-dim);
+}
+
+/* ── Réglages (M9) ───────────────────────────────────────────────────────── */
+
+/* One column, because it is a form rather than a browse: the panes of the other
+   screens exist to hold a list beside what it opens, and there is nothing here
+   to open. */
+.settings {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0 24px;
+}
+.settings-block {
+  padding: 12px var(--pad) 4px;
+  border-bottom: 1px solid var(--border);
+  max-width: 720px;
+}
+.settings-title {
+  margin: 0 0 4px;
+  font-size: var(--text-panel);
+  font-weight: 600;
+}
+.settings-subtitle {
+  margin: 12px 0 4px;
+  font-size: var(--text-meta);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+/* The paragraph under a heading carries the *why*, which is the half of a
+   preference nobody can guess: what "compact" changes, what a source falls back
+   to. */
+.settings-note {
+  margin: 0 0 8px;
+  max-width: 62ch;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+
+.settings-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  height: var(--row-height);
+  padding: 0 8px;
+  border: 0;
+  text-align: left;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+.settings-detail {
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+.settings-row:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.settings-choice {
+  display: flex;
+  gap: 8px;
+}
+.settings-choice .settings-row {
+  width: auto;
+  flex: 1;
+}
+
+.settings-catalogue {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px;
+}
+.settings-swatch {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--row-height);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  text-align: left;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+
+.settings-scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-percent {
+  min-width: 56px;
+  text-align: center;
+}
+
+.settings-facts {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 2px 12px;
+  margin: 0 0 8px;
+  font-size: var(--text-meta);
+}
+.settings-facts dt {
+  color: var(--text-dim);
+}
+.settings-facts dd {
+  margin: 0;
+  color: var(--text-muted);
 }

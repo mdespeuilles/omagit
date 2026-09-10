@@ -5,10 +5,11 @@
 // In the GPUI build History replaced the window and left no way back, because
 // the chrome belonged to whichever screen had drawn it.
 //
-// Settings is still a later milestone. Board 03 draws it anyway, dimmed and
-// labelled, and it is right to: an entry that will exist reads better as
-// not-yet than as absent, and a sidebar that filled itself in over six
-// milestones would move under the reader every time.
+// Every row here is a screen now. Board 03 drew the later ones dimmed and
+// labelled while they waited, which was right: an entry that will exist reads
+// better as not-yet than as absent, and a sidebar that filled itself in over
+// six milestones would move under the reader every time. None is waiting any
+// more.
 
 import { computed } from "vue";
 import { app, changedCount, showScreen } from "../state";
@@ -55,12 +56,14 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
     </button>
 
-    <div class="row sidebar-row deferred" title="Jalon M9">
+    <button
+      class="row sidebar-row"
+      :class="{ selected: app.screen === 'settings' }"
+      @click="showScreen('settings')"
+    >
       <span class="sidebar-glyph mono">⚙</span>
-      <span>Settings</span>
-      <span class="pane-head-spacer" />
-      <span class="tag">M9</span>
-    </div>
+      <span>Réglages</span>
+    </button>
 
     <BranchTree />
 

@@ -461,6 +461,47 @@ pub fn file_row(file: &FileDiff) -> FileRow {
     }
 }
 
+/// What the Preferences screen reads and writes.
+///
+/// The *source*, never the resolved palette: a stored palette goes stale the
+/// moment the system theme changes, which is the whole reason
+/// `omagit-settings` keeps one and not the other.
+#[derive(Debug, serde::Serialize)]
+pub struct Preferences {
+    /// `automatic`, `omarchy`, `system-appearance`, `embedded`, `user-override`.
+    pub source: &'static str,
+    /// The theme named by a `user-override`, empty otherwise.
+    pub theme: String,
+    /// `dark` or `light` for an `embedded` source.
+    pub mode: &'static str,
+    pub density: &'static str,
+    pub scale: f32,
+    /// Which theme is on screen *now*, whatever was asked for: a machine with
+    /// no Omarchy resolves that source to something else, and a screen that
+    /// showed the request rather than the answer would be lying about what you
+    /// are looking at.
+    pub resolved: String,
+    /// Which sources this machine can actually offer (SPEC §6.1). Drawn
+    /// disabled rather than hidden, with the reason: "there is no Omarchy here"
+    /// is an answer, and an option that vanishes is one nobody can ask about.
+    pub omarchy: bool,
+    pub system_appearance: bool,
+    /// The catalogue, for the list a `user-override` picks from.
+    pub catalogue: Vec<ThemeRow>,
+    /// What "Ouvrir dans l'éditeur" will actually launch, and why it is not
+    /// always what `core.editor` says (`editor.rs`).
+    pub editor: String,
+    /// SPEC §9's helper for this platform, and the `git` that answers.
+    pub credential_helper: &'static str,
+    pub git: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ThemeRow {
+    pub name: String,
+    pub mode: &'static str,
+}
+
 /// Which two versions a conflicted file has, named.
 ///
 /// `null` when no operation is running. The names matter more than the words:

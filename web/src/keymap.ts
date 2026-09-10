@@ -181,6 +181,14 @@ export const ACTIONS: Action[] = [
     run: () => store.openPalette(),
   },
   {
+    id: "settings.open",
+    label: "Réglages",
+    binding: "Primary+,",
+    where: "always",
+    enabled: () => true,
+    run: () => store.showScreen("settings"),
+  },
+  {
     id: "journal.toggle",
     label: "Journal des opérations",
     binding: "Shift+Primary+J",

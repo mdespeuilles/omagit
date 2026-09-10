@@ -154,6 +154,18 @@ impl AppState {
         outcome
     }
 
+    /// Any repository the window has open, for the questions that need one but
+    /// do not care which — reading `core.editor`, say.
+    ///
+    /// `None` before the first is opened, which is a real state: the
+    /// Preferences screen exists on the Repositories screen too.
+    pub fn any_open(&self) -> Option<Repository> {
+        self.lock(&self.open)
+            .values()
+            .next()
+            .map(|held| held.repo.clone())
+    }
+
     pub fn settings(&self) -> Settings {
         self.lock(&self.settings).clone()
     }

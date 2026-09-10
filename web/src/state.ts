@@ -29,6 +29,7 @@ import {
   type JournalRow,
   type LibraryRow,
   type PlatformFacts,
+  type Preferences,
   type Progress,
   type Refs,
   type Choice,
@@ -49,7 +50,7 @@ export type Async<T> =
 
 export const idle = <T>(): Async<T> => ({ status: "idle" });
 
-export type Screen = "repositories" | "working-copy" | "history" | "stashes";
+export type Screen = "repositories" | "working-copy" | "history" | "stashes" | "settings";
 
 /// A write that did not happen: what was asked, and what came back.
 export type Failure = { what: string; said: string };
@@ -213,6 +214,8 @@ type State = {
   /// branch has no "selected" of its own: moving through them must not re-walk
   /// a history per keystroke, so `⏎` is what asks for one.
   branchCursor: string | null;
+  /// What the Preferences screen is showing, once it has been opened.
+  preferences: Async<Preferences>;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
@@ -328,6 +331,7 @@ const state = reactive<State>({
   sides: null,
   resolving: null,
   palette: null,
+  preferences: idle(),
   zone: 1,
   branchCursor: null,
   libraryFilter: "",
@@ -575,10 +579,14 @@ export function showScreen(screen: Screen): void {
   // does not exist, a history that cannot load. Reachable only through the
   // sidebar, which is only drawn when one is open; the guard makes that a
   // property of the state rather than of the routing.
-  if (screen !== "repositories" && !state.open) {
+  // Preferences belong to the application rather than to a repository, like
+  // the Repositories screen itself: they are the one thing you may need before
+  // you have opened anything — the theme is unreadable, or `git` is missing.
+  if (screen !== "repositories" && screen !== "settings" && !state.open) {
     state.screen = "repositories";
     return;
   }
+  if (screen === "settings" && state.preferences.status === "idle") void readPreferences();
   state.screen = screen;
   // History is read when it is first looked at rather than when a repository
   // opens: a walk of a hundred thousand commits is not what someone who wanted
@@ -1705,6 +1713,55 @@ export function runPaletteRow(row: PaletteRow, actions: KeymapAction[]): void {
       void selectFile(row.key, false);
       return;
   }
+}
+
+// ── Preferences (M9) ────────────────────────────────────────────────────────
+//
+// The screen that replaces editing `settings.toml` by hand. Every change is
+// applied to the window in the same tick it is saved: the answer to each setter
+// is the stylesheet it renders to, because a preference you cannot see the
+// effect of is one nobody trusts — and because the alternative, re-asking for
+// the theme afterwards, is two round trips where the second can fail on its own.
+
+export async function readPreferences(): Promise<void> {
+  state.preferences = { status: "loading" };
+  try {
+    state.preferences = { status: "ready", value: await api.preferences() };
+  } catch (error) {
+    state.preferences = { status: "failed", error: message(error) };
+  }
+}
+
+/// Apply a stylesheet the backend has just rendered.
+///
+/// `measure()` goes with it, always: the tokens carry the row heights, and a
+/// list that kept measuring against the old ones would draw the wrong number of
+/// rows into its viewport — which is how a density change used to leave a gap
+/// at the bottom of every virtualised list.
+function wear(sheet: string): void {
+  document.documentElement.setAttribute("style", sheet);
+  measure();
+}
+
+export function chooseTheme(source: string, name = ""): void {
+  void write(`Thème : ${name || source}`, async () => {
+    wear(await api.setTheme(source, name));
+    await readPreferences();
+  });
+}
+
+export function chooseDensity(density: "compact" | "comfortable"): void {
+  void write(`Densité : ${density}`, async () => {
+    wear(await api.setDensity(density));
+    await readPreferences();
+  });
+}
+
+export function chooseScale(scale: number): void {
+  void write(`Échelle : ${Math.round(scale * 100)} %`, async () => {
+    wear(await api.setScale(scale));
+    await readPreferences();
+  });
 }
 
 // ── Moving about (M9, DESIGN §5 and board 09) ───────────────────────────────

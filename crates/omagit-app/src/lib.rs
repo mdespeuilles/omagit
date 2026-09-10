@@ -51,6 +51,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::platform,
             commands::theme,
+            commands::preferences,
+            commands::set_theme,
+            commands::set_density,
+            commands::set_scale,
             commands::panes,
             commands::set_pane,
             commands::git_status,

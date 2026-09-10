@@ -184,8 +184,15 @@ contradicts it, this document wins — it is the authority on interface states
 
 Called out by the boards themselves, so they are not mistaken for oversights:
 side-by-side diff, drag line-selection in the gutter, visible whitespace,
-binary / image / rename / oversized-file diffs, the Preferences screen, and the
-`?` shortcut sheet.
+binary / image / rename / oversized-file diffs, and the `?` shortcut sheet.
+
+The **Preferences screen** was on that list and is built (M9, ARCHITECTURE
+§2.47). Nothing draws it, so it is made of what the rest of the window already
+uses — pane heads, rows, the commit box's toggles — and its two rules are
+written down there: a source this machine cannot offer is drawn *disabled with
+the reason* rather than hidden, and the screen names the theme that is on
+screen rather than the one that was asked for. If it is ever drawn properly,
+those two are the parts to keep.
 
 ## 8. Contract points resolved during implementation
 
