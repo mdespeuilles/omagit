@@ -76,6 +76,42 @@ describe("the branch tree", () => {
     expect(groups.join(" ")).toContain("fix/");
   });
 
+  it("shows a branch's history when its row is clicked", async () => {
+    // A single click did nothing at all — the checkout was on the double click
+    // — so the row looked like a control that was broken. SPEC §11 asks for a
+    // filter by branch, and this is where anyone would look for it.
+    const { state, tree } = await open([
+      branch("main", { head: true }),
+      branch("feature/theme-runtime"),
+    ]);
+
+    await tree.findAll(".branch-row")[1]!.trigger("click");
+    await settled(state);
+
+    expect(state.app.screen).toBe("history");
+    expect(state.app.query.branch).toBe("feature/theme-runtime");
+    const walk = backend.current.calls.filter((call) => call.command === "history").at(-1);
+    expect(walk?.args["query"]).toMatchObject({ branch: "feature/theme-runtime", all: false });
+
+    // And the row says it is the one being shown.
+    expect(tree.findAll(".branch-row")[1]!.classes()).toContain("selected");
+
+    // Back to HEAD's history, which is what the chip in the header does.
+    state.showHeadHistory();
+    await settled(state);
+    expect(state.app.query.branch).toBe("");
+  });
+
+  it("keeps checking out on the double click, where it was", async () => {
+    // Switching branches rewrites the working tree; a single click must not.
+    const { state, tree } = await open([branch("main", { head: true }), branch("feature/x")]);
+
+    await tree.findAll(".branch-row")[1]!.trigger("dblclick");
+    await settled(state);
+
+    expect(backend.current.calls.some((call) => call.command === "checkout")).toBe(true);
+  });
+
   it("marks as merged the branch that is merged, and only it", async () => {
     // The badge answers "deleting this loses nothing", so it has to sit on the
     // row it is about: `merged` travels with the row from `git branch

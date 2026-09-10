@@ -291,3 +291,60 @@ fn a_filter_that_matches_nothing_is_an_empty_answer_not_an_error() {
     assert!(page.rows.is_empty());
     assert!(page.done);
 }
+
+#[test]
+fn a_query_scoped_to_a_branch_walks_that_branch_and_not_head() {
+    // SPEC §11's filter by branch, and what clicking a branch row asks for: the
+    // commits reachable from *that* tip, whether or not `HEAD` can see them.
+    let repo = TestRepo::new();
+    repo.commit_file("README.md", "one\n", "seed");
+    repo.git(&["checkout", "-b", "feature"]);
+    repo.commit_file("feature.txt", "theirs\n", "only on the branch");
+    repo.git(&["checkout", "main"]);
+    repo.commit_file("main.txt", "ours\n", "only on main");
+
+    let subjects = |query: Query| {
+        let mut session = Session::start(&repo.open(), query, &never()).expect("a walk");
+        session
+            .next(50, &never())
+            .expect("a page")
+            .rows
+            .into_iter()
+            .map(|row| row.summary)
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        subjects(Query::default()),
+        ["only on main", "seed"],
+        "HEAD's history, as before"
+    );
+    assert_eq!(
+        subjects(Query {
+            branch: "feature".to_owned(),
+            ..Query::default()
+        }),
+        ["only on the branch", "seed"],
+        "the branch's own, including what HEAD cannot reach"
+    );
+}
+
+#[test]
+fn a_branch_that_is_gone_is_named_rather_than_walked_as_head() {
+    let repo = TestRepo::new();
+    repo.commit_file("README.md", "one\n", "seed");
+
+    let started = Session::start(
+        &repo.open(),
+        Query {
+            branch: "jamais-existe".to_owned(),
+            ..Query::default()
+        },
+        &never(),
+    );
+
+    let Err(error) = started else {
+        panic!("a branch that does not exist is not HEAD's history under another name")
+    };
+    assert!(error.to_string().contains("jamais-existe"), "{error}");
+}

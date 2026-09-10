@@ -109,6 +109,9 @@ export type Page = { rows: HistoryRow[]; done: boolean };
 export type HistoryQuery = {
   all: boolean;
   firstParent: boolean;
+  /// One branch's history rather than HEAD's — what clicking a branch in the
+  /// sidebar asks for. Empty is HEAD, and `all` wins over it.
+  branch: string;
   /// SPEC §11's filters. Empty means "not filtering" — a box that has been
   /// typed into and cleared again must not go on narrowing anything.
   author: string;

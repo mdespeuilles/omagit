@@ -1256,6 +1256,32 @@ choice between two things, neither of them the dangerous one, so neither wears
 still cancelling. `Question.alternative` is optional and nothing else uses it —
 a shape earns its second half when a second case turns up, and this is it.
 
+### 2.43 Clicking a branch showed its history, once it did anything at all
+
+A branch row answered a *double* click, which checked it out, and nothing else:
+a single click — the ordinary gesture, the one everyone tries first — did
+nothing. A row that looks like a control and answers no click is a broken
+control, whatever the double click does.
+
+What it does now is what Tower does and what SPEC §11 already asked for in one
+word ("filtres par branche"): it shows that branch's history. The walk was
+built for it — `HistoryQuery::from(tips)` has existed since M6 — and what was
+missing was a way to say which branch on the wire, so `Query` gained a `branch`
+and `refs::tip_of` resolves it. Local branches before remote-tracking ones, the
+order `git` resolves a name in, so `main` means yours and not the one you have
+not pulled.
+
+Deliberately *not* `rev_parse`: this scopes a history to a branch, not to an
+arbitrary revision, and accepting `HEAD~3` would be a second feature nobody
+asked for with its own error cases. A name that resolves to nothing is an error
+that names it, rather than a silent fall back to `HEAD` — which would show a
+history that is not the one that was asked for and look right.
+
+Checking out stays on the double click. Switching branches rewrites the working
+tree, and that is not what a single click should do — which is the same reason
+the scoped history is worth having at all: you want to *look* at a branch far
+more often than you want to move onto it.
+
 ### 2.40 A failure gets a band, not a modal
 
 Reported from the fixture: "les messages d'erreur en rouge en bas ne sont pas

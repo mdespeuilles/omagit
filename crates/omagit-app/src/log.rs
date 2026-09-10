@@ -40,6 +40,10 @@ pub const PAGE: usize = 500;
 pub struct Query {
     /// Every branch and tag rather than just `HEAD`.
     pub all: bool,
+    /// One branch's history instead of `HEAD`'s — what clicking a branch in the
+    /// sidebar asks for (SPEC §11's "filtres par branche"). Empty is `HEAD`,
+    /// and `all` wins over it: "everything" is not a branch.
+    pub branch: String,
     /// Follow only the first parent of each merge — the "hide merged branches"
     /// view.
     pub first_parent: bool,
@@ -57,12 +61,17 @@ pub struct Query {
 }
 
 impl Query {
-    fn to_history(&self) -> HistoryQuery {
-        HistoryQuery {
-            tips: if self.all { Tips::All } else { Tips::Head },
+    fn to_history(&self, repo: &Repository) -> omagit_git::Result<HistoryQuery> {
+        let tips = match (self.all, some(&self.branch)) {
+            (true, _) => Tips::All,
+            (false, Some(branch)) => Tips::These(vec![omagit_git::refs::tip_of(repo, &branch)?]),
+            (false, None) => Tips::Head,
+        };
+        Ok(HistoryQuery {
+            tips,
             first_parent: self.first_parent,
             filter: self.filter(),
-        }
+        })
     }
 
     fn filter(&self) -> Filter {
@@ -151,7 +160,7 @@ pub struct Page {
 impl Session {
     /// Begin a walk.
     pub fn start(repo: &Repository, query: Query, cancel: &Cancel) -> Result<Self> {
-        let walk = Walk::new(repo, query.to_history(), cancel)?;
+        let walk = Walk::new(repo, query.to_history(repo)?, cancel)?;
         Ok(Self {
             walk,
             graph: Graph::new(),

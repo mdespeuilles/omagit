@@ -205,6 +205,7 @@ describe("changing the query", () => {
     expect(restart[1]!.args["query"]).toEqual({
       all: true,
       firstParent: false,
+      branch: "",
       author: "",
       text: "",
       path: "",

@@ -82,6 +82,32 @@ pub struct Annotation {
     pub tagger: Option<Signature>,
 }
 
+/// The commit a branch name points at.
+///
+/// Local branches first, then remote-tracking ones, so `main` means the branch
+/// you are on rather than `origin/main` when both exist — which is the same
+/// order `git` resolves a name in, and the reason a history scoped to "main"
+/// shows your commits and not the ones you have not pulled yet.
+///
+/// Deliberately not `rev_parse`: a history is scoped to a *branch* here, not to
+/// an arbitrary revision, and accepting `HEAD~3` would be a second feature
+/// nobody asked for with its own error cases.
+pub fn tip_of(repo: &Repository, name: &str) -> Result<ObjectId> {
+    assert_off_render_thread();
+    let gix = repo.gix();
+    for full in [format!("refs/heads/{name}"), format!("refs/remotes/{name}")] {
+        let found = gix
+            .try_find_reference(full.as_str())
+            .map_err(|error| GitError::backend("looking a branch up", error))?;
+        if let Some(reference) = found
+            && let Some(id) = reference.target().try_id().map(ToOwned::to_owned)
+        {
+            return Ok(id);
+        }
+    }
+    Err(GitError::NotFound(format!("the branch {name}")))
+}
+
 impl Refs {
     /// Read every reference.
     ///

@@ -15,8 +15,15 @@ import {
   isCollapsed,
   mergeBranch,
   rebaseOnto,
+  showBranchHistory,
   toggleBranchGroup,
 } from "../state";
+
+/// Whether this row's history is the one History is showing, which is what a
+/// click on it asked for.
+function showing(name: string): boolean {
+  return app.screen === "history" && app.query.branch === name;
+}
 
 /// A branch nobody has touched in this long carries its age instead of its
 /// divergence — board 03's "7 mois". Ninety days, because a quarter is the
@@ -119,7 +126,9 @@ function submit(): void {
       v-for="row in grouped.loose"
       :key="row.name"
       class="row branch-row"
-      :title="row.name"
+      :class="{ selected: showing(row.name) }"
+      :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
+      @click="showBranchHistory(row.name)"
       @dblclick="checkoutBranch(row.name)"
     >
       <span class="branch-name">{{ row.name }}</span>
@@ -172,7 +181,9 @@ function submit(): void {
           v-for="row in group.rows"
           :key="row.name"
           class="row branch-row nested"
-          :title="row.name"
+          :class="{ selected: showing(row.name) }"
+          :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
+          @click="showBranchHistory(row.name)"
           @dblclick="checkoutBranch(row.name)"
         >
           <span class="branch-name">{{ leaf(row.name) }}</span>
@@ -241,7 +252,9 @@ function submit(): void {
             v-for="row in rows"
             :key="`${row.remote}/${row.name}`"
             class="row branch-row nested twice"
-            :title="`${row.remote}/${row.name}`"
+            :class="{ selected: showing(`${row.remote}/${row.name}`) }"
+            :title="`${row.remote}/${row.name} — clic : son historique`"
+            @click="showBranchHistory(`${row.remote}/${row.name}`)"
             @dblclick="checkoutBranch(row.name)"
           >
             <span class="branch-name mono">{{ row.name }}</span>

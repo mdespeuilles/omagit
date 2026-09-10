@@ -420,6 +420,7 @@ export class Repository {
         this.filtering = isFiltered({
           all: false,
           firstParent: false,
+          branch: "",
           author: "",
           text: "",
           path: "",

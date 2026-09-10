@@ -272,7 +272,16 @@ const state = reactive<State>({
   history: idle(),
   historyDone: false,
   historyLoading: false,
-  query: { all: false, firstParent: false, author: "", text: "", path: "", since: 0, until: 0 },
+  query: {
+    all: false,
+    firstParent: false,
+    branch: "",
+    author: "",
+    text: "",
+    path: "",
+    since: 0,
+    until: 0,
+  },
   showFilters: false,
   commit: idle(),
   commitFile: null,
@@ -794,6 +803,7 @@ function sameQuery(a: HistoryQuery, b: HistoryQuery): boolean {
   return (
     a.all === b.all &&
     a.firstParent === b.firstParent &&
+    a.branch === b.branch &&
     a.author === b.author &&
     a.text === b.text &&
     a.path === b.path &&
@@ -1210,6 +1220,24 @@ export async function readRefs(): Promise<void> {
   } catch (error) {
     state.refs = { status: "failed", error: message(error) };
   }
+}
+
+/// Show one branch's history, which is what clicking its row means.
+///
+/// Tower does this and it is the obvious reading of a click on a branch: a row
+/// that did nothing at all — the checkout was on the *double* click and nothing
+/// else answered — is a control that looks broken. Checking out stays where it
+/// was: switching branches rewrites the working tree, and that is not what a
+/// single click should do.
+export function showBranchHistory(name: string): void {
+  if (!state.open) return;
+  state.screen = "history";
+  void setQuery({ branch: name, all: false });
+}
+
+/// Back to the branch `HEAD` is on.
+export function showHeadHistory(): void {
+  void setQuery({ branch: "" });
 }
 
 export function toggleBranchGroup(name: string): void {

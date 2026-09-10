@@ -16,6 +16,7 @@ import {
   moreHistory,
   selectCommit,
   setQuery,
+  showHeadHistory,
   toggleFilters,
 } from "../state";
 import GraphGutter from "./GraphGutter.vue";
@@ -63,6 +64,17 @@ function open(id: string, extend: boolean): void {
     <header class="pane-head">
       <span>Historique</span>
       <span class="pane-head-count"> {{ rows.length }}{{ app.historyDone ? "" : "+" }} </span>
+      <!-- Whose history this is, when it is not HEAD's. A list scoped to a
+           branch looks exactly like the ordinary one, and the row that asked
+           for it is in another column. -->
+      <button
+        v-if="app.query.branch"
+        class="link on"
+        title="Revenir à l'historique de la branche courante"
+        @click="showHeadHistory()"
+      >
+        {{ app.query.branch }} ✕
+      </button>
       <span class="pane-head-spacer" />
       <label class="toggle">
         <input
