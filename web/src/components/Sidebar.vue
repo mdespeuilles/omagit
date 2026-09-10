@@ -78,9 +78,11 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       </button>
     </template>
 
+    <!-- It takes the height that is left and scrolls inside it, so the rows
+         above and the button below stay put. The spacer that used to push the
+         foot down went with it: a scroll region that grows does the same job
+         and does it when the tree is long, which is when it matters. -->
     <BranchTree />
-
-    <span class="pane-head-spacer" />
 
     <button class="sidebar-foot" @click="showScreen('repositories')">
       <Glyph name="panel" class="sidebar-glyph" /><span>Tous les dépôts</span>

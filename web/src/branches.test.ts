@@ -365,6 +365,26 @@ describe("integrating", () => {
     expect(prefix).toBeTruthy();
   });
 
+  it("puts the rows in a scroll region and the foot outside it", async () => {
+    // On a short window the rows used to be *compressed* rather than scrolled:
+    // they were flex children of the sidebar, and a flex child shrinks before
+    // its container overflows — measured at 19px against a 32px row, with the
+    // foot pushed out of the window. jsdom has no layout, so what this holds is
+    // the shape that makes the scroll possible.
+    const { tree } = await open([branch("main", { head: true }), branch("feature/one")]);
+
+    const scroller = tree.find(".branches");
+    expect(scroller.exists()).toBe(true);
+    for (const row of tree.findAll(".branch-row")) {
+      expect(scroller.element.contains(row.element)).toBe(true);
+    }
+    // "Nouvelle branche" is an action, not a row: it stays reachable however
+    // long the tree is.
+    const foot = tree.find(".sidebar-foot");
+    expect(foot.exists()).toBe(true);
+    expect(scroller.element.contains(foot.element)).toBe(false);
+  });
+
   it("folds every section that draws a chevron, Branches included", async () => {
     // It was the one head that did not fold. Tags, Remotes and every `feat/`
     // prefix did; "Branches" — the longest section, and the one worth folding —

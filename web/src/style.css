@@ -471,6 +471,20 @@ button.icon .glyph {
   min-height: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
+  /* The branch tree scrolls, not the whole column: the four screen rows and the
+     way back to the repositories stay where they are. `auto` here let the rows
+     compress instead, because a flex child shrinks before its container
+     overflows and `overflow-y` was never reached. */
+  overflow: hidden;
+}
+
+/* The one part that grows and scrolls. `min-height: 0` because a flex child's
+   floor is its content, and without it the scroll never starts. */
+.branches {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -1823,6 +1837,7 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: none;
   height: 22px;
   padding: 0 10px;
   margin-top: 8px;
@@ -2190,6 +2205,7 @@ select:focus {
   gap: 6px;
   width: 100%;
   height: var(--row-height);
+  flex: none;
   /* The ladder is 10 · 22 · 34: a section head, what it holds, and what a group
      inside it holds. A row is never at the first rung — only a section head
      is. */
