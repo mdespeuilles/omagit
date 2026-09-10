@@ -12,7 +12,6 @@ import {
   conflictCount,
   continueOperation,
   dismissNotes,
-  dismissWriteError,
   plural,
   stagedCount,
   toggleJournal,
@@ -57,20 +56,12 @@ import {
 
     <span v-if="app.busy" class="busy mono">{{ app.busy }}…</span>
 
-    <!-- Both carry a sentence of `git`'s, which has no length limit: the text
-         is what shrinks, on one line, with the whole of it in the title. A bar
-         22 pixels tall that wrapped one of these overlapped everything else in
-         it. -->
+    <!-- What went right, and only that. A success is four words — a hash and a
+         subject — and fits a bar. A failure is a paragraph of `git`'s, and it
+         has a band of its own above this one (`Notice.vue`): truncating it here
+         kept the half the reader already knew. -->
     <button v-if="app.notes" class="link ok message" :title="app.notes" @click="dismissNotes()">
       <span class="said">{{ app.notes.split("\n")[0] }} ✓</span>
-    </button>
-    <button
-      v-if="app.writeError"
-      class="link danger message"
-      :title="app.writeError"
-      @click="dismissWriteError()"
-    >
-      <span class="said">{{ app.writeError }} ✗</span>
     </button>
 
     <button class="link" @click="toggleJournal()">Journal</button>

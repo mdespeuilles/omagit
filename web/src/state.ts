@@ -49,6 +49,9 @@ export const idle = <T>(): Async<T> => ({ status: "idle" });
 
 export type Screen = "repositories" | "working-copy" | "history" | "stashes";
 
+/// A write that did not happen: what was asked, and what came back.
+export type Failure = { what: string; said: string };
+
 type DiffValue = {
   path: string;
   header: string;
@@ -93,7 +96,11 @@ type State = {
   busy: string | null;
   /// The last write that failed, kept until one succeeds: a write that failed
   /// is visible nowhere else, because the repository simply did not change.
-  writeError: string | null;
+  /// The last write that failed, kept until one succeeds. Two fields, not one
+  /// sentence: the band above the status bar sets the action apart from what
+  /// `git` said about it, and a caller that had joined them would have to be
+  /// unpicked to draw either.
+  writeError: Failure | null;
   /// Whatever `git commit` said on the way — hook output, its own summary.
   notes: string | null;
   question: Question | null;
@@ -834,7 +841,7 @@ async function overNetwork(what: string, run: () => Promise<string>): Promise<vo
     const said = await run();
     state.networkSaid = said.trim() || `${what} : rien à faire`;
   } catch (error) {
-    state.writeError = `${what} : ${message(error)}`;
+    state.writeError = { what, said: message(error) };
   } finally {
     state.running = null;
     state.stopping = false;
@@ -1514,7 +1521,7 @@ async function write(label: string, run: () => Promise<void>): Promise<void> {
   try {
     await run();
   } catch (error) {
-    state.writeError = `${label} : ${message(error)}`;
+    state.writeError = { what: label, said: message(error) };
   } finally {
     state.busy = null;
   }

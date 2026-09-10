@@ -266,7 +266,7 @@ describe("integrating", () => {
     state.answer(true);
     await settled(state);
 
-    expect(state.app.writeError).toContain("CONFLICT");
+    expect(state.app.writeError?.said).toContain("CONFLICT");
     expect(state.app.summary?.operation).toBe("merge");
 
     state.abortOperation();

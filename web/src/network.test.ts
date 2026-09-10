@@ -139,7 +139,7 @@ describe("running something on the network", () => {
     await settled(state);
 
     expect(state.app.running).toBeNull();
-    expect(state.app.writeError).toContain("could not resolve host");
+    expect(state.app.writeError?.said).toContain("could not resolve host");
   });
 
   it("re-reads the branches afterwards, because the divergence moved", async () => {

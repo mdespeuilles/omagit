@@ -1205,6 +1205,39 @@ since §2.35 and was being used in exactly one place, the clone dialog. It is no
 what `say()` does, so it holds for every command; the exact line is still in the
 journal, marked, before it runs.
 
+### 2.40 A failure gets a band, not a modal
+
+Reported from the fixture: "les messages d'erreur en rouge en bas ne sont pas
+très visibles — il ne serait pas mieux de les avoir dans une modale ?" The first
+half is right and the second is the trap.
+
+`git`'s refusals are the useful half of this application's error messages, and
+they are paragraphs: *"your local changes to the following files would be
+overwritten by merge: src/render.rs — please commit your changes or stash them
+before you merge. Aborting."* In a 22-pixel status bar that truncates to the
+half the reader already knew, and nothing else on screen says the operation did
+not happen: the row stays, the shelf does not move, and a button that did
+nothing is what it looks like.
+
+But not a modal, for two reasons. A modal blocks, and what someone wants on
+reading that sentence is to go and look at the file it names — a modal makes
+them dismiss it first and carry the path in their head. And the modals of this
+app are SPEC §3 rule 7's confirmations, the questions that must be answered
+before something is lost; using the same shape to *report* teaches people to
+dismiss them, and the one that matters goes with the rest. A shape should keep
+meaning one thing.
+
+So `Notice.vue`: a band at the foot of the window, above the status bar, in the
+vocabulary the progress overlay already set. It wraps rather than truncates,
+keeps `git`'s words in mono and unedited (rule 3), names the action in the app's
+own words above them, points at the journal where the exact command line is, and
+stays until it is dismissed or until the next write succeeds — an error that
+evaporates is worse than a quiet one. The status bar keeps the successes, which
+are four words and fit.
+
+`writeError` became two fields rather than one sentence, because the band draws
+them differently and a caller that had joined them would have to be unpicked.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

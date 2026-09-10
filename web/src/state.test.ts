@@ -5,6 +5,7 @@
 // the file it named, a stale answer that overwrote a fresh one, a destructive
 // action that ran before it was confirmed.
 
+import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Repository, type Fixture } from "./backend.fake";
 
@@ -137,6 +138,31 @@ describe("staging", () => {
     expect(state.app.diff.status).toBe("idle");
   });
 
+  it("says a failure in the band, whole, and not in the status bar", async () => {
+    // `git`'s refusals are the useful half of this app's errors and they run to
+    // two hundred characters. In a 22-pixel bar what survived was the half the
+    // reader already knew.
+    const state = await open([file("a.txt")]);
+    backend.current.failNextWrite =
+      "error: Your local changes to the following files would be overwritten by merge: src/render.rs Please commit your changes or stash them before you merge. Aborting";
+    state.stageHunk(0, false);
+    await settled(state);
+
+    const Notice = (await import("./components/Notice.vue")).default;
+    const band = mount(Notice);
+    expect(band.find(".notice-what").text()).toContain("Indexer");
+    expect(band.find(".notice-said").text()).toContain("Aborting");
+
+    // And the bar keeps only what fits it: the successes.
+    const StatusBar = (await import("./components/StatusBar.vue")).default;
+    expect(mount(StatusBar).text()).not.toContain("Aborting");
+
+    // It stays until it is dismissed — an error that evaporates is worse than
+    // a quiet one.
+    state.dismissWriteError();
+    expect(state.app.writeError).toBeNull();
+  });
+
   it("asks the question the row deserves before rejecting it", async () => {
     // The same button does three different things. A confirmation that warns
     // about losing work when the act *gives a file back* is a confirmation
@@ -173,7 +199,7 @@ describe("staging", () => {
     state.stageHunk(0, false);
     await settled(state);
 
-    expect(state.app.writeError).toContain("patch does not apply");
+    expect(state.app.writeError?.said).toContain("patch does not apply");
     // A write that failed is visible nowhere else: the repository did not move.
     expect(backend.current.find("a.txt")?.staged).toBeNull();
 

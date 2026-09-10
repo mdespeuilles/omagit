@@ -192,6 +192,13 @@ binary / image / rename / oversized-file diffs, the Preferences screen, and the
 Recorded here because they changed how the tokens are computed, and the next
 person to read §4.3 will otherwise wonder why the code does not match it.
 
+**A failed operation has a band, not a modal.** Nothing in the boards draws one:
+the status bar was carrying `git`'s refusals, which run to a paragraph, in
+22 pixels. The band sits above the status bar, wraps, and holds `git`'s words
+verbatim; the modal shape stays reserved for the confirmations of SPEC §3
+rule 7, so that it goes on meaning "answer this before something is lost".
+ARCHITECTURE §2.40 has the argument.
+
 **The correction target is `surface`, not `bg`.** DESIGN-TOKENS §4.3 says
 `bg`. Text is also drawn on `surface`, which is 4% closer to the foreground and
 therefore always the harder background; correcting against `bg` alone leaves the

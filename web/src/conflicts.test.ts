@@ -192,7 +192,7 @@ describe("a repository stopped on a conflict", () => {
     state.continueOperation();
     await settled(state);
 
-    expect(state.app.writeError).toContain("resolve your current index");
+    expect(state.app.writeError?.said).toContain("resolve your current index");
     expect(state.app.summary?.operation).toBe("merge");
   });
 

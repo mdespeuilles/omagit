@@ -14,6 +14,7 @@ import ConflictDialog from "./components/ConflictDialog.vue";
 import DiffView from "./components/DiffView.vue";
 import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
+import Notice from "./components/Notice.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
 import Progress from "./components/Progress.vue";
@@ -102,6 +103,7 @@ const widths = {
     </template>
   </div>
   <Progress />
+  <Notice />
   <StatusBar />
   <Confirm v-if="app.question" />
   <CloneDialog v-if="app.clone" />

@@ -243,7 +243,7 @@ describe("the shelf", () => {
     state.restoreStash(row!, true);
     await settled(state);
 
-    expect(state.app.writeError).toContain("not found");
+    expect(state.app.writeError?.said).toContain("not found");
     expect(state.app.stashes.status === "ready" && state.app.stashes.value).toEqual([]);
   });
 
