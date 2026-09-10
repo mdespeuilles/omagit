@@ -12,6 +12,7 @@ pub mod editor;
 pub mod edits;
 pub mod log;
 pub mod logging;
+pub mod menu;
 pub mod platform;
 pub mod state;
 pub mod time;
@@ -42,6 +43,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        // A menu item does not act; it names an action, and the front end runs
+        // it — the same table, the same three rules, whether the action was
+        // reached by a key, by the palette or from up here (SPEC §9).
+        .on_menu_event(|app, event| {
+            use tauri::Emitter as _;
+            let _ = app.emit("menu", event.id().as_ref());
+        })
         .setup(|app| {
             if let Some(dir) = platform::current().omarchy_state_dir() {
                 follow_system_palette(app.handle().clone(), dir);
@@ -50,6 +58,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::platform,
+            commands::set_menu,
             commands::theme,
             commands::preferences,
             commands::set_theme,

@@ -84,6 +84,9 @@ export class Repository {
   /// Set to make the next write fail, the way `git apply` does on a patch
   /// whose context has moved.
   failNextWrite: string | null = null;
+  /// Which platform the window thinks it is on. Linux unless a test is about
+  /// what only macOS has — the native menu bar (SPEC §9).
+  os: "linux" | "macos" = "linux";
 
   /// The history, newest first. Named for `git log` rather than "commits",
   /// which is already the list of commits the commit box has *made*.
@@ -233,16 +236,22 @@ export class Repository {
       case "set_scale":
         this.preferences = { ...this.preferences, scale: args["scale"] as number };
         return "--bg: #000; --text: #fff;";
-      case "platform":
+      case "platform": {
+        const mac = this.os === "macos";
         return {
-          name: "linux",
-          modifier: "control",
-          modifier_label: "Ctrl",
-          reserve: { leading: 0, trailing: 0 },
-          caption: { minimize: false, maximize: false, close: true, side: "trailing" },
-          credential_helper: "store",
-          home: "/home/dev",
+          name: this.os,
+          modifier: mac ? "command" : "control",
+          modifier_label: mac ? "⌘" : "Ctrl",
+          reserve: { leading: mac ? 78 : 0, trailing: 0 },
+          caption: mac
+            ? { minimize: false, maximize: false, close: false, side: "trailing" }
+            : { minimize: false, maximize: false, close: true, side: "trailing" },
+          credential_helper: mac ? "osxkeychain" : "store",
+          home: mac ? "/Users/dev" : "/home/dev",
         } satisfies PlatformFacts;
+      }
+      case "set_menu":
+        return undefined;
       case "git_status":
         return null;
       case "repositories":

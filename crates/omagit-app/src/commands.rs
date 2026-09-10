@@ -54,6 +54,27 @@ pub fn platform() -> crate::platform::PlatformFacts {
     crate::platform::current().facts()
 }
 
+/// Hang the native menu bar on the application (SPEC §9).
+///
+/// The items come from the front end because the table of what omagit can do
+/// lives there — `web/src/keymap.ts`, read by the key handler, the palette, the
+/// `?` sheet and now this. Sent again when what the window can do changes, so
+/// an item is greyed rather than silently doing nothing.
+///
+/// A no-op where the platform has no menu bar: the front end does not call it on
+/// Linux, and a command that would build a GTK menu anyway if someone did is a
+/// trap rather than a convenience.
+#[tauri::command]
+pub fn set_menu(app: tauri::AppHandle, entries: Vec<crate::menu::Entry>) -> Result<(), String> {
+    if !crate::platform::current().native_menus() {
+        return Ok(());
+    }
+    crate::menu::install(&app, &entries).map_err(|error| {
+        tracing::warn!(%error, "the menu bar could not be built");
+        error.to_string()
+    })
+}
+
 /// The theme, as the CSS custom properties the stylesheet reads.
 #[tauri::command]
 pub fn theme(state: State<'_, AppState>) -> String {

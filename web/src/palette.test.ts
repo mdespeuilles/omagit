@@ -25,6 +25,7 @@ const action = (id: string, label: string, enabled = true): Action => ({
   label,
   binding: "Primary+X",
   where: "always",
+  menu: "view",
   enabled: () => enabled,
   run: () => {},
 });

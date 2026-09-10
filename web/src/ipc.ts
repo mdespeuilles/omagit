@@ -325,8 +325,19 @@ export type CloneRequest = {
   group: number | null;
 };
 
+/// One item of the native menu bar (SPEC §9), as `menu.ts` arranges it from the
+/// keymap table.
+export type MenuEntry = {
+  id: string;
+  label: string;
+  binding: string;
+  menu: string;
+  enabled: boolean;
+};
+
 export const api = {
   platform: () => invoke<PlatformFacts>("platform"),
+  setMenu: (entries: MenuEntry[]) => invoke<void>("set_menu", { entries }),
   theme: () => invoke<string>("theme"),
 
   // Preferences (M9). Each setter answers with the stylesheet its change

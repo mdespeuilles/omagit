@@ -136,6 +136,14 @@ pub trait Platform: Send + Sync + 'static {
     /// Whether the platform reports a light/dark preference worth following.
     fn reports_system_appearance(&self) -> bool;
 
+    /// Whether the window system expects a native menu bar (SPEC §9).
+    ///
+    /// macOS does, and firmly: "sans elle, l'app paraît cassée" — and it is
+    /// also where `⌘Z`, `⌘A` and `⌘C` inside the web view come from. Linux does
+    /// not: everything is in the window there, so a menu bar would be a second
+    /// place to find the same commands.
+    fn native_menus(&self) -> bool;
+
     /// Which window buttons the app draws for itself (board 02).
     fn caption(&self) -> Caption;
 

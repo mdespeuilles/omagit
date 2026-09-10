@@ -55,6 +55,12 @@ impl Platform for MacOs {
     fn reports_system_appearance(&self) -> bool {
         true
     }
+
+    /// SPEC §9, and not negotiable: the menu bar is where macOS keeps Quitter,
+    /// Masquer and — the one that matters inside a web view — Édition.
+    fn native_menus(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

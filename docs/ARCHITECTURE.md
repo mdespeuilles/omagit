@@ -1497,6 +1497,51 @@ it. They are `<div>`s now, which is the shape `.file-row` and `.commit-row`
 already had — and the shape `.stash-entry` reached from the other side, with the
 row as the `<li>` and the actions beside the button inside it.
 
+### 2.49 M9, sixth slice: the menu bar macOS requires
+
+SPEC §9 is blunt about it — « barre de menus native obligatoire. Sans elle,
+l'app paraît cassée » — and it is not only about looking finished. On macOS the
+Édition menu is what makes `⌘Z`, `⌘A`, `⌘C` and `⌘V` work *inside a WKWebView*.
+Without it the commit box has no undo and no select-all, which is a text field
+that does not behave like one on the platform this ships to.
+
+**The items come from the front end.** `web/src/keymap.ts` is the table, and the
+menu bar is its fourth reader after the key handler, the palette and the `?`
+sheet — the front end sends it at start-up, `crates/omagit-app/src/menu.rs`
+arranges it. A menu declared in Rust would be a second list of what the app can
+do, next to the one that answers the keys, and §5's twelfth defect is what a
+second list does. What Rust *does* own is what is not an omagit action: the
+predefined items. Quitter, Masquer, Services, Annuler, Coller, Réduire, Plein
+écran belong to the platform, not to the table.
+
+**A menu item does not act; it names an action.** The click comes back as the
+action's id, and the front end runs it through the same rules a key press goes
+through. So there is one path to Fetch, whether it was reached by `⌘F`, by the
+palette or from the Dépôt menu.
+
+**Only a binding with `Primary` becomes an accelerator**, and that is the
+subtlety worth the entry. A menu accelerator is answered by the window system
+*before* the web view sees the key. Registering `⇧?` up there would mean nobody
+could type a question mark into a commit message. `⌘F` is meant to fire while
+you are typing (KEYMAP.md) so it belongs in the menu; the sheet's `?` does not,
+and its item carries no accelerator — it still opens on a click, and the key
+still works, through the front end, which is the layer that knows where the
+caret is.
+
+**The greying is coarse on purpose.** An item is disabled when the *screen*
+cannot do it — no repository open — not when a fetch happens to be running. The
+front end sends the bar again when a repository opens or closes, and compares
+what it is about to send to what it sent last. The alternative is rebuilding the
+menu bar on every state change, including while one of its menus is pulled down.
+
+`Platform::native_menus` is where SPEC §9's table row now lives, and the command
+refuses on a platform that answers no: Linux has everything in the window, and a
+GTK menu bar built anyway by a caller who forgot would be a second place to find
+the same commands. One consequence is visible for a moment at launch — Tauri
+puts its own English default menu up until the front end has booted and sent
+ours. The alternative is a skeleton menu in Rust, which is the second list this
+whole design exists to avoid.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

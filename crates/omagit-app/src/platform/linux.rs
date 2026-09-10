@@ -110,6 +110,12 @@ impl Platform for Linux {
         omagit_theme::omarchy::state_dir_from_env()
     }
 
+    /// None (SPEC §9): everything is in the window here, and a menu bar would
+    /// be a second place to find it.
+    fn native_menus(&self) -> bool {
+        false
+    }
+
     fn reports_system_appearance(&self) -> bool {
         // Desktop portals do expose a colour-scheme preference, but omagit does
         // not read it: on Linux the Omarchy palette is the system theme, and a

@@ -2,10 +2,11 @@
 
 Every binding omagit answers, and the rules behind them.
 
-The table lives in `web/src/keymap.ts` — one place, because three things need
-the same list: the key handler, the command palette that runs these actions by
-name, and the `?` sheet that prints them. The macOS menu bar will be the fourth
-(SPEC §9).
+The table lives in `web/src/keymap.ts` — one place, because four things need the
+same list: the key handler, the command palette that runs these actions by name,
+the `?` sheet that prints them, and the macOS menu bar that fires them (SPEC §9).
+Each action names the menu it belongs under; the menu bar is arranged from that
+in `crates/omagit-app/src/menu.rs`.
 
 **`Primary`** is `⌘` on macOS and `Ctrl` elsewhere (SPEC §9). The interface
 always shows one or the other, never both, and never spells them together:
@@ -88,6 +89,19 @@ entry, so an action added without a line is not something anyone can forget.
 It is written `Shift`+`?`, not `Shift`+`/`, however the key is engraved: a
 browser reports the character the layout produced. Written the other way it
 matched nothing on any layout, which is what the sheet's first test found.
+
+## In the menu bar
+
+macOS only (SPEC §9). Every action above is in one of App, Fichier, Affichage,
+Dépôt or Aide; Édition and Fenêtre hold the platform's own items, which is where
+`⌘Z`, `⌘A` and `⌘C` inside the web view come from.
+
+**Only a binding with `Primary` is registered as a menu accelerator.** A menu
+accelerator is answered before the web view sees the key, so a binding that must
+reach a text field cannot be one: `⌘F` fetches while you type and belongs there,
+`⇧?` must yield to a question mark being typed and does not. Its item is still
+in Aide, and the key still works — through the front end, which knows where the
+caret is.
 
 ## Not yet bound
 

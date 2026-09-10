@@ -35,6 +35,20 @@ import * as store from "./state";
 /// to fetch from.
 export type Where = "always" | "repository";
 
+/// Which native menu an action appears under (SPEC §9: App, Fichier, Édition,
+/// Affichage, Dépôt, Fenêtre, Aide).
+///
+/// Declared here rather than in the Rust that builds the bar, for the reason
+/// this table exists at all: the menu is the fourth thing to read it, after the
+/// key handler, the palette and the `?` sheet. Édition, Fenêtre and half of App
+/// hold no omagit action — they are the platform's own items, and the backend
+/// adds them.
+///
+/// The label a menu shows is the label the palette shows. One label per action:
+/// if it reads badly under a menu title, it reads badly in the palette too, and
+/// the fix is the label rather than a second one.
+export type Place = "app" | "file" | "view" | "repository" | "help";
+
 export type Action = {
   /// Stable, and never shown: the palette searches labels, and settings will
   /// store bindings against this.
@@ -46,6 +60,7 @@ export type Action = {
   /// string.
   binding: string;
   where: Where;
+  menu: Place;
   /// Whether it can run now. The palette draws the rest dimmed rather than
   /// hiding them: an action that disappears is one nobody learns.
   enabled: () => boolean;
@@ -95,6 +110,7 @@ export const ACTIONS: Action[] = [
     label: "Ajouter un dépôt local",
     binding: "Primary+O",
     where: "always",
+    menu: "file",
     enabled: () => !app.gitUnusable,
     run: () => void store.addRepository(),
   },
@@ -103,6 +119,7 @@ export const ACTIONS: Action[] = [
     label: "Cloner un dépôt",
     binding: "Shift+Primary+N",
     where: "always",
+    menu: "file",
     enabled: () => !app.gitUnusable && idle(),
     run: () => store.openClone(),
   },
@@ -111,6 +128,7 @@ export const ACTIONS: Action[] = [
     label: "Tous les dépôts",
     binding: "Shift+Primary+O",
     where: "always",
+    menu: "file",
     enabled: () => true,
     run: () => store.showScreen("repositories"),
   },
@@ -119,6 +137,7 @@ export const ACTIONS: Action[] = [
     label: "Aller à la copie de travail",
     binding: "Primary+1",
     where: "repository",
+    menu: "view",
     enabled: inRepository,
     run: () => store.showScreen("working-copy"),
   },
@@ -127,6 +146,7 @@ export const ACTIONS: Action[] = [
     label: "Aller à l'historique",
     binding: "Primary+2",
     where: "repository",
+    menu: "view",
     enabled: inRepository,
     run: () => store.showScreen("history"),
   },
@@ -135,6 +155,7 @@ export const ACTIONS: Action[] = [
     label: "Aller aux remises",
     binding: "Primary+3",
     where: "repository",
+    menu: "view",
     enabled: inRepository,
     run: () => store.showScreen("stashes"),
   },
@@ -143,6 +164,7 @@ export const ACTIONS: Action[] = [
     label: "Fetch",
     binding: "Primary+F",
     where: "repository",
+    menu: "repository",
     enabled: () => inRepository() && idle() && !app.gitUnusable,
     run: () => store.fetchRemote(),
   },
@@ -151,6 +173,7 @@ export const ACTIONS: Action[] = [
     label: "Pull",
     binding: "Shift+Primary+P",
     where: "repository",
+    menu: "repository",
     enabled: () => inRepository() && idle() && !!app.summary?.tracking,
     run: () => store.pullRemote(),
   },
@@ -159,6 +182,7 @@ export const ACTIONS: Action[] = [
     label: "Push",
     binding: "Primary+P",
     where: "repository",
+    menu: "repository",
     enabled: () => inRepository() && idle() && !app.gitUnusable,
     run: () => store.pushBranch(false),
   },
@@ -167,6 +191,7 @@ export const ACTIONS: Action[] = [
     label: "Arrêter l'opération réseau",
     binding: "Primary+.",
     where: "always",
+    menu: "repository",
     enabled: () => !!app.running,
     run: () => store.stopNetwork(),
   },
@@ -175,6 +200,7 @@ export const ACTIONS: Action[] = [
     label: "Relire le dépôt",
     binding: "Primary+R",
     where: "repository",
+    menu: "repository",
     enabled: inRepository,
     run: () => void store.refresh(),
   },
@@ -183,6 +209,7 @@ export const ACTIONS: Action[] = [
     label: "Remiser les modifications",
     binding: "Shift+Primary+S",
     where: "repository",
+    menu: "repository",
     enabled: () => inRepository() && idle(),
     run: () => {
       store.showScreen("stashes");
@@ -194,6 +221,7 @@ export const ACTIONS: Action[] = [
     label: "Palette de commandes",
     binding: "Primary+K",
     where: "always",
+    menu: "view",
     enabled: () => true,
     run: () => store.openPalette(),
   },
@@ -205,6 +233,7 @@ export const ACTIONS: Action[] = [
     // produces `?`. Written the other way it matched nothing, on any layout.
     binding: "Shift+?",
     where: "always",
+    menu: "help",
     enabled: () => true,
     run: () => store.toggleShortcuts(),
   },
@@ -213,6 +242,7 @@ export const ACTIONS: Action[] = [
     label: "Réglages",
     binding: "Primary+,",
     where: "always",
+    menu: "app",
     enabled: () => true,
     run: () => store.showScreen("settings"),
   },
@@ -221,6 +251,7 @@ export const ACTIONS: Action[] = [
     label: "Journal des opérations",
     binding: "Shift+Primary+J",
     where: "always",
+    menu: "view",
     enabled: () => true,
     run: () => store.toggleJournal(),
   },
@@ -331,6 +362,23 @@ export function dispatch(event: KeyboardEvent): boolean {
     return true;
   }
   return false;
+}
+
+/// Run the action with this id, if it can run at all right now.
+///
+/// The way in for everything that names an action rather than pressing its key:
+/// the native menu bar (SPEC §9), and anything after it. The two rules it keeps
+/// are `dispatch`'s own — a screen that is not open refuses, and an action that
+/// cannot run now does nothing — but not the third: whether the key is
+/// *swallowed* is a question only a key press asks, and a menu item that did
+/// nothing has already told the truth by being greyed.
+export function runAction(id: string): boolean {
+  const action = ACTIONS.find((entry) => entry.id === id);
+  if (!action) return false;
+  if (action.where === "repository" && !app.open) return false;
+  if (!action.enabled()) return false;
+  action.run();
+  return true;
 }
 
 /// Put the caret in this screen's filter, and say whether there was one.
