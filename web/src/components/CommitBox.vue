@@ -117,7 +117,12 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
       <button :disabled="!!app.busy || staged === 0" @click="stageEverything(true)">
         Tout désindexer
       </button>
-      <button class="primary" :disabled="!canCommit()" :title="blocked ?? ''" @click="commit()">
+      <!-- No `title`: the reason sits one line below, on screen, permanently.
+           A tooltip repeating it adds nothing — and WKWebView drew this one in
+           the window's top-left corner after the button under the pointer
+           changed, which is a sentence about staging floating over the traffic
+           lights. -->
+      <button class="primary" :disabled="!canCommit()" @click="commit()">
         {{ label }}
       </button>
     </div>
