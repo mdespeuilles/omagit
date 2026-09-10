@@ -65,9 +65,47 @@ describe("the preferences screen", () => {
     // Hidden, it becomes a thing nobody can ask about — on the very screen
     // somebody opens *because* the theme is not what they expected.
     const { screen } = await opened();
-    const omarchy = screen.findAll(".settings-row").find((row) => row.text().includes("Omarchy"))!;
+    // By its label, not by the word: "Automatique" names Omarchy too, in the
+    // sentence that says what it falls back through.
+    const omarchy = screen
+      .findAll(".settings-row")
+      .find((row) => row.text().startsWith("Suivre Omarchy"))!;
     expect(omarchy.attributes("disabled")).toBeDefined();
     expect(omarchy.text()).toContain("aucun Omarchy");
+  });
+
+  it("marks exactly one theme choice, whichever half it is in", async () => {
+    // The sources and the catalogue set the same setting, and drawing them as
+    // two lists let "Suivre le système" and a named theme both look chosen. One
+    // radio group: one mark, wherever it lands.
+    const { state, screen } = await opened();
+    const marked = () => screen.findAll('[role="radio"][aria-checked="true"]').map((o) => o.text());
+
+    expect(marked()).toHaveLength(1);
+
+    // A theme the catalogue actually holds: the fake carries two, and asking
+    // for one it does not have marks nothing — which is the truth, not a bug.
+    state.chooseTheme("user-override", "Rosé Pine Dawn");
+    await settled(state);
+    await screen.vm.$nextTick();
+    expect(marked()).toHaveLength(1);
+    expect(marked()[0]).toContain("Rosé Pine Dawn");
+
+    state.chooseTheme("embedded-dark");
+    await settled(state);
+    await screen.vm.$nextTick();
+    expect(marked()).toHaveLength(1);
+    expect(marked()[0]).toContain("Embarqué");
+  });
+
+  it("says what Automatique resolves through", async () => {
+    // "ce que cette machine offre de mieux" said nothing anyone could act on.
+    const { screen } = await opened();
+    const automatic = screen
+      .findAll(".settings-row")
+      .find((row) => row.text().startsWith("Automatique"))!;
+    expect(automatic.text()).toContain("Omarchy");
+    expect(automatic.text()).toContain("embarqué");
   });
 
   it("applies a change to the window in the same tick it saves it", async () => {

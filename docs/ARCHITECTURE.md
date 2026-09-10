@@ -1864,6 +1864,34 @@ for the event. It is the one thing neither suite could reach, and it is exactly
 the kind of wiring that compiles, type-checks and silently does nothing. Which
 is what it did for seven milestones.
 
+### 2.59 One question, one answer, on the Preferences screen
+
+Four things reported from use, and three of them were the same thing.
+
+**The sources did not look like anything you could press.** Five lines of plain
+text with a hover: true, and invisible at rest. **And the catalogue below them
+looked like a second, independent question** — "Suivre le système" and a named
+theme could both appear chosen, which the model does not allow: they set the
+same `ThemeSource`, and naming a theme is what turns following off. **And their
+labels did not line up**, because the swatches carried a border and the rows did
+not.
+
+All three answered by making it what it is: **one radio group**. A mark on every
+option — sources and themes alike — exactly one of them filled, and the border
+gone from the swatches, which is what let their labels sit a pixel to the right
+of the rows'.
+
+The mark is drawn on the same 14px box as board 01 §05's checkbox, square,
+because DESIGN §1 says everything is. What tells the two apart is what fills
+them: a check means "this one is in", a solid block means "this one, and
+therefore not the others" — with the group carrying the rest of the meaning,
+since only ever one is filled.
+
+**And "Automatique" said "ce que cette machine offre de mieux",** which names
+nothing anyone can act on. It says what it resolves *through* now — Omarchy,
+then the system, then the embedded theme — and the line above it already says
+what that came out as.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

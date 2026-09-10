@@ -130,81 +130,112 @@ function on(source: string, name = ""): boolean {
         <h2 class="settings-title">Thème</h2>
         <p class="settings-note">
           À l'écran en ce moment : <strong>{{ prefs.resolved }}</strong
-          >. Les sources sont celles de SPEC §6.1, dans leur ordre de priorité — la première qui
-          répond gagne.
+          >. Un seul choix ici : suivre quelque chose, ou nommer un thème — nommer un thème arrête
+          tout suivi.
         </p>
 
-        <button
-          class="row settings-row"
-          :class="{ selected: on('automatic') }"
-          @click="chooseTheme('automatic')"
-        >
-          <span>Automatique</span>
-          <span class="settings-detail">ce que cette machine offre de mieux</span>
-        </button>
-
-        <button
-          class="row settings-row"
-          :class="{ selected: on('omarchy') }"
-          :disabled="!prefs.omarchy"
-          @click="chooseTheme('omarchy')"
-        >
-          <span>Suivre Omarchy</span>
-          <span class="settings-detail">
-            {{
-              prefs.omarchy
-                ? "la palette Quattro, suivie en direct"
-                : "aucun Omarchy sur cette machine"
-            }}
-          </span>
-        </button>
-
-        <button
-          class="row settings-row"
-          :class="{ selected: on('system-appearance') }"
-          :disabled="!prefs.system_appearance"
-          @click="chooseTheme('system-appearance')"
-        >
-          <span>Suivre le système</span>
-          <span class="settings-detail">
-            {{
-              prefs.system_appearance
-                ? "clair ou sombre, bascule comprise"
-                : "cette plateforme ne rapporte pas de préférence"
-            }}
-          </span>
-        </button>
-
-        <button
-          class="row settings-row"
-          :class="{ selected: on('embedded-dark') }"
-          @click="chooseTheme('embedded-dark')"
-        >
-          <span>Embarqué — sombre</span>
-          <span class="settings-detail">le thème sombre par défaut, sans rien suivre</span>
-        </button>
-
-        <button
-          class="row settings-row"
-          :class="{ selected: on('embedded-light') }"
-          @click="chooseTheme('embedded-light')"
-        >
-          <span>Embarqué — clair</span>
-          <span class="settings-detail">le thème clair par défaut, sans rien suivre</span>
-        </button>
-
-        <h3 class="settings-subtitle">Ou un thème précis, qui désactive tout suivi</h3>
-        <div class="settings-catalogue">
+        <!-- One question, one answer. The five sources and the eight themes set
+             the same setting, and drawing them as two lists let both look
+             chosen at once. They are one radio group now: a mark on every
+             option, exactly one of them filled, whichever half it is in. -->
+        <div class="settings-picks" role="radiogroup" aria-label="Thème">
           <button
-            v-for="theme in prefs.catalogue"
-            :key="theme.name"
-            class="row settings-swatch"
-            :class="{ selected: on('user-override', theme.name) }"
-            @click="chooseTheme('user-override', theme.name)"
+            class="row settings-row"
+            role="radio"
+            :aria-checked="on('automatic')"
+            :class="{ selected: on('automatic') }"
+            @click="chooseTheme('automatic')"
           >
-            <span>{{ theme.name }}</span>
-            <span class="settings-detail">{{ theme.mode === "light" ? "clair" : "sombre" }}</span>
+            <span class="pick" :class="{ on: on('automatic') }" aria-hidden="true" />
+            <span>Automatique</span>
+            <span class="settings-detail">
+              la première source qui répond : Omarchy, puis le système, sinon le thème embarqué
+            </span>
           </button>
+
+          <button
+            class="row settings-row"
+            role="radio"
+            :aria-checked="on('omarchy')"
+            :class="{ selected: on('omarchy') }"
+            :disabled="!prefs.omarchy"
+            @click="chooseTheme('omarchy')"
+          >
+            <span class="pick" :class="{ on: on('omarchy') }" aria-hidden="true" />
+            <span>Suivre Omarchy</span>
+            <span class="settings-detail">
+              {{
+                prefs.omarchy
+                  ? "la palette Quattro, suivie en direct"
+                  : "aucun Omarchy sur cette machine"
+              }}
+            </span>
+          </button>
+
+          <button
+            class="row settings-row"
+            role="radio"
+            :aria-checked="on('system-appearance')"
+            :class="{ selected: on('system-appearance') }"
+            :disabled="!prefs.system_appearance"
+            @click="chooseTheme('system-appearance')"
+          >
+            <span class="pick" :class="{ on: on('system-appearance') }" aria-hidden="true" />
+            <span>Suivre le système</span>
+            <span class="settings-detail">
+              {{
+                prefs.system_appearance
+                  ? "clair ou sombre, bascule comprise"
+                  : "cette plateforme ne rapporte pas de préférence"
+              }}
+            </span>
+          </button>
+
+          <button
+            class="row settings-row"
+            role="radio"
+            :aria-checked="on('embedded-dark')"
+            :class="{ selected: on('embedded-dark') }"
+            @click="chooseTheme('embedded-dark')"
+          >
+            <span class="pick" :class="{ on: on('embedded-dark') }" aria-hidden="true" />
+            <span>Embarqué — sombre</span>
+            <span class="settings-detail">le thème sombre par défaut, sans rien suivre</span>
+          </button>
+
+          <button
+            class="row settings-row"
+            role="radio"
+            :aria-checked="on('embedded-light')"
+            :class="{ selected: on('embedded-light') }"
+            @click="chooseTheme('embedded-light')"
+          >
+            <span class="pick" :class="{ on: on('embedded-light') }" aria-hidden="true" />
+            <span>Embarqué — clair</span>
+            <span class="settings-detail">le thème clair par défaut, sans rien suivre</span>
+          </button>
+
+          <h3 class="settings-subtitle">Ou un thème précis</h3>
+          <div class="settings-catalogue">
+            <button
+              v-for="theme in prefs.catalogue"
+              :key="theme.name"
+              class="row settings-swatch"
+              role="radio"
+              :aria-checked="on('user-override', theme.name)"
+              :class="{ selected: on('user-override', theme.name) }"
+              @click="chooseTheme('user-override', theme.name)"
+            >
+              <span
+                class="pick"
+                :class="{ on: on('user-override', theme.name) }"
+                aria-hidden="true"
+              />
+              <span>{{ theme.name }}</span>
+              <span class="pane-head-spacer" />
+              <span class="settings-detail">{{ theme.mode === "light" ? "clair" : "sombre" }}</span>
+            </button>
+          </div>
         </div>
       </section>
 

@@ -2802,7 +2802,7 @@ select:focus {
 
 .settings-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   width: 100%;
   height: var(--row-height);
@@ -2829,19 +2829,58 @@ select:focus {
   flex: 1;
 }
 
+/* The mark that says "one of these", drawn on the same 14px box as the
+   checkbox of board 01 §05 — square, because DESIGN §1 says everything is. What
+   tells the two apart is what fills them: a check mark means "this one is in",
+   a solid block means "this one, and therefore not the others". The group
+   itself carries the rest of the meaning: exactly one is ever filled.
+
+   It exists because five lines of plain text did not look like anything you
+   could press. */
+.pick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.pick.on::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+}
+/* On a filled row the accent is the background, so the block takes the colour
+   the text has — the §2.47 rule, once more. */
+.row.selected .pick {
+  border-color: var(--on-accent);
+  background: transparent;
+}
+.row.selected .pick.on::after {
+  background: var(--on-accent);
+}
+.settings-picks button:disabled .pick {
+  opacity: 0.5;
+}
+
 .settings-catalogue {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 2px;
 }
+/* No border: a swatch is a row of the same list as the sources above it, and a
+   box around half the options was what made them read as two questions — and
+   what pushed their labels a pixel to the right of the rows'. */
 .settings-swatch {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 8px;
   height: var(--row-height);
   padding: 0 8px;
-  border: 1px solid var(--border);
+  border: 0;
   text-align: left;
   font-size: var(--text-body);
   cursor: pointer;
