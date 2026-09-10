@@ -40,6 +40,7 @@ import {
   openClone,
   pullRemote,
   pushBranch,
+  openPalette,
   showScreen,
 } from "../state";
 import { tildify } from "../format";
@@ -181,8 +182,8 @@ const where = computed(() => {
     </template>
 
     <span class="topbar-rule" />
-    <button disabled title="Palette de commandes — jalon M9">
-      Rechercher<span class="hint">{{ modifier }}K</span>
+    <button title="Palette de commandes" @click="openPalette()">
+      Rechercher<span class="hint">{{ shortcut("palette.open") }}</span>
     </button>
 
     <span

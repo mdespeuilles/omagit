@@ -30,6 +30,7 @@ always shows one or the other, never both, and never spells them together:
 | `Primary`+`.` | Arrêter l'opération réseau | while one is running |
 | `Primary`+`R` | Relire le dépôt — ou la liste, sur l'écran Dépôts | anywhere |
 | `Shift`+`Primary`+`S` | Remiser les modifications | with a repository open |
+| `Primary`+`K` | Palette de commandes | anywhere |
 | `Shift`+`Primary`+`J` | Journal des opérations | anywhere |
 | `Primary`+`⏎` | Commiter | in the commit box |
 
@@ -64,6 +65,10 @@ and board 09 — which needs a notion of zones and focus the window does not hav
 yet. It is M9's next slice, and it is why every action already carries the
 context it fires in.
 
-The command palette (`Primary`+`K`), the `?` sheet and the reassignment screen
-are the slices after that. Reassignment is a settings screen over this same
-table rather than a rewrite, which is the whole reason the table exists.
+Inside the palette: `↑` `↓` (or `Ctrl`+`P` / `Ctrl`+`N`) walk the rows across
+its groups and wrap, `⏎` runs the row, `Esc` closes. What `⏎` *does* depends on
+the row, which is why every row prints it: `exécuter`, `ouvrir`, `basculer`.
+
+The `?` sheet and the reassignment screen are the slices after that.
+Reassignment is a settings screen over this same table rather than a rewrite,
+which is the whole reason the table exists.

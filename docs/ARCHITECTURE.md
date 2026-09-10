@@ -1353,6 +1353,37 @@ known defect: it had been pointing at `crates/omagit-app/src/actions.rs`, a file
 the port deleted, and listing M3's movement keys, which this front end never
 had.
 
+### 2.45 M9, second slice: the palette, and what it can reach
+
+Board 07 calls it "le point d'entrée principal de l'app", which is a claim about
+*coverage* rather than about looks: what cannot be reached from `⌘K` has to be
+found by knowing where it lives. So it searches four things — the actions of
+§2.44, the repositories in the library, the branches of the open one, and the
+files of its working copy — and each row says what `⏎` will do to it, because
+`⏎` does four different things: `exécuter`, `ouvrir`, `basculer`, `ouvrir`.
+
+**Groups in a fixed order, not one list sorted by score.** A palette whose rows
+change *category* as you type makes the next keystroke unpredictable, and the
+whole point of `⏎` on the first row is that it can be pressed without looking.
+Within a group the score decides, and it is three rules: a letter that starts a
+word counts double (`wc` finds "Working Copy" ahead of "switch", which is
+shorter and would otherwise win), a letter next to the previous one counts
+double again so a run beats a scatter, and a long label costs a little.
+
+**The ranking is a pure function**, tested against itself rather than through
+the overlay: "which of two rows comes first" and "which characters are marked"
+are rules, and a test that had to type into a window to check them is one nobody
+reads when a rule changes.
+
+**Dimmed, not hidden**, for a row that cannot run now — an action that
+disappears when it is unavailable is one nobody learns — and that includes the
+branch you are already on, which says "branche courante" where the others say
+how far they have diverged.
+
+**Board 07's marking rule survives contact**: matched characters go accent and
+600, and on the selected row — whose ground is already accent — they go to
+weight alone. The same colour twice over itself says nothing.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

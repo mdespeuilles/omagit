@@ -15,6 +15,8 @@ import { reactive, readonly } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { measure } from "./metrics";
+import type { Row as PaletteRow } from "./palette";
+import type { Action as KeymapAction } from "./keymap";
 import {
   api,
   isFiltered,
@@ -195,6 +197,9 @@ type State = {
   sides: Sides | null;
   /// The conflict dialog, while it is up.
   resolving: Resolving | null;
+  /// The command palette, while it is up. `at` is the row ⏎ would run, counted
+  /// across the groups in the order they are drawn.
+  palette: { query: string; at: number } | null;
 };
 
 /// What the conflict dialog is holding.
@@ -303,6 +308,7 @@ const state = reactive<State>({
   stashing: null,
   sides: null,
   resolving: null,
+  palette: null,
 });
 
 export const app = readonly(state);
@@ -1626,6 +1632,57 @@ export async function refresh(): Promise<void> {
   }
   await settle();
   if (state.screen === "history") await loadHistory();
+}
+
+// ── The command palette (M9) ────────────────────────────────────────────────
+//
+// Board 07 calls it "le point d'entrée principal de l'app". The rows it can
+// reach are therefore not a decoration: what is not in here has to be found by
+// knowing where it lives.
+
+export function openPalette(): void {
+  state.palette = { query: "", at: 0 };
+}
+
+export function closePalette(): void {
+  state.palette = null;
+}
+
+export function setPaletteQuery(query: string): void {
+  if (!state.palette) return;
+  state.palette.query = query;
+  // Back to the top: the row under the cursor was chosen against a list that no
+  // longer exists, and ⏎ has to stay pressable without looking.
+  state.palette.at = 0;
+}
+
+/// Move by one, wrapping. The list is short and the wrap is what makes ↑ from
+/// the first row reach the last without a second key.
+export function movePalette(by: number, total: number): void {
+  if (!state.palette || total === 0) return;
+  state.palette.at = (state.palette.at + by + total) % total;
+}
+
+/// Run one row. What that means depends on what the row is, which is why the
+/// row says so on its right — "basculer ⏎" is not "ouvrir ⏎".
+export function runPaletteRow(row: PaletteRow, actions: KeymapAction[]): void {
+  if (!row.enabled) return;
+  closePalette();
+  switch (row.kind) {
+    case "action":
+      actions.find((action) => action.id === row.key)?.run();
+      return;
+    case "repository":
+      void openRepository(row.key);
+      return;
+    case "branch":
+      checkoutBranch(row.key);
+      return;
+    case "file":
+      showScreen("working-copy");
+      void selectFile(row.key, false);
+      return;
+  }
 }
 
 // ── Writing ─────────────────────────────────────────────────────────────────

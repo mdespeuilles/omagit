@@ -155,6 +155,14 @@ export const ACTIONS: Action[] = [
     },
   },
   {
+    id: "palette.open",
+    label: "Palette de commandes",
+    binding: "Primary+K",
+    where: "always",
+    enabled: () => true,
+    run: () => store.openPalette(),
+  },
+  {
     id: "journal.toggle",
     label: "Journal des opérations",
     binding: "Shift+Primary+J",
@@ -211,7 +219,7 @@ function typing(target: EventTarget | null): boolean {
 /// Whether a dialog is up. Dialogs answer their own keys — `Esc`, `⌘⏎`, `n` —
 /// and a global binding firing behind one would act on a screen nobody can see.
 function overlaid(): boolean {
-  return !!app.question || !!app.clone || !!app.resolving;
+  return !!app.question || !!app.clone || !!app.resolving || !!app.palette;
 }
 
 /// Run whichever action the event names, and say whether one did.

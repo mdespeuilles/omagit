@@ -727,7 +727,8 @@ button.icon {
    dark would put near-black on near-black — the theme picks the readable one of
    the pair. */
 .sidebar-row.selected,
-.library-row.selected {
+.library-row.selected,
+.palette-row.selected {
   background: var(--accent);
   color: var(--on-accent);
   --row-bg: var(--accent);
@@ -751,7 +752,8 @@ button.icon {
   background: transparent;
 }
 .sidebar-row.selected:hover,
-.library-row.selected:hover {
+.library-row.selected:hover,
+.palette-row.selected:hover {
   background: color-mix(in srgb, var(--accent) 84%, var(--text));
   color: var(--on-accent);
 }
@@ -2563,4 +2565,108 @@ select:focus {
   width: 20px;
   height: 20px;
   padding: 0;
+}
+
+/* ── The command palette (M9, board 07) ──────────────────────────────────── */
+
+/* Near the top rather than centred on the height: the list grows downwards, and
+   a box that moved as it filled would make the first row a moving target. */
+.overlay.top {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 92vw);
+  max-height: 60vh;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 45%);
+}
+
+.palette-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.palette-query {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  font-size: var(--text-panel);
+  color: var(--text);
+}
+.palette-query:focus-visible {
+  outline: 0;
+}
+.palette-count {
+  flex: none;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+
+.palette-rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.palette-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 0 10px;
+  height: var(--row-height);
+  border: 0;
+  text-align: left;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+.palette-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+.palette-hint {
+  flex: none;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+
+/* Board 07: the matched characters go accent and 600. On the selected row —
+   whose ground is already accent — they go to weight alone, because the same
+   colour twice over itself says nothing. */
+.palette-label .mark {
+  color: var(--accent);
+  font-weight: 600;
+}
+.palette-row.selected .mark {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* A row that cannot run now is dimmed rather than dropped: one that disappears
+   is one nobody learns. */
+.palette-row.off {
+  color: var(--text-dim);
 }
