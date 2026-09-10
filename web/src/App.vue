@@ -27,6 +27,7 @@ import StashDetail from "./components/StashDetail.vue";
 import StashList from "./components/StashList.vue";
 import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
+import Tabs from "./components/Tabs.vue";
 import Topbar from "./components/Topbar.vue";
 import { onBeforeUnmount, onMounted, watch } from "vue";
 import { app, paneWidth } from "./state";
@@ -75,6 +76,7 @@ const widths = {
 
 <template>
   <Topbar />
+  <Tabs />
   <div class="shell">
     <!-- Board 06 has no workspace sidebar: with no repository open there is no
          workspace to be in, and the repository list *is* the left column. -->

@@ -73,6 +73,7 @@ pub fn run() {
             commands::add_repository,
             commands::forget_repository,
             commands::touch_repository,
+            commands::close_repository,
             commands::summary,
             commands::status,
             commands::file_diff,

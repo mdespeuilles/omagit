@@ -360,6 +360,7 @@ export const api = {
   addRepository: (path: string) => invoke<RepoSummary>("add_repository", { path }),
   forgetRepository: (path: string) => invoke<void>("forget_repository", { path }),
   touchRepository: (path: string) => invoke<void>("touch_repository", { path }),
+  closeRepository: (path: string) => invoke<void>("close_repository", { path }),
   summary: (path: string) => invoke<RepoSummary>("summary", { path }),
   status: (path: string) => invoke<StatusRow[]>("status", { path }),
   fileDiff: (path: string, file: string, staged: boolean) =>

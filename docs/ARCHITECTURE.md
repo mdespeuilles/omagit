@@ -1755,6 +1755,53 @@ what tao's inset arithmetic works out to — it resizes the title-bar container 
 `button height + y` and pins it to the top, so the button's top lands at `y`
 minus its own offset inside a standard 28pt container.
 
+### 2.56 The repository tabs
+
+Board 02 draws no tab strip: the topbar names the repository you are in, and the
+way to another was the Dépôts screen. That is a detour for the thing people do
+most — two or three repositories open at once — so this is a deliberate addition
+to the board, asked for and recorded in DESIGN §6.
+
+**A row of its own, under the topbar.** The topbar's empty middle is the
+window's drag region on macOS, and tabs filling it would leave nowhere to take
+hold of the window. The strip scrolls sideways rather than shrinking its tabs:
+twelve unreadable stubs are worse than eight readable ones and a scroll.
+
+**The tab is added by `openRepository`, not by the caller.** Every way in — a
+click on a row, a folder dropped, the palette, `⏎` on the keyboard — leaves a
+tab, because none of them has to remember to.
+
+**Closing the tab you are on goes to its left-hand neighbour**, which is the tab
+you were on before it more often than not; closing the last one goes back to the
+list, the only honest screen with no repository open. Closing one you are *not*
+on leaves the window exactly where it is, screen included. Each of those is a
+line in `tabs.test.ts`, because a strip of tabs that guesses wrong here is
+infuriating in a way no other bug is.
+
+**The backend lets go.** `close_repository` drops the handle from `AppState`'s
+map. It is a `gix` repository and a lock, not a cache — nothing is lost and it
+is rebuilt on the next open — and without it a session that visited twenty
+repositories held twenty of them for the life of the window. Tabs are what make
+visiting twenty ordinary. A write in flight keeps its own `Arc`, so closing
+during one is safe.
+
+The name travels with the path in the tab, rather than being looked up in the
+library each time: "Retirer de la liste" while its tab is up would otherwise
+leave a tab with nothing to show. (It closes the tab too — a way back to
+something you have just said you were done with is not a kindness.)
+
+Two things it deliberately does not do yet: the strip is not restored across
+restarts — the window opens on Repositories, always (§2.28), and restoring five
+tabs would mean five status walks before the first screen — and switching does
+not remember which screen you were on in that repository. Both are additions
+this shape leaves room for.
+
+Found by the fake backend, which refuses a command it has not been taught:
+`void api.closeRepository(path)` left an unhandled rejection, and `main.ts`
+draws one of those over the whole window. A backend that could not let go of a
+handle is not a reason to lose the window you were working in; it is a line in
+the log.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

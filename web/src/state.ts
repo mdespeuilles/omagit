@@ -222,6 +222,11 @@ type State = {
   /// only: the table of defaults is `keymap.ts`, and `binding()` there is what
   /// puts the two together.
   keymap: Record<string, string>;
+  /// The repositories the window has open, oldest first, and `open` says which
+  /// one is on screen. The name travels with the path: a repository taken out
+  /// of the list while its tab is up would otherwise lose the only thing the
+  /// tab shows.
+  tabs: { path: string; name: string }[];
   /// Whether something is being dragged over the window right now. Board 06
   /// draws no drop target, so the window says it another way: the empty state
   /// and the list edge answer the pointer rather than staying silent.
@@ -348,6 +353,7 @@ const state = reactive<State>({
   branchCursor: null,
   libraryFilter: "",
   dragging: false,
+  tabs: [],
 });
 
 export const app = readonly(state);
@@ -502,6 +508,9 @@ export function forgetRepository(row: LibraryRow): void {
     () => {
       void (async () => {
         await api.forgetRepository(row.path);
+        // Its tab goes with it: a tab for a repository the window no longer
+        // lists is a way back to something you just said you were done with.
+        closeTab(row.path);
         if (state.open === row.path) state.open = null;
         await readLibrary();
       })();
@@ -512,6 +521,12 @@ export function forgetRepository(row: LibraryRow): void {
 export async function openRepository(path: string): Promise<void> {
   state.open = path;
   state.screen = "working-copy";
+  // The tab is what makes the second repository reachable without going back
+  // through the Dépôts screen. Added here rather than at the call sites, so
+  // every way in — a click, a drop, the palette, `⏎` on a row — leaves one.
+  if (!state.tabs.some((tab) => tab.path === path)) {
+    state.tabs.push({ path, name: nameOf(path) });
+  }
   void api.touchRepository(path);
   state.selected = null;
   state.diff = idle();
@@ -561,6 +576,41 @@ export async function openRepository(path: string): Promise<void> {
   } catch (error) {
     state.status = { status: "failed", error: message(error) };
   }
+}
+
+/// What a repository is called: the library's name for it, or the last segment
+/// of its path when the library has never heard of it.
+function nameOf(path: string): string {
+  const row = state.repositories.find((entry) => entry.path === path);
+  return row?.name ?? path.split("/").filter(Boolean).pop() ?? path;
+}
+
+/// Close a tab. The repository stays on the disk and in the list; what closes
+/// is the window's hold on it.
+///
+/// Closing the one on screen moves to its left-hand neighbour — the tab you
+/// were on before it, more often than not — and closing the last one goes back
+/// to the list, which is the only honest place to be with no repository open.
+export function closeTab(path: string): void {
+  const at = state.tabs.findIndex((tab) => tab.path === path);
+  if (at < 0) return;
+  state.tabs.splice(at, 1);
+  // Caught, not `void`ed: an unhandled rejection reaches `main.ts`, which draws
+  // it over the whole window — and a backend that could not let go of a handle
+  // is not a reason to lose the window you were working in.
+  api
+    .closeRepository(path)
+    .catch((error) => api.log("warn", `dépôt non refermé côté backend : ${message(error)}`));
+  if (state.open !== path) return;
+
+  const next = state.tabs[at - 1] ?? state.tabs[at];
+  if (next) {
+    void openRepository(next.path);
+    return;
+  }
+  state.open = null;
+  state.summary = null;
+  showScreen("repositories");
 }
 
 export async function selectFile(file: string, staged: boolean): Promise<void> {

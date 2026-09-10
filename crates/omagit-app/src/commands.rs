@@ -108,6 +108,16 @@ pub fn set_pane(state: State<'_, AppState>, name: String, width: f32) {
     });
 }
 
+/// Let go of a repository the window has closed.
+///
+/// Not an error when it was never open: closing a tab twice, or closing one
+/// whose folder has gone, is a thing that happens and nothing depends on the
+/// difference.
+#[tauri::command]
+pub fn close_repository(state: State<'_, AppState>, path: String) {
+    state.close(&PathBuf::from(path));
+}
+
 /// The bindings the user has changed, by action id (SPEC §11).
 ///
 /// Overrides only. The table of what omagit can do is the front end's, and this

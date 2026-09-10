@@ -128,6 +128,20 @@ impl AppState {
         Ok(handle)
     }
 
+    /// Let go of a repository the window has closed.
+    ///
+    /// The handle is a `gix` repository and a lock, not a cache: nothing is
+    /// lost by dropping it and it is rebuilt on the next open. Without this, a
+    /// session that visited twenty repositories held twenty of them for the
+    /// life of the window — and the tab strip made visiting twenty ordinary.
+    ///
+    /// A write in flight keeps its own `Arc`, so closing during one is safe:
+    /// the handle outlives the map entry until that write returns.
+    pub fn close(&self, path: &Path) {
+        let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_owned());
+        self.lock(&self.open).remove(&path);
+    }
+
     pub fn with_library<T>(&self, act: impl FnOnce(&mut Library) -> T) -> T {
         let mut library = self.lock(&self.library);
         let outcome = act(&mut library);

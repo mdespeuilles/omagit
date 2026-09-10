@@ -159,6 +159,15 @@ boards.
 One more, from the boards' own copy: the mock-ups list `'Segoe UI Variable
 Text'` in the UI stack. Windows is out of scope, so it is dropped in code.
 
+### One the running app added
+
+**Repository tabs, which no board draws.** Each repository opened stays in a
+strip under the topbar; a click switches, a cross closes, the middle button
+closes too. Board 02 fixes the topbar's content and the Dépôts screen was the
+only way from one repository to another — a detour for the thing people do most.
+The strip is its own row rather than the topbar's middle, which is the window's
+drag region on macOS (ARCHITECTURE §2.56).
+
 ### Two the running app settled
 
 **The shortcut hints are not printed on the topbar's buttons.** Board 02 draws

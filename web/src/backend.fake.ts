@@ -259,6 +259,8 @@ export class Repository {
       }
       case "set_menu":
         return undefined;
+      case "close_repository":
+        return undefined;
       case "keymap":
         return { ...this.keymap };
       case "set_binding": {

@@ -2840,6 +2840,88 @@ select:focus {
   box-shadow: inset 0 0 0 1px var(--border-focus);
 }
 
+/* ── The repository tabs ─────────────────────────────────────────────────── */
+
+/* A row of its own under the topbar. It scrolls sideways rather than shrinking
+   its tabs: a strip of twelve unreadable stubs is worse than eight readable
+   ones and a scroll. */
+.tabbar {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  height: 28px;
+  padding: 0 8px;
+  gap: 1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+.tabbar::-webkit-scrollbar {
+  display: none;
+}
+.tabbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  max-width: 220px;
+  padding: 0 6px 0 10px;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  cursor: pointer;
+}
+.tabbar-item:hover {
+  color: var(--text-muted);
+  background: var(--surface-hover);
+}
+/* The one you are in, in the vocabulary the diff's own tabs already use: the
+   raised surface and a border, never a colour the rest of the app spends on
+   meaning. */
+.tabbar-item.on {
+  color: var(--text);
+  background: var(--surface-raised);
+  border-color: var(--border);
+}
+/* Mono, because a repository name is a folder name and DESIGN-TOKENS §8 puts
+   every path segment in the mono face — the topbar prints this same string that
+   way two pixels above. */
+.tabbar-name {
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Always there, never loud: a cross that appeared on hover would be a target
+   the keyboard cannot find, and one that appeared only on the active tab would
+   make closing the others a two-click job. */
+.tabbar-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  opacity: 0.45;
+}
+.tabbar-close:hover {
+  opacity: 1;
+  background: var(--surface-hover);
+  color: var(--danger);
+}
+.tabbar-close svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+}
+
 /* ── The reassignable keymap (M9, SPEC §11) ──────────────────────────────── */
 
 .keymap-list {
