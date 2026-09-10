@@ -22,12 +22,13 @@ import {
   setCloneUrl,
   startClone,
 } from "../state";
+import { t } from "../i18n";
 import { tildify } from "../format";
 
 const url = ref<HTMLInputElement | null>(null);
 
 const form = computed(() => app.clone);
-const blocker = computed(() => (form.value ? cloneBlocker(form.value) : "rien à cloner"));
+const blocker = computed(() => (form.value ? cloneBlocker(form.value) : t("clone.nothing")));
 
 /// The full path the clone will land at, which is the two fields joined.
 const destination = computed(() => {
@@ -67,13 +68,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       class="dialog form"
       role="dialog"
       aria-modal="true"
-      aria-label="Cloner un dépôt"
+      :aria-label="t('clone.title')"
       @submit.prevent="startClone()"
     >
-      <div class="dialog-head">Cloner un dépôt</div>
+      <div class="dialog-head">{{ t("clone.title") }}</div>
 
       <div class="dialog-body">
-        <label class="dialog-label" for="clone-url">URL</label>
+        <label class="dialog-label" for="clone-url">{{ t("clone.url") }}</label>
         <input
           id="clone-url"
           ref="url"
@@ -86,7 +87,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           @input="setCloneUrl(($event.target as HTMLInputElement).value)"
         />
 
-        <label class="dialog-label" for="clone-name">Destination</label>
+        <label class="dialog-label" for="clone-name">{{ t("clone.destination") }}</label>
         <div class="clone-destination">
           <input
             id="clone-name"
@@ -97,14 +98,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             :value="form.name"
             @input="setCloneName(($event.target as HTMLInputElement).value)"
           />
-          <button type="button" @click="browseCloneParent()">Parcourir…</button>
+          <button type="button" @click="browseCloneParent()">{{ t("clone.browse") }}</button>
         </div>
 
         <span></span>
         <span class="clone-path mono" :title="destination">{{ destination }}</span>
 
         <template v-if="groups.length > 1">
-          <label class="dialog-label" for="clone-group">Groupe</label>
+          <label class="dialog-label" for="clone-group">{{ t("clone.group") }}</label>
           <select
             id="clone-group"
             :value="form.group ?? ''"
@@ -116,7 +117,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
               )
             "
           >
-            <option value="">Par défaut</option>
+            <option value="">{{ t("clone.default") }}</option>
             <option v-for="group in groups" :key="group.index" :value="group.index">
               {{ group.name }}
             </option>
@@ -131,7 +132,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
               :checked="form.shallow"
               @change="setCloneOption('shallow', ($event.target as HTMLInputElement).checked)"
             />
-            Clone superficiel <code>--depth 1</code>
+            {{ t("clone.shallow") }} <code>--depth 1</code>
           </label>
           <label>
             <input
@@ -139,7 +140,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
               :checked="form.submodules"
               @change="setCloneOption('submodules', ($event.target as HTMLInputElement).checked)"
             />
-            Inclure les sous-modules
+            {{ t("clone.submodules") }}
           </label>
         </div>
 
@@ -154,20 +155,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             bad: typeof form.probe === 'object',
           }"
         >
-          <template v-if="form.probe === 'checking'">… contact du dépôt distant</template>
-          <template v-else-if="form.probe === 'reachable'"
-            >✓ hôte joignable · accès accordé</template
-          >
+          <template v-if="form.probe === 'checking'">{{ t("clone.probing") }}</template>
+          <template v-else-if="form.probe === 'reachable'">{{ t("clone.reachable") }}</template>
           <template v-else>✗ {{ form.probe.error }}</template>
         </span>
       </div>
 
       <div class="dialog-foot">
-        <span class="hint">Esc annuler</span>
+        <span class="hint">{{ t("clone.escape") }}</span>
         <span class="spacer" />
-        <button type="button" @click="closeClone()">Annuler</button>
+        <button type="button" @click="closeClone()">{{ t("clone.cancel") }}</button>
         <button type="submit" class="primary" :disabled="!!blocker" :title="blocker ?? ''">
-          Cloner<span class="hint">⏎</span>
+          {{ t("clone.confirm") }}<span class="hint">⏎</span>
         </button>
       </div>
     </form>

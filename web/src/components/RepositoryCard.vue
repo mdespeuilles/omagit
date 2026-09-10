@@ -8,6 +8,7 @@
 import { computed } from "vue";
 import { exact, tildify, when } from "../format";
 import { app, forgetRepository, openRepository } from "../state";
+import { count, t, type Plural } from "../i18n";
 
 const row = computed(() => app.repositories.find((entry) => entry.path === app.card) ?? null);
 const summary = computed(() => {
@@ -28,14 +29,17 @@ const failure = computed(() => {
 const counted = computed(() => {
   const counts = summary.value?.counts;
   if (!counts) return [];
-  return [
-    { label: "modifié", n: counts.modified, kind: "changed" },
-    { label: "ajouté", n: counts.added, kind: "added" },
-    { label: "supprimé", n: counts.deleted, kind: "deleted" },
-    { label: "renommé", n: counts.renamed, kind: "renamed" },
-    { label: "conflit", n: counts.conflicted, kind: "conflict" },
-    { label: "non suivi", n: counts.untracked, kind: "untracked" },
-  ].filter((entry) => entry.n > 0);
+  const kinds: { key: Plural; n: number; kind: string }[] = [
+    { key: "card.modified", n: counts.modified, kind: "changed" },
+    { key: "card.added", n: counts.added, kind: "added" },
+    { key: "card.deleted", n: counts.deleted, kind: "deleted" },
+    { key: "card.renamed", n: counts.renamed, kind: "renamed" },
+    { key: "library.conflicts", n: counts.conflicted, kind: "conflict" },
+    { key: "library.untracked", n: counts.untracked, kind: "untracked" },
+  ];
+  return kinds
+    .filter((entry) => entry.n > 0)
+    .map((entry) => ({ ...entry, label: count(entry.key, entry.n) }));
 });
 
 /// The chip beside the name: how much is in the working copy, at a glance.
@@ -43,11 +47,11 @@ const changed = computed(() => {
   const counts = summary.value?.counts;
   if (!counts) return null;
   if (counts.conflicted > 0) {
-    return { text: plural(counts.conflicted, "conflit"), kind: "conflict" };
+    return { text: count("library.conflicts", counts.conflicted), kind: "conflict" };
   }
   const total = counts.modified + counts.added + counts.deleted + counts.renamed;
   if (total === 0) return null;
-  return { text: plural(total, "modifié"), kind: "changed" };
+  return { text: count("card.modified", total), kind: "changed" };
 });
 
 const divergence = computed(() => {
@@ -74,13 +78,11 @@ const spark = computed(() => {
     kind: count === 0 ? "none" : at >= recent ? "now" : "past",
   }));
 });
-
-const plural = (count: number, word: string): string => `${count} ${word}${count > 1 ? "s" : ""}`;
 </script>
 
 <template>
   <section class="card">
-    <p v-if="!row" class="pane-empty">Aucun dépôt sélectionné</p>
+    <p v-if="!row" class="pane-empty">{{ t("card.none") }}</p>
 
     <template v-else>
       <div class="card-head">
@@ -99,13 +101,13 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
 
         <div class="card-side">
           <div class="card-actions">
-            <button class="danger" @click="forgetRepository(row)">Retirer de la liste</button>
+            <button class="danger" @click="forgetRepository(row)">{{ t("card.forget") }}</button>
             <button class="primary" :disabled="row.missing" @click="openRepository(row.path)">
-              Ouvrir<span class="hint">⏎</span>
+              {{ t("card.open") }}<span class="hint">⏎</span>
             </button>
           </div>
           <div v-if="summary && summary.commits > 0" class="card-activity">
-            <span class="card-window">90 jours</span>
+            <span class="card-window">{{ t("card.days") }}</span>
             <span class="card-spark">
               <span
                 v-for="(bar, at) in spark"
@@ -123,25 +125,24 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
       <!-- DESIGN §4: a repository that has moved says so and keeps its entry.
            It is never removed on the app's own initiative. -->
       <p v-if="row.missing" class="card-missing">
-        Le dossier n'existe plus à l'emplacement enregistré. L'entrée reste : un disque démonté
-        revient.
+        {{ t("card.missing") }}
       </p>
       <p v-else-if="failure" class="pane-error">{{ failure }}</p>
 
       <div v-else-if="summary" class="card-body">
-        <div class="card-section">Repository</div>
+        <div class="card-section">{{ t("card.repository") }}</div>
         <dl class="card-facts">
-          <dt>Location</dt>
+          <dt>{{ t("card.location") }}</dt>
           <dd class="mono">{{ tildify(row.path) }}</dd>
-          <dt>Last Opened</dt>
+          <dt>{{ t("card.lastOpened") }}</dt>
           <dd class="mono">
             <span v-if="row.last_opened" :title="exact(row.last_opened)">
               {{ when(row.last_opened) }}
             </span>
-            <span v-else class="dim">jamais</span>
+            <span v-else class="dim">{{ t("card.never") }}</span>
           </dd>
           <template v-if="summary.last_commit">
-            <dt>Last Commit</dt>
+            <dt>{{ t("card.lastCommit") }}</dt>
             <dd class="card-commit">
               <span class="mono dim">{{ summary.last_commit.id.short }}</span>
               <span class="mono card-commit-summary">{{ summary.last_commit.summary }}</span>
@@ -151,58 +152,58 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
             </dd>
           </template>
           <template v-if="row.description">
-            <dt>User Description</dt>
+            <dt>{{ t("card.description") }}</dt>
             <dd>{{ row.description }}</dd>
           </template>
           <template v-if="summary.committer">
-            <dt>Committer Identity</dt>
+            <dt>{{ t("card.identity") }}</dt>
             <dd class="card-who">
               <span class="avatar mono">{{ summary.committer.initials }}</span>
               <span>{{ summary.committer.name }}</span>
               <span class="mono dim">&lt;{{ summary.committer.email }}&gt;</span>
               <!-- A per-repository identity is a deliberate act, so an
                    inherited one is worth saying out loud. -->
-              <span v-if="summary.committer.inherited" class="dim">hérité du global</span>
+              <span v-if="summary.committer.inherited" class="dim">{{ t("card.inherited") }}</span>
             </dd>
           </template>
         </dl>
 
-        <div class="card-section">Working Copy</div>
+        <div class="card-section">{{ t("card.workingCopy") }}</div>
         <dl class="card-facts">
-          <dt>Current Branch</dt>
+          <dt>{{ t("card.branch") }}</dt>
           <dd class="card-branch">
             <span class="mono">{{ summary.operation ?? summary.head }}</span>
             <span v-if="summary.tracking" class="ref remote">{{ summary.tracking.upstream }}</span>
-            <span v-if="summary.tracking?.gone" class="mono dim">disparu</span>
+            <span v-if="summary.tracking?.gone" class="mono dim">{{ t("card.gone") }}</span>
             <span v-else-if="divergence" class="mono dim">{{ divergence }}</span>
-            <span v-else-if="summary.tracking" class="mono dim">à jour</span>
+            <span v-else-if="summary.tracking" class="mono dim">{{ t("library.upToDate") }}</span>
           </dd>
-          <dt>Status</dt>
+          <dt>{{ t("card.status") }}</dt>
           <dd class="card-status mono">
-            <span v-if="counted.length === 0" class="dim">propre</span>
+            <span v-if="counted.length === 0" class="dim">{{ t("library.clean") }}</span>
             <span v-for="entry in counted" :key="entry.label" :class="entry.kind">
               {{ entry.n }} {{ entry.label }}{{ entry.n > 1 ? "s" : "" }}
             </span>
           </dd>
-          <dt>Stashes</dt>
+          <dt>{{ t("card.stashes") }}</dt>
           <dd class="mono">{{ summary.stashes }}</dd>
         </dl>
 
         <template v-if="summary.remotes.length > 0">
-          <div class="card-section">Remotes</div>
+          <div class="card-section">{{ t("card.remotes") }}</div>
           <dl class="card-facts">
             <template v-for="remote in summary.remotes" :key="remote.name">
               <dt class="mono">{{ remote.name }}</dt>
-              <dd class="mono">{{ remote.url ?? "aucune URL configurée" }}</dd>
+              <dd class="mono">{{ remote.url ?? t("card.noRemoteUrl") }}</dd>
             </template>
           </dl>
         </template>
       </div>
 
       <footer class="card-foot mono">
-        <span>{{ plural(app.repositories.length, "dépôt") }}</span>
+        <span>{{ count("library.repositories", app.repositories.length) }}</span>
         <span class="rule">│</span>
-        <span class="dim">double-clic pour ouvrir</span>
+        <span class="dim">{{ t("card.openHint") }}</span>
         <span class="pane-head-spacer" />
         <span v-if="app.repositories.some((entry) => entry.missing)" class="gone">
           ! {{ app.repositories.filter((entry) => entry.missing).length }} introuvable

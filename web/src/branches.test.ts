@@ -196,7 +196,7 @@ describe("deleting a branch", () => {
     ]);
 
     state.deleteBranch({ name: "merged-one", merged: true });
-    expect(state.app.question?.detail).toContain("Seule l'étiquette");
+    expect(state.app.question?.detail).toContain("Only the label");
     state.answer(false);
 
     state.deleteBranch({ name: "unmerged-one", merged: false });
@@ -295,7 +295,7 @@ describe("integrating", () => {
 
     state.mergeBranch("other");
     expect(state.app.question?.title).toContain("other");
-    expect(state.app.question?.detail).toContain("conflit");
+    expect(state.app.question?.detail).toContain("conflict");
     expect(backend.current.calls).toHaveLength(before);
 
     state.answer(true);

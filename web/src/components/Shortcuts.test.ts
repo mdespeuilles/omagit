@@ -58,7 +58,7 @@ describe("the shortcut sheet", () => {
     const labels = app.findAll(".sheet-label").map((row) => row.text());
 
     for (const action of keymap.ACTIONS) {
-      expect(labels).toContain(action.label);
+      expect(labels).toContain(keymap.labelOf(action));
       // The fake platform is Linux, so the printed form is the worded one.
       expect(keys).toContain(keymap.hint(action.binding, "Ctrl"));
     }

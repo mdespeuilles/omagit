@@ -8,6 +8,7 @@
 
 import { computed } from "vue";
 import { app, goToZone, selectStashFile, zoneActive } from "../state";
+import { t } from "../i18n";
 import { when } from "../format";
 
 const entry = computed(() =>
@@ -25,18 +26,18 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
 <template>
   <section class="detail">
     <header class="pane-head">
-      <span>Remise</span>
+      <span>{{ t("stash.one") }}</span>
       <span v-if="entry" class="pane-head-title mono">{{ entry.id.short }}</span>
     </header>
 
-    <p v-if="!entry" class="pane-empty">Aucune remise sélectionnée</p>
+    <p v-if="!entry" class="pane-empty">{{ t("stash.none") }}</p>
 
     <template v-else>
       <div class="detail-head">
         <p class="detail-summary">{{ entry.message }}</p>
         <p class="detail-who">
-          <span class="dim">remisé depuis</span>
-          <span class="mono">{{ entry.branch ?? "HEAD détaché" }}</span>
+          <span class="dim">{{ t("stash.from") }}</span>
+          <span class="mono">{{ entry.branch ?? t("stash.detached") }}</span>
           <span class="dim">{{ when(entry.when) }}</span>
         </p>
         <!-- Said here and not only as a mark on the row: these files are in no
@@ -44,20 +45,22 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
              without saying where they come from would be the same trap the
              other way round. -->
         <p v-if="entry.untracked" class="detail-who">
-          <span class="dim">contient des fichiers non suivis, emportés avec la remise</span>
+          <span class="dim">{{ t("stash.holdsUntracked") }}</span>
         </p>
       </div>
 
       <header class="pane-head">
-        <span>Fichiers</span>
+        <span>{{ t("stash.files") }}</span>
         <span class="pane-head-count">{{ files.length }}</span>
       </header>
 
-      <p v-if="app.stashFiles.status === 'loading'" class="pane-empty">Lecture de la remise…</p>
+      <p v-if="app.stashFiles.status === 'loading'" class="pane-empty">
+        {{ t("stash.readingOne") }}
+      </p>
       <p v-else-if="app.stashFiles.status === 'failed'" class="pane-error mono">
         {{ app.stashFiles.error }}
       </p>
-      <p v-else-if="files.length === 0" class="pane-empty">Cette remise ne change aucun fichier</p>
+      <p v-else-if="files.length === 0" class="pane-empty">{{ t("stash.noFiles") }}</p>
       <ol v-else class="detail-files">
         <li
           v-for="file in files"

@@ -40,9 +40,7 @@ boot()
   .catch(report);
 // Same independence as the two below: a window that could not subscribe to
 // drops is a window with one door into the library, not a broken one.
-watchDrops().catch((error) =>
-  api.log("warn", `dépôt par glisser-déposer indisponible : ${String(error)}`),
-);
+watchDrops().catch((error) => api.log("warn", `watchDrops: ${String(error)}`));
 // Independent of `boot`: progress belongs to the window's lifetime, not to a
 // repository's, and a failure to subscribe must not stop the app from opening.
 watchProgress().catch(report);

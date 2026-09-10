@@ -8,7 +8,7 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { Repository } from "./backend.fake";
 import { flatten, fuzzy, search } from "./palette";
-import type { Action } from "./keymap";
+import type { Command } from "./palette";
 
 const backend = vi.hoisted(() => ({
   current: null as unknown as InstanceType<typeof import("./backend.fake").Repository>,
@@ -20,14 +20,12 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve(null) }));
 
-const action = (id: string, label: string, enabled = true): Action => ({
+/// A palette command: what the screen hands `search`, which is the words and
+/// not the catalogue key the action itself carries.
+const action = (id: string, label: string, enabled = true): Command => ({
   id,
   label,
-  binding: "Primary+X",
-  where: "always",
-  menu: "view",
   enabled: () => enabled,
-  run: () => {},
 });
 
 const sources = (over: Partial<Parameters<typeof search>[1]> = {}) => ({
@@ -97,16 +95,16 @@ describe("what the palette searches", () => {
 
     expect(groups.map((group) => group.name)).toEqual([
       "Actions",
-      "Dépôts",
+      "Repositories",
       "Branches",
-      "Fichiers",
+      "Files",
     ]);
     // Each row says what ⏎ will do to it: four kinds, four sentences.
     expect(flatten(groups).map((row) => row.hint)).toEqual([
-      "exécuter ⏎",
-      "ouvrir ⏎",
-      "basculer ⏎",
-      "ouvrir ⏎",
+      "run ⏎",
+      "open ⏎",
+      "switch ⏎",
+      "open ⏎",
     ]);
   });
 

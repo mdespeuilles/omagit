@@ -10,7 +10,7 @@
 // has to be found by knowing where it lives.
 
 import type { BranchRow, LibraryRow, StatusRow } from "./ipc";
-import type { Action } from "./keymap";
+import { t } from "./i18n";
 
 /// Where a row leads. The palette does four different things and the row has to
 /// say which, both to the reader — board 07 prints "checkout ⏎" on a branch and
@@ -42,8 +42,14 @@ export type Group = { name: string; rows: Row[] };
 /// query.
 const PER_GROUP = 8;
 
+/// What the palette needs of an action: an id to run it by, the words to search
+/// and print, and whether it can run. Not `Action` itself — its `label` is a
+/// catalogue key, and the palette searches the *words*, so the caller is what
+/// translates.
+export type Command = { id: string; label: string; enabled: () => boolean };
+
 export type Sources = {
-  actions: Action[];
+  actions: Command[];
   repositories: LibraryRow[];
   branches: BranchRow[];
   files: StatusRow[];
@@ -58,7 +64,7 @@ export type Sources = {
 export function search(query: string, sources: Sources): Group[] {
   const groups: Group[] = [
     {
-      name: "Actions",
+      name: t("palette.actions"),
       rows: rank(
         query,
         sources.actions.map((action) => ({
@@ -66,14 +72,14 @@ export function search(query: string, sources: Sources): Group[] {
           key: action.id,
           label: action.label,
           detail: "",
-          hint: "exécuter ⏎",
+          hint: t("palette.run"),
           marks: [],
           enabled: action.enabled(),
         })),
       ),
     },
     {
-      name: "Dépôts",
+      name: t("palette.repositories"),
       rows: rank(
         query,
         sources.repositories.map((row) => ({
@@ -81,14 +87,14 @@ export function search(query: string, sources: Sources): Group[] {
           key: row.path,
           label: row.name,
           detail: row.path,
-          hint: "ouvrir ⏎",
+          hint: t("palette.open"),
           marks: [],
           enabled: !row.missing,
         })),
       ),
     },
     {
-      name: "Branches",
+      name: t("palette.branches"),
       rows: rank(
         query,
         sources.branches.map((row) => ({
@@ -96,14 +102,14 @@ export function search(query: string, sources: Sources): Group[] {
           key: row.name,
           label: row.name,
           detail: divergence(row),
-          hint: "basculer ⏎",
+          hint: t("palette.switch"),
           marks: [],
           enabled: !row.head,
         })),
       ),
     },
     {
-      name: "Fichiers",
+      name: t("palette.files"),
       rows: rank(
         query,
         sources.files.map((row) => ({
@@ -111,7 +117,7 @@ export function search(query: string, sources: Sources): Group[] {
           key: row.path,
           label: row.path,
           detail: row.code.trim(),
-          hint: "ouvrir ⏎",
+          hint: t("palette.open"),
           marks: [],
           enabled: true,
         })),

@@ -135,7 +135,7 @@ describe("the clone dialog", () => {
     expect(state.cloneBlocker(state.app.clone!)).toContain("URL");
 
     state.setCloneUrl("https://example.com/repo.git");
-    expect(state.cloneBlocker(state.app.clone!)).toContain("nom");
+    expect(state.cloneBlocker(state.app.clone!)).toContain("folder name");
 
     state.setCloneName("repo");
     expect(state.cloneBlocker(state.app.clone!)).toBeNull();

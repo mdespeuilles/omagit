@@ -83,7 +83,7 @@ describe("what the network says when it is done", () => {
     state.fetchRemote();
     await settled(state);
 
-    expect(state.app.notes).toContain("Fetch terminé");
+    expect(state.app.notes).toContain("Fetch finished");
     expect(state.app.notes).toContain("Everything up-to-date");
   });
 
@@ -94,7 +94,7 @@ describe("what the network says when it is done", () => {
     state.fetchRemote();
     await settled(state);
 
-    expect(state.app.notes).toContain("rien à faire");
+    expect(state.app.notes).toContain("nothing to do");
   });
 });
 
@@ -109,9 +109,9 @@ describe("a pull that has to choose", () => {
     state.pullRemote();
     await settled(state);
 
-    expect(state.app.question?.title).toContain("Fusionner ou rebaser");
-    expect(state.app.question?.verb).toBe("Fusionner");
-    expect(state.app.question?.alternative).toBe("Rebaser");
+    expect(state.app.question?.title).toContain("Merge or rebase");
+    expect(state.app.question?.verb).toBe("Merge");
+    expect(state.app.question?.alternative).toBe("Rebase");
     // Nothing has run yet.
     expect(backend.current.calls.filter((call) => call.command === "pull")).toHaveLength(0);
 

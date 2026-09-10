@@ -124,30 +124,30 @@ function on(source: string, name = ""): boolean {
 <template>
   <section class="settings">
     <header class="pane-head">
-      <span>Réglages</span>
+      <span>{{ t("settings.title") }}</span>
       <span class="pane-head-spacer" />
-      <button class="link" @click="readPreferences()">Relire</button>
+      <button class="link" @click="readPreferences()">{{ t("settings.reread") }}</button>
     </header>
 
-    <p v-if="app.preferences.status === 'loading'" class="pane-empty">Lecture des réglages…</p>
+    <p v-if="app.preferences.status === 'loading'" class="pane-empty">
+      {{ t("settings.reading") }}
+    </p>
     <p v-else-if="app.preferences.status === 'failed'" class="pane-error mono">
       {{ app.preferences.error }}
     </p>
 
     <div v-else-if="prefs" class="settings-body">
       <section class="settings-block">
-        <h2 class="settings-title">Thème</h2>
+        <h2 class="settings-title">{{ t("settings.theme") }}</h2>
         <p class="settings-note">
-          À l'écran en ce moment : <strong>{{ prefs.resolved }}</strong
-          >. Un seul choix ici : suivre quelque chose, ou nommer un thème — nommer un thème arrête
-          tout suivi.
+          {{ t("settings.onScreen", { theme: prefs.resolved }) }} {{ t("settings.themeNote") }}
         </p>
 
         <!-- One question, one answer. The five sources and the eight themes set
              the same setting, and drawing them as two lists let both look
              chosen at once. They are one radio group now: a mark on every
              option, exactly one of them filled, whichever half it is in. -->
-        <div class="settings-picks" role="radiogroup" aria-label="Thème">
+        <div class="settings-picks" role="radiogroup" :aria-label="t('settings.theme')">
           <button
             class="row settings-row"
             role="radio"
@@ -156,10 +156,8 @@ function on(source: string, name = ""): boolean {
             @click="chooseTheme('automatic')"
           >
             <span class="pick" :class="{ on: on('automatic') }" aria-hidden="true" />
-            <span>Automatique</span>
-            <span class="settings-detail">
-              la première source qui répond : Omarchy, puis le système, sinon le thème embarqué
-            </span>
+            <span>{{ t("settings.automatic") }}</span>
+            <span class="settings-detail">{{ t("settings.automaticDetail") }}</span>
           </button>
 
           <button
@@ -171,13 +169,9 @@ function on(source: string, name = ""): boolean {
             @click="chooseTheme('omarchy')"
           >
             <span class="pick" :class="{ on: on('omarchy') }" aria-hidden="true" />
-            <span>Suivre Omarchy</span>
+            <span>{{ t("settings.omarchy") }}</span>
             <span class="settings-detail">
-              {{
-                prefs.omarchy
-                  ? "la palette Quattro, suivie en direct"
-                  : "aucun Omarchy sur cette machine"
-              }}
+              {{ prefs.omarchy ? t("settings.omarchyYes") : t("settings.omarchyNo") }}
             </span>
           </button>
 
@@ -190,13 +184,9 @@ function on(source: string, name = ""): boolean {
             @click="chooseTheme('system-appearance')"
           >
             <span class="pick" :class="{ on: on('system-appearance') }" aria-hidden="true" />
-            <span>Suivre le système</span>
+            <span>{{ t("settings.system") }}</span>
             <span class="settings-detail">
-              {{
-                prefs.system_appearance
-                  ? "clair ou sombre, bascule comprise"
-                  : "cette plateforme ne rapporte pas de préférence"
-              }}
+              {{ prefs.system_appearance ? t("settings.systemYes") : t("settings.systemNo") }}
             </span>
           </button>
 
@@ -208,8 +198,8 @@ function on(source: string, name = ""): boolean {
             @click="chooseTheme('embedded-dark')"
           >
             <span class="pick" :class="{ on: on('embedded-dark') }" aria-hidden="true" />
-            <span>Embarqué — sombre</span>
-            <span class="settings-detail">le thème sombre par défaut, sans rien suivre</span>
+            <span>{{ t("settings.embeddedDark") }}</span>
+            <span class="settings-detail">{{ t("settings.embeddedDarkDetail") }}</span>
           </button>
 
           <button
@@ -220,11 +210,11 @@ function on(source: string, name = ""): boolean {
             @click="chooseTheme('embedded-light')"
           >
             <span class="pick" :class="{ on: on('embedded-light') }" aria-hidden="true" />
-            <span>Embarqué — clair</span>
-            <span class="settings-detail">le thème clair par défaut, sans rien suivre</span>
+            <span>{{ t("settings.embeddedLight") }}</span>
+            <span class="settings-detail">{{ t("settings.embeddedLightDetail") }}</span>
           </button>
 
-          <h3 class="settings-subtitle">Ou un thème précis</h3>
+          <h3 class="settings-subtitle">{{ t("settings.namedTheme") }}</h3>
           <div class="settings-catalogue">
             <button
               v-for="theme in prefs.catalogue"
@@ -242,14 +232,16 @@ function on(source: string, name = ""): boolean {
               />
               <span>{{ theme.name }}</span>
               <span class="pane-head-spacer" />
-              <span class="settings-detail">{{ theme.mode === "light" ? "clair" : "sombre" }}</span>
+              <span class="settings-detail">{{
+                theme.mode === "light" ? t("settings.light") : t("settings.dark")
+              }}</span>
             </button>
           </div>
         </div>
       </section>
 
       <section class="settings-block">
-        <h2 class="settings-title">Densité</h2>
+        <h2 class="settings-title">{{ t("settings.density") }}</h2>
         <p class="settings-note">
           Board 08 : la densité ne change ni la taille de police ni la graisse — elle change les
           hauteurs de ligne, les marges et les écarts. Aucune cible cliquable ne descend sous 24×24
@@ -261,22 +253,22 @@ function on(source: string, name = ""): boolean {
             :class="{ selected: prefs.density === 'comfortable' }"
             @click="chooseDensity('comfortable')"
           >
-            <span>Confortable</span>
-            <span class="settings-detail">ce que les maquettes dessinent</span>
+            <span>{{ t("settings.comfortable") }}</span>
+            <span class="settings-detail">{{ t("settings.comfortableDetail") }}</span>
           </button>
           <button
             class="row settings-row"
             :class="{ selected: prefs.density === 'compact' }"
             @click="chooseDensity('compact')"
           >
-            <span>Compact</span>
-            <span class="settings-detail">à côté d'un terminal dense</span>
+            <span>{{ t("settings.compact") }}</span>
+            <span class="settings-detail">{{ t("settings.compactDetail") }}</span>
           </button>
         </div>
       </section>
 
       <section class="settings-block">
-        <h2 class="settings-title">Échelle</h2>
+        <h2 class="settings-title">{{ t("settings.scale") }}</h2>
         <p class="settings-note">
           L'échelle de type est un contrat (DESIGN-TOKENS §8) : les proportions ne bougent pas, tout
           grandit ensemble. Ce qui change est la taille absolue, qui est une propriété de l'écran et
@@ -286,7 +278,7 @@ function on(source: string, name = ""): boolean {
           <button :disabled="percent <= 80" @click="scaleBy(-0.05)">−</button>
           <span class="settings-percent mono">{{ percent }} %</span>
           <button :disabled="percent >= 200" @click="scaleBy(0.05)">+</button>
-          <button class="link" @click="chooseScale(1.15)">Défaut</button>
+          <button class="link" @click="chooseScale(1.15)">{{ t("settings.default") }}</button>
         </div>
       </section>
 
@@ -326,20 +318,20 @@ function on(source: string, name = ""): boolean {
       </section>
 
       <section class="settings-block">
-        <h2 class="settings-title">Clavier</h2>
+        <h2 class="settings-title">{{ t("settings.keyboard") }}</h2>
         <p class="settings-note">
           Une seule table, lue par quatre choses : le clavier, la palette, la feuille des raccourcis
           et la barre de menus. Changer une liaison ici les change toutes les quatre.
         </p>
         <button class="row settings-row" @click="toggleShortcuts()">
-          <span>Voir tous les raccourcis</span>
+          <span>{{ t("settings.seeShortcuts") }}</span>
           <span class="settings-detail">?</span>
         </button>
 
         <ol class="keymap-list">
           <li v-for="action in ACTIONS" :key="action.id" class="keymap-row">
             <div class="row settings-row" :class="{ listening: capturing === action.id }">
-              <span>{{ action.label }}</span>
+              <span>{{ t(action.label) }}</span>
               <span class="pane-head-spacer" />
               <span v-if="reassigned(action)" class="keymap-was mono">
                 {{ hint(action.binding, modifier) }}
@@ -349,12 +341,14 @@ function on(source: string, name = ""): boolean {
                 :class="{ listening: capturing === action.id }"
                 @click="listenFor(action.id)"
               >
-                {{ capturing === action.id ? "Appuie…" : hint(binding(action), modifier) }}
+                {{
+                  capturing === action.id ? t("settings.pressIt") : hint(binding(action), modifier)
+                }}
               </button>
               <button
                 class="link"
                 :disabled="!reassigned(action)"
-                title="Remettre la liaison de départ"
+                :title="t('settings.resetBinding')"
                 @click="reset(action.id)"
               >
                 Défaut
@@ -362,24 +356,24 @@ function on(source: string, name = ""): boolean {
             </div>
             <p v-if="capturing === action.id && refused" class="keymap-refused">{{ refused }}</p>
             <p v-else-if="capturing === action.id" class="settings-note keymap-hint">
-              Appuie sur la combinaison voulue. Échap annule.
+              {{ t("settings.pressPrompt") }}
             </p>
           </li>
         </ol>
       </section>
 
       <section class="settings-block">
-        <h2 class="settings-title">Git</h2>
+        <h2 class="settings-title">{{ t("settings.git") }}</h2>
         <p class="settings-note">
           Ce que l'app lit de ta configuration, et ce qu'elle en fait. Rien ici ne s'écrit : `git
           config` reste le seul endroit où ces choix se prennent.
         </p>
         <dl class="settings-facts">
-          <dt>Binaire</dt>
+          <dt>{{ t("settings.binary") }}</dt>
           <dd class="mono">{{ prefs.git }}</dd>
-          <dt>Éditeur</dt>
+          <dt>{{ t("settings.editor") }}</dt>
           <dd class="mono">{{ prefs.editor }}</dd>
-          <dt>Identifiants</dt>
+          <dt>{{ t("settings.credentials") }}</dt>
           <dd class="mono">{{ prefs.credential_helper }}</dd>
         </dl>
       </section>

@@ -19,8 +19,8 @@ import {
   setSignOff,
   stagedCount,
   stageEverything,
-  plural,
 } from "../state";
+import { count, t } from "../i18n";
 
 /// Git's own conventions, and the only two numbers in this component: a
 /// subject over 50 columns is long, over 72 it no longer fits the tools that
@@ -40,9 +40,7 @@ const counter = computed(() => {
 
 const staged = computed(() => stagedCount());
 
-const label = computed(() =>
-  app.amend ? "Corriger le commit" : `Commiter ${plural(staged.value, "fichier")}`,
-);
+const label = computed(() => (app.amend ? t("commit.doAmend") : count("commit.do", staged.value)));
 
 /// Why the button is off, in the words of the thing that is wrong. An
 /// explanation belongs next to the control it disables, not in a dialog after
@@ -56,19 +54,18 @@ const label = computed(() =>
 /// people mean.
 const caution = computed(() => {
   if (app.summary?.head_kind !== "detached") return null;
-  return `${app.summary.head} : ce commit n'appartiendra à aucune branche.`;
+  return t("commit.detached", { head: app.summary.head });
 });
 
 const blocked = computed(() => {
-  if (app.gitUnusable) return `git indisponible — ${app.gitUnusable}`;
+  if (app.gitUnusable) return t("commit.blockedGit", { reason: app.gitUnusable });
   // Nothing to amend in a repository whose first commit has not been made.
   if (app.amend && app.summary?.head_kind === "unborn") {
-    return "Aucun commit à corriger : celui-ci sera le premier";
+    return t("commit.blockedUnborn");
   }
-  if (!app.committer)
-    return "Aucune identité Git : git config --global user.name && git config --global user.email";
-  if (staged.value === 0 && !app.amend) return "Rien n'est indexé";
-  if (app.message.trim() === "") return "Le message est vide";
+  if (!app.committer) return t("commit.blockedIdentity");
+  if (staged.value === 0 && !app.amend) return t("commit.blockedEmpty");
+  if (app.message.trim() === "") return t("commit.blockedMessage");
   return null;
 });
 
@@ -81,7 +78,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
       <textarea
         class="commit-message mono"
         :value="app.message"
-        :placeholder="app.amend ? 'Message du commit corrigé' : 'Message du commit'"
+        :placeholder="app.amend ? t('commit.amendMessage') : t('commit.message')"
         spellcheck="false"
         @input="setMessage(($event.target as HTMLTextAreaElement).value)"
         @keydown.meta.enter.prevent="commit()"
@@ -102,7 +99,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
           :checked="app.amend"
           @change="setAmend(($event.target as HTMLInputElement).checked)"
         /><span class="check" aria-hidden="true">✓</span>
-        Amend
+        {{ t("commit.amend") }}
       </label>
       <label class="toggle">
         <input
@@ -110,28 +107,28 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
           :checked="app.signOff"
           @change="setSignOff(($event.target as HTMLInputElement).checked)"
         /><span class="check" aria-hidden="true">✓</span>
-        Sign off
+        {{ t("commit.signOff") }}
       </label>
-      <label class="toggle" title="Ignore les hooks pre-commit et commit-msg">
+      <label class="toggle" :title="t('commit.noVerifyTitle')">
         <input
           type="checkbox"
           :checked="app.noVerify"
           @change="setNoVerify(($event.target as HTMLInputElement).checked)"
         /><span class="check" aria-hidden="true">✓</span>
-        No verify
+        {{ t("commit.noVerify") }}
       </label>
     </div>
 
     <div class="commit-line">
       <span class="commit-who mono" :class="{ missing: !app.committer }">
-        {{ app.committer ?? "aucune identité configurée" }}
+        {{ app.committer ?? t("commit.noIdentity") }}
       </span>
       <span class="commit-hint">{{ modifier }}⏎</span>
     </div>
 
     <div class="commit-actions">
       <button :disabled="!!app.busy || staged === 0" @click="stageEverything(true)">
-        Tout désindexer
+        {{ t("status.unstageAll") }}
       </button>
       <!-- No `title`: the reason sits one line below, on screen, permanently.
            A tooltip repeating it adds nothing — and WKWebView drew this one in

@@ -11,6 +11,7 @@
 import { onBeforeUnmount, onMounted } from "vue";
 import { app, closeShortcuts } from "../state";
 import { ACTIONS, MOVEMENTS, binding, hint } from "../keymap";
+import { t } from "../i18n";
 
 const modifier = app.platform?.modifier_label ?? "Ctrl";
 
@@ -40,7 +41,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           <dl class="sheet-list">
             <template v-for="entry in ACTIONS" :key="entry.id">
               <dt class="sheet-key mono">{{ hint(binding(entry), modifier) }}</dt>
-              <dd class="sheet-label">{{ entry.label }}</dd>
+              <dd class="sheet-label">{{ t(entry.label) }}</dd>
             </template>
           </dl>
         </section>
@@ -52,7 +53,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           <dl class="sheet-list">
             <template v-for="move in MOVEMENTS" :key="move.print">
               <dt class="sheet-key mono">{{ move.print }}</dt>
-              <dd class="sheet-label">{{ move.label }}</dd>
+              <dd class="sheet-label">{{ t(move.label) }}</dd>
             </template>
           </dl>
           <p class="settings-note">

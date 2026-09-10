@@ -24,6 +24,7 @@ import {
   stashChanges,
   zoneActive,
 } from "../state";
+import { t } from "../i18n";
 import { when } from "../format";
 
 const rows = computed(() => (app.stashes.status === "ready" ? app.stashes.value : []));
@@ -35,7 +36,7 @@ const busy = computed(() => !!app.busy || !!app.gitUnusable);
 /// act from reading what was put aside on it, and a stash can outlive the
 /// branch it was made on.
 function origin(row: StashRow): string {
-  return [row.branch ?? "HEAD détaché", when(row.when)].join(" · ");
+  return [row.branch ?? t("stash.detached"), when(row.when)].join(" · ");
 }
 
 /// Whether a per-row control is in the tab order: only for the row the keyboard
@@ -48,11 +49,11 @@ function stop(id: string): 0 | -1 {
 <template>
   <section class="stashes">
     <header class="pane-head">
-      <span>Stashes</span>
+      <span>{{ t("stash.title") }}</span>
       <span class="pane-head-count">{{ rows.length }}</span>
       <span class="pane-head-spacer" />
       <button class="link" :disabled="busy || !!app.stashing" @click="openStashForm()">
-        Remiser…
+        {{ t("stash.push") }}
       </button>
     </header>
 
@@ -63,7 +64,7 @@ function stop(id: string): 0 | -1 {
       <input
         :value="app.stashing.message"
         type="text"
-        placeholder="Message (facultatif)"
+        :placeholder="t('stash.message')"
         spellcheck="false"
         autofocus
         @input="setStashMessage(($event.target as HTMLInputElement).value)"
@@ -78,20 +79,20 @@ function stop(id: string): 0 | -1 {
         <!-- Named for what it does to the disk, not for the flag: these files
              are in no index and no commit, and the entry about to be created is
              the only copy of them. -->
-        <span>Emporter aussi les fichiers non suivis</span>
+        <span>{{ t("stash.untracked") }}</span>
       </label>
       <div class="stash-new-actions">
-        <button type="button" @click="closeStashForm()">Annuler</button>
-        <button class="primary" type="submit" :disabled="busy">Remiser</button>
+        <button type="button" @click="closeStashForm()">{{ t("stash.cancel") }}</button>
+        <button class="primary" type="submit" :disabled="busy">{{ t("stash.confirm") }}</button>
       </div>
     </form>
 
-    <p v-if="app.stashes.status === 'loading'" class="pane-empty">Lecture des remises…</p>
+    <p v-if="app.stashes.status === 'loading'" class="pane-empty">{{ t("stash.reading") }}</p>
     <p v-else-if="app.stashes.status === 'failed'" class="pane-error mono">
       {{ app.stashes.error }}
     </p>
     <p v-else-if="rows.length === 0" class="pane-empty">
-      Rien de remisé. « Remiser » met la copie de travail de côté et laisse la branche propre.
+      {{ t("stash.empty") }}
     </p>
 
     <ol v-else class="stash-rows" tabindex="0" data-zone="2" @focus="goToZone(2)">
@@ -125,7 +126,7 @@ function stop(id: string): 0 | -1 {
             </span>
             <span class="stash-line">
               <span class="stash-origin">{{ origin(row) }}</span>
-              <span v-if="row.untracked" class="stash-note">+ non suivis</span>
+              <span v-if="row.untracked" class="stash-note">{{ t("stash.plusUntracked") }}</span>
             </span>
           </span>
         </button>
@@ -135,28 +136,28 @@ function stop(id: string): 0 | -1 {
             class="row-action"
             :tabindex="stop(row.id.full)"
             :disabled="busy"
-            title="Remettre ces modifications dans la copie de travail. La remise reste sur l'étagère."
+            :title="t('stash.applyTitle')"
             @click="restoreStash(row, true)"
           >
-            Appliquer
+            {{ t("stash.apply") }}
           </button>
           <button
             class="row-action"
             :tabindex="stop(row.id.full)"
             :disabled="busy"
-            title="Remettre ces modifications dans la copie de travail, puis retirer la remise de l'étagère."
+            :title="t('stash.popTitle')"
             @click="restoreStash(row, false)"
           >
-            Appliquer et retirer
+            {{ t("stash.pop") }}
           </button>
           <button
             class="row-action danger"
             :tabindex="stop(row.id.full)"
             :disabled="busy"
-            title="Jeter la remise sans l'appliquer. Son contenu ne sera plus joignable que par le reflog."
+            :title="t('stash.dropTitle')"
             @click="dropStash(row)"
           >
-            Supprimer
+            {{ t("stash.drop") }}
           </button>
         </span>
       </li>

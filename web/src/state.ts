@@ -15,7 +15,7 @@ import { reactive, readonly } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { measure } from "./metrics";
-import { preference, useLanguage } from "./i18n";
+import { count as plural, preference, t, useLanguage } from "./i18n";
 import type { Row as PaletteRow } from "./palette";
 import type { Action as KeymapAction } from "./keymap";
 import {
@@ -466,7 +466,7 @@ export function settlePane(name: string, width: number): void {
 /// a path that can be mistyped, and every desktop has a folder chooser people
 /// already know.
 export async function addRepository(): Promise<void> {
-  const chosen = await open({ directory: true, multiple: false, title: "Ajouter un dépôt" });
+  const chosen = await open({ directory: true, multiple: false, title: t("library.picker") });
   if (typeof chosen !== "string") return;
   await addPath(chosen);
 }
@@ -507,10 +507,9 @@ export function dropping(over: boolean): void {
 export function forgetRepository(row: LibraryRow): void {
   ask(
     {
-      title: `Retirer ${row.name} de la liste ?`,
-      detail:
-        "Le dépôt reste sur le disque : seule son entrée dans cette liste disparaît, et il peut être rajouté.",
-      verb: "Retirer",
+      title: t("ask.forget.title", { name: row.name }),
+      detail: t("ask.forget.detail"),
+      verb: t("ask.forget.verb"),
     },
     () => {
       void (async () => {
@@ -607,7 +606,7 @@ export function closeTab(path: string): void {
   // is not a reason to lose the window you were working in.
   api
     .closeRepository(path)
-    .catch((error) => api.log("warn", `dépôt non refermé côté backend : ${message(error)}`));
+    .catch((error) => api.log("warn", `close_repository: ${message(error)}`));
   if (state.open !== path) return;
 
   const next = state.tabs[at - 1] ?? state.tabs[at];
@@ -648,7 +647,7 @@ export async function selectFile(file: string, staged: boolean): Promise<void> {
       status: "ready",
       value: {
         path: diff.path,
-        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural("diff.hunks", diff.hunks)}`,
         rows: diff.rows ?? [],
         reason: diff.reason,
       },
@@ -849,7 +848,7 @@ export async function selectCommitFile(file: string): Promise<void> {
       status: "ready",
       value: {
         path: diff.path,
-        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural("diff.hunks", diff.hunks)}`,
         rows: diff.rows ?? [],
         reason: diff.reason,
       },
@@ -922,7 +921,7 @@ export async function selectCompareFile(file: string): Promise<void> {
       status: "ready",
       value: {
         path: diff.path,
-        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural("diff.hunks", diff.hunks)}`,
         rows: diff.rows ?? [],
         reason: diff.reason,
       },
@@ -1021,7 +1020,7 @@ async function overNetwork(what: string, run: () => Promise<string>): Promise<vo
     // all finished in silence, which on the operations that take the longest is
     // the worst place for it. One channel for what went right, one band for
     // what did not.
-    state.notes = [`${what} terminé`, said.trim() || "rien à faire"].join("\n");
+    state.notes = [t("said.done", { what }), said.trim() || t("said.nothing")].join("\n");
   } catch (error) {
     state.writeError = { what, said: message(error) };
   } finally {
@@ -1065,7 +1064,7 @@ export function pullRemote(): void {
     } catch (error) {
       // Unreadable configuration is not a reason to refuse to pull: let `git`
       // answer for itself, as it did before this question existed.
-      void api.log("warn", `stratégie de pull illisible : ${message(error)}`);
+      void api.log("warn", `pull_reconcile_configured: ${message(error)}`);
     }
     if (state.open !== path) return;
     if (configured) {
@@ -1075,10 +1074,15 @@ export function pullRemote(): void {
 
     ask(
       {
-        title: "Fusionner ou rebaser ?",
-        detail: `${state.summary?.head ?? "cette branche"} a ${plural(tracking.ahead, "commit")} que ${tracking.upstream} n'a pas, et ${tracking.upstream} en a ${tracking.behind} de son côté. Rien dans la configuration ne dit comment les réconcilier, et git refuse de choisir. Fusionner garde les deux histoires et ajoute un commit de fusion ; rebaser rejoue tes commits par-dessus les siens, donc les réécrit. Ce choix ne vaut que pour ce pull : rien n'est enregistré.`,
-        verb: "Fusionner",
-        alternative: "Rebaser",
+        title: t("ask.reconcile.title"),
+        detail: t("ask.reconcile.detail", {
+          branch: state.summary?.head ?? t("ask.thisBranch"),
+          ahead: plural("ask.commits", tracking.ahead),
+          behind: tracking.behind,
+          upstream: tracking.upstream,
+        }),
+        verb: t("ask.reconcile.verb"),
+        alternative: t("ask.reconcile.alternative"),
       },
       () => void overNetwork("Pull", () => api.pull(path, "merge")),
       () => void overNetwork("Pull", () => api.pull(path, "rebase")),
@@ -1110,10 +1114,9 @@ export function pushBranch(force: boolean): void {
   }
   ask(
     {
-      title: `Forcer la publication de ${branch} ?`,
-      detail:
-        "Avec --force-with-lease : refusé si le distant a bougé depuis la dernière fois qu'on l'a vu. Ce qui est remplacé n'est plus sur aucun clone.",
-      verb: "Forcer",
+      title: t("ask.force.title", { branch }),
+      detail: t("ask.force.detail"),
+      verb: t("ask.force.verb"),
     },
     run,
   );
@@ -1236,15 +1239,15 @@ export function setCloneOption(option: "shallow" | "submodules", on: boolean): v
 
 /// Choose the folder to clone into, through the platform's own picker.
 export async function browseCloneParent(): Promise<void> {
-  const chosen = await open({ directory: true, multiple: false, title: "Cloner dans" });
+  const chosen = await open({ directory: true, multiple: false, title: t("picker.cloneInto") });
   if (typeof chosen === "string") setCloneParent(chosen);
 }
 
 /// Whether the form has enough in it to run, and why not when it has not.
 export function cloneBlocker(form: CloneForm): string | null {
-  if (!form.url.trim()) return "Une URL est nécessaire";
-  if (!form.parent.trim()) return "Un dossier de destination est nécessaire";
-  if (!form.name.trim()) return "Un nom de dossier est nécessaire";
+  if (!form.url.trim()) return t("clone.needUrl");
+  if (!form.parent.trim()) return t("clone.needParent");
+  if (!form.name.trim()) return t("clone.needName");
   // A name with a separator in it would put the clone somewhere other than
   // where the destination line says.
   if (/[/\\]/.test(form.name.trim())) return "Le nom du dossier ne peut pas contenir de /";
@@ -1278,7 +1281,7 @@ export function startClone(): void {
     try {
       const summary = await api.cloneRepository(request);
       landed = summary.path;
-      state.notes = `Cloné dans ${summary.path}`;
+      state.notes = t("said.cloned", { path: summary.path });
     } catch (error) {
       state.addError = message(error);
     } finally {
@@ -1316,10 +1319,9 @@ export function mergeBranch(branch: string, noFastForward = false): void {
   if (!path || !into) return;
   ask(
     {
-      title: `Fusionner ${branch} dans ${into} ?`,
-      detail:
-        "Les fichiers de la copie de travail vont changer. Si les deux branches ont touché les mêmes lignes, la fusion s'arrêtera sur un conflit et le dépôt restera à mi-chemin — l'abandon est dans la barre du bas.",
-      verb: "Fusionner",
+      title: t("ask.merge.title", { branch, into }),
+      detail: t("ask.merge.detail"),
+      verb: t("ask.merge.verb"),
     },
     () =>
       void write(`Fusionner ${branch}`, async () => {
@@ -1335,10 +1337,9 @@ export function rebaseOnto(onto: string): void {
   if (!path || !branch) return;
   ask(
     {
-      title: `Rebaser ${branch} sur ${onto} ?`,
-      detail:
-        "Les commits de la branche sont réécrits : ceux qu'ils remplacent ne seront joignables que par le reflog. Si une branche publiée en dépend, elle divergera.",
-      verb: "Rebaser",
+      title: t("ask.rebase.title", { branch, onto }),
+      detail: t("ask.rebase.detail"),
+      verb: t("ask.rebase.verb"),
     },
     () =>
       void write(`Rebaser sur ${onto}`, async () => {
@@ -1354,10 +1355,9 @@ export function abortOperation(): void {
   if (!path || !operation) return;
   ask(
     {
-      title: `Abandonner ${operation} ?`,
-      detail:
-        "Le dépôt revient où l'opération l'a trouvé. Ce qui a été résolu jusqu'ici est perdu : personne d'autre ne l'a.",
-      verb: "Abandonner",
+      title: t("ask.abort.title", { operation }),
+      detail: t("ask.abort.detail"),
+      verb: t("ask.abort.verb"),
     },
     () =>
       void write(`Abandonner ${operation}`, async () => {
@@ -1418,7 +1418,9 @@ export function createBranch(name: string, start: string, andSwitch: boolean): v
   const path = state.open;
   const trimmed = name.trim();
   if (!path || trimmed === "") return;
-  void write(`Créer ${trimmed}`, () => api.createBranch(path, trimmed, start.trim(), andSwitch));
+  void write(t("do.createBranch", { name: trimmed }), () =>
+    api.createBranch(path, trimmed, start.trim(), andSwitch),
+  );
 }
 
 /// Delete a branch, asking the question its state deserves.
@@ -1433,13 +1435,14 @@ export function deleteBranch(row: { name: string; merged: boolean }): void {
   const force = !row.merged;
   ask(
     {
-      title: `Supprimer la branche ${row.name} ?`,
-      detail: force
-        ? "Ses commits ne sont sur aucune autre branche : après ça ils ne seront joignables que par le reflog."
-        : "Tous ses commits sont déjà sur la branche courante. Seule l'étiquette disparaît.",
-      verb: "Supprimer",
+      title: t("ask.deleteBranch.title", { name: row.name }),
+      detail: force ? t("ask.deleteBranch.unmerged") : t("ask.deleteBranch.merged"),
+      verb: t("ask.deleteBranch.verb"),
     },
-    () => void write(`Supprimer ${row.name}`, () => api.deleteBranch(path, row.name, force)),
+    () =>
+      void write(t("ask.deleteBranch.verb") + ` ${row.name}`, () =>
+        api.deleteBranch(path, row.name, force),
+      ),
   );
 }
 
@@ -1463,7 +1466,7 @@ async function readSides(operation: string | null): Promise<void> {
   } catch (error) {
     // The buttons fall back to the words `git` uses; not knowing which branch
     // is which is not a reason to hide the way out of a conflict.
-    void api.log("warn", `côtés du conflit illisibles : ${message(error)}`);
+    void api.log("warn", `conflict_sides: ${message(error)}`);
   }
 }
 
@@ -1478,7 +1481,7 @@ export function resolveConflict(row: StatusRow, side: "ours" | "theirs"): void {
   const path = state.open;
   if (!path) return;
   const named = side === "ours" ? state.sides?.ours : state.sides?.theirs;
-  void write(`Résoudre ${row.path} — ${named ?? side}`, () =>
+  void write(t("do.resolveSide", { file: row.path, side: named ?? side }), () =>
     api.resolveConflict(path, row.path, side),
   );
 }
@@ -1560,7 +1563,7 @@ export function applyResolution(): void {
   if (!path || !resolving || !conflictSettled()) return;
   const { file, choices } = resolving;
   state.resolving = null;
-  void write(`Résoudre ${file}`, () => api.resolveHunks(path, file, choices as Choice[]));
+  void write(t("do.resolve", { file }), () => api.resolveHunks(path, file, choices as Choice[]));
 }
 
 /// Hand the file to the editor and stand aside.
@@ -1661,7 +1664,7 @@ export async function selectStashFile(file: string): Promise<void> {
       status: "ready",
       value: {
         path: diff.path,
-        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural(diff.hunks, "bloc")}`,
+        header: `${diff.path} · +${diff.added} −${diff.removed} · ${plural("diff.hunks", diff.hunks)}`,
         rows: diff.rows ?? [],
         reason: diff.reason,
       },
@@ -1705,9 +1708,7 @@ export function stashChanges(): void {
     // changes to save" is what happened, and no sentence of ours improves it.
     state.notes = said.includes("No local changes")
       ? said
-      : ["Remisé · la copie de travail est repartie propre", said.trim()]
-          .filter(Boolean)
-          .join("\n");
+      : [t("said.stashed"), said.trim()].filter(Boolean).join("\n");
   });
 }
 
@@ -1730,9 +1731,7 @@ export function restoreStash(row: StashRow, keep: boolean): void {
     // outcome is said here in the app's own words; `git`'s own text follows on
     // the second line, and the exact command line is in the journal.
     state.notes = [
-      keep
-        ? `${where} appliquée · elle reste sur l'étagère`
-        : `${where} appliquée et retirée de l'étagère`,
+      keep ? t("said.applied", { stash: where }) : t("said.popped", { stash: where }),
       said.trim(),
     ]
       .filter(Boolean)
@@ -1749,17 +1748,14 @@ export function dropStash(row: StashRow): void {
   if (!path) return;
   ask(
     {
-      title: `Supprimer ${address(row)} ?`,
-      detail: `« ${row.message} » sera jeté sans être appliqué. Ce qu'il contient n'est dans aucun commit et ne sera plus joignable que par le reflog.`,
-      verb: "Supprimer",
+      title: t("ask.dropStash.title", { address: address(row) }),
+      detail: t("ask.dropStash.detail", { message: row.message }),
+      verb: t("ask.dropStash.verb"),
     },
     () =>
-      void write(`Supprimer ${address(row)}`, async () => {
+      void write(t("ask.dropStash.verb") + ` ${address(row)}`, async () => {
         const said = await api.stashDrop(path, row.id.full);
-        state.notes = [
-          `${address(row)} supprimée · son contenu n'est plus joignable que par le reflog`,
-          said.trim(),
-        ]
+        state.notes = [t("said.dropped", { stash: address(row) }), said.trim()]
           .filter(Boolean)
           .join("\n");
       }),
@@ -1862,9 +1858,7 @@ export function closeShortcuts(): void {
 /// every string on screen changes in the same tick.
 export function chooseLanguage(tag: string | null): void {
   useLanguage(tag);
-  void api
-    .setLanguage(tag)
-    .catch((error) => api.log("warn", `langue non enregistrée : ${message(error)}`));
+  void api.setLanguage(tag).catch((error) => api.log("warn", `set_language: ${message(error)}`));
 }
 
 /// What was chosen, `null` while following the system.
@@ -1877,7 +1871,7 @@ export function languagePreference(): string | null {
 /// What may be bound is decided in `keymap.ts` — it has the table — and the
 /// caller is expected to have asked it. This writes.
 export function setBinding(id: string, chosen: string | null): void {
-  void write(chosen ? `Raccourci : ${chosen}` : "Raccourci par défaut", async () => {
+  void write(chosen ? t("do.binding", { binding: chosen }) : t("do.bindingDefault"), async () => {
     await api.setBinding(id, chosen);
     // The map, not a reassignment of the object: `state.keymap` is reactive and
     // everything printing a binding reads through it.
@@ -1907,21 +1901,21 @@ function wear(sheet: string): void {
 }
 
 export function chooseTheme(source: string, name = ""): void {
-  void write(`Thème : ${name || source}`, async () => {
+  void write(t("do.theme", { name: name || source }), async () => {
     wear(await api.setTheme(source, name));
     await readPreferences();
   });
 }
 
 export function chooseDensity(density: "compact" | "comfortable"): void {
-  void write(`Densité : ${density}`, async () => {
+  void write(t("do.density", { density }), async () => {
     wear(await api.setDensity(density));
     await readPreferences();
   });
 }
 
 export function chooseScale(scale: number): void {
-  void write(`Échelle : ${Math.round(scale * 100)} %`, async () => {
+  void write(t("do.scale", { percent: Math.round(scale * 100) }), async () => {
     wear(await api.setScale(scale));
     await readPreferences();
   });
@@ -2234,23 +2228,25 @@ function sideOf(row: StatusRow, prefer: boolean): boolean {
 export function stageFile(row: StatusRow, unstage: boolean): void {
   const path = state.open;
   if (!path) return;
-  void write(unstage ? `Désindexer ${row.path}` : `Indexer ${row.path}`, () =>
-    api.stage(path, row.path, { kind: "file" }, unstage),
+  void write(
+    unstage ? t("do.unstageFile", { file: row.path }) : t("do.stageFile", { file: row.path }),
+    () => api.stage(path, row.path, { kind: "file" }, unstage),
   );
 }
 
 export function stageEverything(unstage: boolean): void {
   const path = state.open;
   if (!path) return;
-  void write(unstage ? "Tout désindexer" : "Tout indexer", () => api.stageAll(path, unstage));
+  void write(unstage ? t("do.unstageAll") : t("do.stageAll"), () => api.stageAll(path, unstage));
 }
 
 export function stageHunk(hunk: number, unstage: boolean): void {
   const path = state.open;
   const file = state.selected?.path;
   if (!path || !file) return;
-  void write(unstage ? `Désindexer le bloc ${hunk + 1}` : `Indexer le bloc ${hunk + 1}`, () =>
-    api.stage(path, file, { kind: "hunks", hunks: [hunk] }, unstage),
+  void write(
+    unstage ? t("do.unstageHunk", { n: hunk + 1 }) : t("do.stageHunk", { n: hunk + 1 }),
+    () => api.stage(path, file, { kind: "hunks", hunks: [hunk] }, unstage),
   );
 }
 
@@ -2259,8 +2255,8 @@ export function stagePicked(unstage: boolean): void {
   const file = state.selected?.path;
   const lines = pickedLines();
   if (!path || !file || lines.length === 0) return;
-  const what = plural(lines.length, "ligne");
-  void write(unstage ? `Désindexer ${what}` : `Indexer ${what}`, () =>
+  const what = plural("diff.picked", lines.length);
+  void write(unstage ? t("do.unstageLines", { what }) : t("do.stageLines", { what }), () =>
     api.stage(path, file, { kind: "lines", lines }, unstage),
   );
 }
@@ -2301,12 +2297,12 @@ export function answerAlternative(): void {
 /// What rejecting this row would actually do.
 function discardWarning(row: StatusRow): string {
   if (row.unstaged === "untracked") {
-    return "Ce fichier n'est pas suivi : le rejeter le supprime du disque. Rien ne le retiendra.";
+    return t("ask.discardFile.untracked");
   }
   if (row.unstaged === "deleted") {
-    return "Ce fichier a été supprimé de la copie de travail. Le restaurer le remet tel qu'il est dans le dernier commit — rien n'est perdu.";
+    return t("ask.discardFile.deleted");
   }
-  return "Les modifications non indexées de ce fichier seront perdues. Elles ne sont dans aucun commit ni dans le reflog.";
+  return t("ask.discardFile.modified");
 }
 
 export function discardFile(row: StatusRow): void {
@@ -2316,16 +2312,19 @@ export function discardFile(row: StatusRow): void {
     {
       title:
         row.unstaged === "deleted"
-          ? `Restaurer ${row.path} ?`
-          : `Rejeter les modifications de ${row.path} ?`,
+          ? t("ask.restoreFile.title", { file: row.path })
+          : t("ask.discardFile.title", { file: row.path }),
       // Three different acts wear the same button, and the question has to say
       // which one it is. Rejecting an edit loses work; rejecting a deletion
       // *gives a file back*, and telling someone their work is about to be
       // lost when nothing is at stake is how a confirmation stops being read.
       detail: discardWarning(row),
-      verb: row.unstaged === "deleted" ? "Restaurer" : "Rejeter",
+      verb: row.unstaged === "deleted" ? t("ask.restoreFile.verb") : t("ask.discardFile.verb"),
     },
-    () => void write(`Rejeter ${row.path}`, () => api.discard(path, row.path, { kind: "file" })),
+    () =>
+      void write(t("do.discardFile", { file: row.path }), () =>
+        api.discard(path, row.path, { kind: "file" }),
+      ),
   );
 }
 
@@ -2335,12 +2334,12 @@ export function discardHunk(hunk: number): void {
   if (!path || !file) return;
   ask(
     {
-      title: `Rejeter le bloc ${hunk + 1} de ${file} ?`,
-      detail: "Ces lignes seront retirées du fichier. Elles ne sont dans aucun commit.",
-      verb: "Rejeter",
+      title: t("ask.discardHunk.title", { n: hunk + 1, file }),
+      detail: t("ask.discardLines.detail"),
+      verb: t("ask.discardFile.verb"),
     },
     () =>
-      void write(`Rejeter le bloc ${hunk + 1}`, () =>
+      void write(t("do.discardHunk", { n: hunk + 1 }), () =>
         api.discard(path, file, { kind: "hunks", hunks: [hunk] }),
       ),
   );
@@ -2351,14 +2350,17 @@ export function discardPicked(): void {
   const file = state.selected?.path;
   const lines = pickedLines();
   if (!path || !file || lines.length === 0) return;
-  const what = plural(lines.length, "ligne");
+  const what = plural("diff.picked", lines.length);
   ask(
     {
-      title: `Rejeter ${what} de ${file} ?`,
-      detail: "Ces lignes seront retirées du fichier. Elles ne sont dans aucun commit.",
-      verb: "Rejeter",
+      title: t("ask.discardLines.title", { file }),
+      detail: t("ask.discardLines.detail"),
+      verb: t("ask.discardFile.verb"),
     },
-    () => void write(`Rejeter ${what}`, () => api.discard(path, file, { kind: "lines", lines })),
+    () =>
+      void write(t("do.discardLines", { what }), () =>
+        api.discard(path, file, { kind: "lines", lines }),
+      ),
   );
 }
 
@@ -2388,7 +2390,7 @@ export async function setAmend(on: boolean): Promise<void> {
     const previous = await api.headMessage(state.open);
     if (state.amend && state.message.trim() === "" && previous) state.message = previous;
   } catch (error) {
-    void api.log("warn", `message du commit précédent illisible : ${message(error)}`);
+    void api.log("warn", `head_message: ${message(error)}`);
   }
 }
 
@@ -2413,10 +2415,9 @@ export function commit(): void {
   if (amend) {
     ask(
       {
-        title: "Remplacer le commit précédent ?",
-        detail:
-          "Le commit actuel sera remplacé. Il ne restera accessible que par le reflog, et disparaîtra d'une branche déjà poussée.",
-        verb: "Corriger",
+        title: t("ask.amend.title"),
+        detail: t("ask.amend.detail"),
+        verb: t("ask.amend.verb"),
       },
       run,
     );
@@ -2496,10 +2497,6 @@ function pickedLines(): [number, number][] {
 }
 
 // ── Odds and ends ───────────────────────────────────────────────────────────
-
-export function plural(count: number, word: string): string {
-  return `${count} ${word}${count > 1 ? "s" : ""}`;
-}
 
 function firstLine(text: string): string {
   return text.split("\n", 1)[0] ?? "";

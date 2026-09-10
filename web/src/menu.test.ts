@@ -70,7 +70,8 @@ describe("the menu bar", () => {
     for (const action of keymap.ACTIONS) {
       const entry = sent.find((row) => row["id"] === action.id)!;
       expect(entry, `${action.id} is in the bar`).toBeTruthy();
-      expect(entry["label"]).toBe(action.label);
+      // The bar gets the words, not the catalogue key the table holds.
+      expect(entry["label"]).toBe(keymap.labelOf(action));
       expect(entry["binding"]).toBe(action.binding);
       expect(entry["menu"]).toBe(action.menu);
     }

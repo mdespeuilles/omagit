@@ -15,11 +15,11 @@ import {
   goToZone,
   lineKey,
   pickLine,
-  plural,
   selectFile,
   stageHunk,
   stagePicked,
 } from "../state";
+import { count, t } from "../i18n";
 import { lineHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
@@ -100,7 +100,7 @@ function segments(
            stage-0 entry at all. Two tabs where there is one answer would be two
            controls that do the same thing, so it says what it is instead. -->
       <span v-if="app.screen === 'working-copy' && entry?.conflict" class="tab on conflict">
-        En conflit
+        {{ t("diff.conflicted") }}
       </span>
       <template v-else-if="app.screen === 'working-copy' && app.selected">
         <button
@@ -109,7 +109,7 @@ function segments(
           :disabled="!entry || entry.unstaged === null"
           @click="selectFile(app.selected.path, false)"
         >
-          Non indexé
+          {{ t("diff.unstaged") }}
         </button>
         <button
           class="tab"
@@ -117,7 +117,7 @@ function segments(
           :disabled="!entry || entry.staged === null"
           @click="selectFile(app.selected.path, true)"
         >
-          Indexé
+          {{ t("diff.staged") }}
         </button>
       </template>
       <span class="pane-head-title">
@@ -127,15 +127,15 @@ function segments(
 
     <!-- The four states of SPEC §10, each drawn as itself: no spinner over the
          window, no blank pane, no error swallowed into an empty list. -->
-    <p v-if="app.diff.status === 'idle'" class="pane-empty">Aucun fichier ouvert</p>
-    <p v-else-if="app.diff.status === 'loading'" class="pane-empty">Lecture du diff…</p>
+    <p v-if="app.diff.status === 'idle'" class="pane-empty">{{ t("diff.none") }}</p>
+    <p v-else-if="app.diff.status === 'loading'" class="pane-empty">{{ t("diff.reading") }}</p>
     <p v-else-if="app.diff.status === 'failed'" class="pane-error mono">
       {{ app.diff.error }}
     </p>
     <p v-else-if="app.diff.value.reason" class="pane-empty">
       {{ app.diff.value.reason }}
     </p>
-    <p v-else-if="rows.length === 0" class="pane-empty">Rien à afficher pour ce fichier</p>
+    <p v-else-if="rows.length === 0" class="pane-empty">{{ t("diff.nothing") }}</p>
 
     <VirtualList
       v-else
@@ -152,7 +152,7 @@ function segments(
              so the target stays reachable by keyboard, and come up on hover. -->
         <span v-if="app.screen === 'working-copy' && !conflicted" class="hunk-actions">
           <button :disabled="!!app.busy" @click="stageHunk(item.hunk, staged)">
-            {{ staged ? "Désindexer le bloc" : "Indexer le bloc" }}
+            {{ staged ? t("diff.unstageHunk") : t("diff.stageHunk") }}
           </button>
           <button
             v-if="!staged"
@@ -160,13 +160,13 @@ function segments(
             :disabled="!!app.busy"
             @click="discardHunk(item.hunk)"
           >
-            Rejeter
+            {{ t("diff.discard") }}
           </button>
         </span>
       </div>
 
       <div v-else-if="item.kind === 'fold'" class="diff-fold mono">
-        ⌄ {{ plural(item.lines, "ligne") }} de contexte repliées
+        ⌄ {{ count("diff.folded", item.lines) }}
       </div>
 
       <div
@@ -195,7 +195,7 @@ function segments(
             :key="at"
             :class="{ word: part.mark }"
             >{{ part.text }}</span
-          ><span v-if="item.no_newline" class="no-newline">⏎̸ pas de fin de ligne</span></span
+          ><span v-if="item.no_newline" class="no-newline">{{ t("diff.noNewline") }}</span></span
         >
       </div>
     </VirtualList>
@@ -203,15 +203,15 @@ function segments(
     <!-- Appears only once lines are picked, and says what it would act on
          before it acts: this is the one bar in the app whose buttons write. -->
     <footer v-if="picked > 0 && app.screen === 'working-copy' && !conflicted" class="picked-bar">
-      <span>{{ plural(picked, "ligne") }}</span>
+      <span>{{ count("diff.picked", picked) }}</span>
       <span class="pane-head-spacer" />
       <button :disabled="!!app.busy" @click="stagePicked(staged)">
-        {{ staged ? "Désindexer" : "Indexer" }}
+        {{ staged ? t("diff.unstage") : t("diff.stage") }}
       </button>
       <button v-if="!staged" class="danger" :disabled="!!app.busy" @click="discardPicked()">
-        Rejeter
+        {{ t("diff.discard") }}
       </button>
-      <button @click="clearPicked()">Effacer</button>
+      <button @click="clearPicked()">{{ t("diff.clear") }}</button>
     </footer>
   </section>
 </template>

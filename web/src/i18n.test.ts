@@ -34,12 +34,42 @@ describe("the catalogues", () => {
       // is the same in both languages. Named, so the list cannot grow quietly.
       expect(untranslated.sort(), one.tag).toEqual(
         [
-          // Git's own vocabulary, which a French terminal uses untranslated…
+          // Git's own vocabulary, which a French terminal uses untranslated,
+          // the words that are the same in both languages, and the two proper
+          // nouns. Listed rather than allowed by a rule, so the set cannot grow
+          // by accident: an untranslated string is otherwise indistinguishable
+          // from one that was never translated.
+          "action.network.fetch",
+          "action.network.pull",
+          "action.network.push",
+          "ask.commits.one",
+          "ask.commits.other",
           "branches.merged",
           "branches.remotes",
           "branches.tags",
           "branches.title",
-          // …and two words that are the same in both languages.
+          "card.description",
+          "card.remotes",
+          "clone.destination",
+          "clone.url",
+          "commit.amend",
+          "commit.noVerify",
+          "commit.signOff",
+          "commitDetail.parent",
+          "commitDetail.parents",
+          "commitDetail.title",
+          "conflict.both",
+          "conflict.ours",
+          "conflict.theirs",
+          "history.commits.one",
+          "history.commits.other",
+          "history.message",
+          "journal.title",
+          "palette.actions",
+          "palette.branches",
+          "palette.close",
+          "settings.compact",
+          "settings.git",
           "sidebar.workspace",
           "statusbar.journal",
         ].sort(),

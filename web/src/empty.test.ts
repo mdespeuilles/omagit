@@ -60,9 +60,9 @@ describe("a history with nothing in it", () => {
     await settled(state);
 
     const list = await screenOf("HistoryList");
-    expect(list.text()).toContain("Aucun commit ne correspond");
+    expect(list.text()).toContain("No commit matches");
     // And the way out is in the sentence, not only in the filter row above it.
-    const clear = list.findAll("button").find((button) => button.text().includes("Effacer"))!;
+    const clear = list.findAll("button").find((button) => button.text().includes("Clear"))!;
     await clear.trigger("click");
     await settled(state);
     expect(state.isFilteringHistory()).toBe(false);
@@ -79,7 +79,7 @@ describe("a history with nothing in it", () => {
     await settled(state);
 
     const list = await screenOf("HistoryList");
-    expect(list.text()).toContain("pas encore de commit");
+    expect(list.text()).toContain("no commit yet");
   });
 });
 
@@ -109,7 +109,7 @@ describe("the commit box in a repository that is not on a branch", () => {
     await settled(state);
 
     const box = await screenOf("CommitBox");
-    expect(box.find(".commit-caution").text()).toContain("n'appartiendra à aucune branche");
+    expect(box.find(".commit-caution").text()).toContain("will belong to no branch");
   });
 
   it("refuses to amend a commit that does not exist yet", async () => {
@@ -121,7 +121,7 @@ describe("the commit box in a repository that is not on a branch", () => {
     await settled(state);
 
     const box = await screenOf("CommitBox");
-    expect(box.find(".commit-blocked").text()).toContain("Aucun commit à corriger");
+    expect(box.find(".commit-blocked").text()).toContain("No commit to amend");
   });
 });
 
@@ -133,8 +133,8 @@ describe("the repository list", () => {
     await settled(state);
 
     const list = await screenOf("RepositoryList");
-    expect(list.text()).toContain("Aucun dépôt ne correspond");
-    expect(list.text()).not.toContain("Aucun dépôt pour l'instant");
+    expect(list.text()).toContain("No repository matches");
+    expect(list.text()).not.toContain("No repository yet");
   });
 
   it("does not read a branch name as a detached HEAD", async () => {

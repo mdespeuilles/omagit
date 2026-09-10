@@ -14,6 +14,7 @@
 
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { app, clearFilters, isFilteringHistory, setQuery } from "../state";
+import { t } from "../i18n";
 
 const author = ref(app.query.author);
 const text = ref(app.query.text);
@@ -85,7 +86,7 @@ function asSeconds(value: string, offset: number): number {
       v-model="author"
       class="filter-box"
       type="text"
-      placeholder="Auteur"
+      :placeholder="t('history.author')"
       spellcheck="false"
       @input="applySoon()"
       @keydown.enter="apply()"
@@ -95,7 +96,7 @@ function asSeconds(value: string, offset: number): number {
       v-model="text"
       class="filter-box wide"
       type="text"
-      placeholder="Message"
+      :placeholder="t('history.message')"
       spellcheck="false"
       @input="applySoon()"
       @keydown.enter="apply()"
@@ -105,21 +106,34 @@ function asSeconds(value: string, offset: number): number {
       v-model="path"
       class="filter-box"
       type="text"
-      placeholder="Chemin"
+      :placeholder="t('history.path')"
       spellcheck="false"
       @input="applySoon()"
       @keydown.enter="apply()"
       @blur="apply()"
     />
-    <input v-model="since" class="filter-date" type="date" title="Depuis" @change="apply()" />
-    <input v-model="until" class="filter-date" type="date" title="Jusqu'à" @change="apply()" />
-    <button class="link" :disabled="!filtering" @click="clearFilters()">Effacer</button>
+    <input
+      v-model="since"
+      class="filter-date"
+      type="date"
+      :title="t('history.since')"
+      @change="apply()"
+    />
+    <input
+      v-model="until"
+      class="filter-date"
+      type="date"
+      :title="t('history.until')"
+      @change="apply()"
+    />
+    <button class="link" :disabled="!filtering" @click="clearFilters()">
+      {{ t("history.clear") }}
+    </button>
   </div>
 
   <!-- Said out loud rather than left to be noticed: the gutter disappearing
        without a reason reads as a bug. -->
   <p v-if="filtering" class="filters-note">
-    Résultat de recherche — pas de graphe : les lignes voisines ne sont pas parentes, seulement les
-    suivantes qui correspondent.
+    {{ t("history.filtered") }}
   </p>
 </template>

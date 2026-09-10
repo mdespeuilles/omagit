@@ -21,6 +21,7 @@ import {
   visibleRepositories,
   zoneActive,
 } from "../state";
+import { count, t } from "../i18n";
 import Glyph from "./Glyph.vue";
 
 /// What the filter leaves, which is what the empty state has to talk about.
@@ -45,7 +46,7 @@ const groups = computed(() => {
 type State = { text: string; kind: "clean" | "changed" | "conflict" | "detached" | "gone" };
 
 function state(row: LibraryRow): State {
-  if (row.missing) return { text: "introuvable sur le disque", kind: "gone" };
+  if (row.missing) return { text: t("library.missing"), kind: "gone" };
   const held = app.library[row.path];
   if (!held || held.status === "loading") return { text: "…", kind: "clean" };
   if (held.status === "failed") return { text: held.error, kind: "gone" };
@@ -54,7 +55,10 @@ function state(row: LibraryRow): State {
   const { head, head_kind, operation, counts, tracking } = held.value;
   const where = operation ?? head;
   if (counts.conflicted > 0) {
-    return { text: `${where} · ${plural(counts.conflicted, "conflit")}`, kind: "conflict" };
+    return {
+      text: `${where} · ${count("library.conflicts", counts.conflicted)}`,
+      kind: "conflict",
+    };
   }
 
   const changed = counts.modified + counts.added + counts.deleted + counts.renamed;
@@ -73,20 +77,18 @@ function state(row: LibraryRow): State {
 
   if (changed + counts.untracked === 0) {
     return {
-      text: [where, divergence || "propre"].filter(Boolean).join(" "),
+      text: [where, divergence || t("library.clean")].filter(Boolean).join(" "),
       kind: detached ? "detached" : "clean",
     };
   }
   const what = [
-    changed > 0 ? plural(changed, "modifié") : "",
-    counts.untracked > 0 ? plural(counts.untracked, "non suivi") : "",
+    changed > 0 ? count("library.changed", changed) : "",
+    counts.untracked > 0 ? count("library.untracked", counts.untracked) : "",
   ]
     .filter(Boolean)
     .join(" · ");
   return { text: `${where} · ${what}`, kind: detached ? "detached" : "changed" };
 }
-
-const plural = (count: number, word: string): string => `${count} ${word}${count > 1 ? "s" : ""}`;
 </script>
 
 <template>
@@ -94,7 +96,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
     <div class="library-filter">
       <input
         type="search"
-        placeholder="Filtrer les dépôts"
+        :placeholder="t('library.filter')"
         title="Filtrer par nom, chemin ou description — /"
         spellcheck="false"
         :value="app.libraryFilter"
@@ -113,26 +115,27 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
          "Ajouter un dépôt local" there would answer a question nobody asked:
          the repositories are still in the list, one word away. -->
     <div v-if="rows.length === 0 && app.libraryFilter.trim() !== ''" class="library-empty">
-      <p class="library-empty-title">Aucun dépôt ne correspond</p>
+      <p class="library-empty-title">{{ t("library.noMatch") }}</p>
       <p class="library-empty-text">
-        {{ plural(app.repositories.length, "dépôt") }} dans la liste, aucun qui contienne «
-        {{ app.libraryFilter.trim() }} ».
+        {{
+          t("library.noMatchText", {
+            n: count("library.repositories", app.repositories.length),
+            needle: app.libraryFilter.trim(),
+          })
+        }}
       </p>
       <span class="library-empty-actions">
-        <button @click="setLibraryFilter('')">Effacer le filtre</button>
+        <button @click="setLibraryFilter('')">{{ t("library.clearFilter") }}</button>
       </span>
     </div>
 
     <!-- Board 06's empty state: what to do, not just that there is nothing. -->
     <div v-else-if="app.repositories.length === 0" class="library-empty">
-      <p class="library-empty-title">Aucun dépôt pour l'instant</p>
-      <p class="library-empty-text">
-        Ajoute un dossier déjà versionné, ou dépose-le sur la fenêtre. Il reste sur le disque :
-        cette liste n'en garde que le chemin.
-      </p>
+      <p class="library-empty-title">{{ t("library.empty") }}</p>
+      <p class="library-empty-text">{{ t("library.emptyText") }}</p>
       <span class="library-empty-actions">
-        <button class="primary" @click="addRepository()">Ajouter un dépôt local</button>
-        <button @click="openClone()">Cloner…</button>
+        <button class="primary" @click="addRepository()">{{ t("topbar.addRepository") }}</button>
+        <button @click="openClone()">{{ t("topbar.clone") }}</button>
       </span>
     </div>
 
@@ -171,10 +174,10 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
           <button
             class="row-action danger"
             :tabindex="app.card === row.path ? 0 : -1"
-            title="Retirer de la liste — le dépôt reste sur le disque"
+            :title="t('library.forgetTitle')"
             @click.stop="forgetRepository(row)"
           >
-            Retirer
+            {{ t("library.forget") }}
           </button>
         </div>
       </template>

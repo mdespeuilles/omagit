@@ -22,6 +22,7 @@ import {
   toggleFilters,
   zoneActive,
 } from "../state";
+import { count, t } from "../i18n";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
 import { doubleRowHeight } from "../metrics";
@@ -65,7 +66,7 @@ function open(id: string, extend: boolean): void {
 <template>
   <section class="history">
     <header class="pane-head">
-      <span>Historique</span>
+      <span>{{ t("history.title") }}</span>
       <span class="pane-head-count"> {{ rows.length }}{{ app.historyDone ? "" : "+" }} </span>
       <!-- Whose history this is, when it is not HEAD's. A list scoped to a
            branch looks exactly like the ordinary one, and the row that asked
@@ -73,7 +74,7 @@ function open(id: string, extend: boolean): void {
       <button
         v-if="app.query.branch"
         class="link on"
-        title="Revenir à l'historique de la branche courante"
+        :title="t('history.onBranch')"
         @click="showHeadHistory()"
       >
         {{ app.query.branch }} ✕
@@ -85,7 +86,7 @@ function open(id: string, extend: boolean): void {
           :checked="app.query.all"
           @change="setQuery({ all: ($event.target as HTMLInputElement).checked })"
         /><span class="check" aria-hidden="true">✓</span>
-        Toutes les branches
+        {{ t("history.allBranches") }}
       </label>
       <label class="toggle" title="Ne suivre que le premier parent de chaque fusion">
         <input
@@ -93,7 +94,7 @@ function open(id: string, extend: boolean): void {
           :checked="app.query.firstParent"
           @change="setQuery({ firstParent: ($event.target as HTMLInputElement).checked })"
         /><span class="check" aria-hidden="true">✓</span>
-        Tronc
+        {{ t("history.trunk") }}
       </label>
       <span class="pane-head-rule" />
       <!-- Folded away by default: five fields answering a question most
@@ -104,13 +105,15 @@ function open(id: string, extend: boolean): void {
         :aria-expanded="app.showFilters || isFilteringHistory()"
         @click="toggleFilters()"
       >
-        Filtrer{{ isFilteringHistory() ? " ·" : "" }}
+        {{ t("history.filter") }}{{ isFilteringHistory() ? " ·" : "" }}
       </button>
     </header>
     <HistoryFilters v-if="app.showFilters || isFilteringHistory()" />
 
-    <p v-if="app.history.status === 'idle'" class="pane-empty">Historique non chargé</p>
-    <p v-else-if="app.history.status === 'loading'" class="pane-empty">Lecture de l'historique…</p>
+    <p v-if="app.history.status === 'idle'" class="pane-empty">{{ t("history.idle") }}</p>
+    <p v-else-if="app.history.status === 'loading'" class="pane-empty">
+      {{ t("history.reading") }}
+    </p>
     <p v-else-if="app.history.status === 'failed'" class="pane-error mono">
       {{ app.history.error }}
     </p>
@@ -119,13 +122,13 @@ function open(id: string, extend: boolean): void {
          as an empty repository, which is a lie the filter row is too small to
          correct on its own. -->
     <p v-else-if="rows.length === 0 && isFilteringHistory()" class="pane-empty">
-      Aucun commit ne correspond.
-      <button class="link" @click="clearFilters()">Effacer les filtres</button>
+      {{ t("history.noMatch") }}
+      <button class="link" @click="clearFilters()">{{ t("history.clearFilters") }}</button>
     </p>
     <p v-else-if="rows.length === 0 && app.summary?.head_kind === 'unborn'" class="pane-empty">
-      Ce dépôt n'a pas encore de commit — le premier se fait depuis la copie de travail.
+      {{ t("history.unborn") }}
     </p>
-    <p v-else-if="rows.length === 0" class="pane-empty">Aucun commit</p>
+    <p v-else-if="rows.length === 0" class="pane-empty">{{ t("history.empty") }}</p>
 
     <VirtualList
       v-else
@@ -184,8 +187,12 @@ function open(id: string, extend: boolean): void {
     </VirtualList>
 
     <footer v-if="rows.length > 0" class="files-foot">
-      {{ rows.length }} commits{{ app.historyDone ? "" : " chargés" }}
-      <span v-if="app.historyLoading"> · suite…</span>
+      {{
+        app.historyDone
+          ? count("history.commits", rows.length)
+          : t("history.loaded", { n: rows.length })
+      }}
+      <span v-if="app.historyLoading"> {{ t("history.more") }}</span>
     </footer>
   </section>
 </template>

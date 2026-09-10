@@ -13,7 +13,6 @@ import {
   discardFile,
   goToZone,
   openConflict,
-  plural,
   resolveConflict,
   selectFile,
   stagedCount,
@@ -22,6 +21,7 @@ import {
   unstagedCount,
   zoneActive,
 } from "../state";
+import { count, t } from "../i18n";
 import { rowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
@@ -79,17 +79,17 @@ function badge(row: StatusRow): { letter: string; kind: string } {
 /// Board 07 names both by their branch for exactly this reason.
 function label(side: "ours" | "theirs"): string {
   const sides = app.sides;
-  if (!sides) return side === "ours" ? "la version en place" : "celle qui arrive";
+  if (!sides) return side === "ours" ? t("conflict.inPlace") : t("conflict.arriving");
   return side === "ours" ? sides.ours : sides.theirs;
 }
 
 function explain(side: "ours" | "theirs"): string {
   const sides = app.sides;
-  const what = `Garder la version de ${label(side)} (${side})`;
+  const what = t("conflict.keep", { side: label(side), pronoun: side });
   if (!sides?.replayed) return what;
   return side === "ours"
-    ? `${what} — le côté déjà en place, sur lequel les commits sont rejoués`
-    : `${what} — le côté rejoué, celui des commits en cours de replacement`;
+    ? `${what} — ${t("conflict.oursReplayed")}`
+    : `${what} — ${t("conflict.theirsReplayed")}`;
 }
 
 function directory(path: string): string {
@@ -116,7 +116,7 @@ function stop(path: string): 0 | -1 {
 <template>
   <section class="files">
     <header class="pane-head">
-      <span>Status</span>
+      <span>{{ t("status.title") }}</span>
       <span class="pane-head-count">{{ rows.length }}</span>
       <span class="pane-head-spacer" />
       <button
@@ -124,16 +124,16 @@ function stop(path: string): 0 | -1 {
         :disabled="!!app.busy || unstagedCount() === 0"
         @click="stageEverything(false)"
       >
-        Tout indexer
+        {{ t("status.stageAll") }}
       </button>
     </header>
 
-    <p v-if="app.status.status === 'loading'" class="pane-empty">Lecture du statut…</p>
+    <p v-if="app.status.status === 'loading'" class="pane-empty">{{ t("status.reading") }}</p>
     <p v-else-if="app.status.status === 'failed'" class="pane-error mono">
       {{ app.status.error }}
     </p>
     <p v-else-if="app.status.status === 'ready' && rows.length === 0" class="pane-empty">
-      Rien de modifié
+      {{ t("status.clean") }}
     </p>
 
     <!-- One tab stop for the whole list (board 09): Tab enters the zone, `j`
@@ -173,17 +173,17 @@ function stop(path: string): 0 | -1 {
           :disabled="!!app.busy"
           :title="
             item.conflict
-              ? 'Marquer ce fichier résolu'
+              ? t('status.resolved')
               : mark(item) === 'all'
-                ? 'Désindexer ce fichier'
-                : 'Indexer ce fichier'
+                ? t('status.unstageFile')
+                : t('status.stageFile')
           "
           :aria-label="
             item.conflict
-              ? 'Marquer ce fichier résolu'
+              ? t('status.resolved')
               : mark(item) === 'all'
-                ? 'Désindexer ce fichier'
-                : 'Indexer ce fichier'
+                ? t('status.unstageFile')
+                : t('status.stageFile')
           "
           @click.stop="toggle(item)"
         >
@@ -216,10 +216,10 @@ function stop(path: string): 0 | -1 {
               class="row-action"
               :tabindex="stop(item.path)"
               :disabled="!!app.busy"
-              title="Résoudre conflit par conflit"
+              :title="t('status.resolveTitle')"
               @click.stop="openConflict(item.path)"
             >
-              Résoudre…
+              {{ t("status.resolve") }}
             </button>
             <button
               class="row-action"
@@ -245,17 +245,17 @@ function stop(path: string): 0 | -1 {
             class="row-action danger"
             :tabindex="stop(item.path)"
             :disabled="!!app.busy || item.unstaged === null"
-            title="Rejeter les modifications non indexées"
+            :title="t('status.discardTitle')"
             @click.stop="discardFile(item)"
           >
-            Rejeter
+            {{ t("status.discard") }}
           </button>
         </span>
       </div>
     </VirtualList>
 
     <footer v-if="rows.length > 0" class="files-foot">
-      {{ plural(staged, "indexé") }} · {{ unstagedCount() }} non indexé
+      {{ count("statusbar.staged", staged) }} · {{ count("statusbar.unstaged", unstagedCount()) }}
     </footer>
   </section>
 </template>

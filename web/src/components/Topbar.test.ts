@@ -72,7 +72,7 @@ describe("the topbar", () => {
 
     expect(topbar(app)).toContain("repo");
     expect(topbar(app)).toContain("Fetch");
-    expect(topbar(app)).not.toContain("Ajouter un dépôt local");
+    expect(topbar(app)).not.toContain("Add a local repository");
     // Board 02's 48, because the repository block is two lines.
     expect(app.find(".topbar").classes()).not.toContain("compact");
   });
@@ -87,7 +87,7 @@ describe("the topbar", () => {
     const buttons = app.findAll(".caption button");
     expect(buttons).toHaveLength(1);
     const close = buttons[0]!;
-    expect(close.attributes("aria-label")).toBe("Fermer");
+    expect(close.attributes("aria-label")).toBe("Close");
     // Never in the tab order: Tab belongs to the app's own controls.
     expect(close.attributes("tabindex")).toBe("-1");
   });

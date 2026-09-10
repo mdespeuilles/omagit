@@ -10,14 +10,20 @@
 
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { app, closePalette, movePalette, runPaletteRow, setPaletteQuery } from "../state";
-import { ACTIONS, binding, hint } from "../keymap";
+import { ACTIONS, binding, hint, labelOf } from "../keymap";
 import { flatten, search, type Row } from "../palette";
+import { t } from "../i18n";
 
 const box = ref<HTMLInputElement | null>(null);
 
 const groups = computed(() =>
   search(app.palette?.query ?? "", {
-    actions: ACTIONS.filter((action) => action.where === "always" || !!app.open),
+    // Searched by their words, not by their keys: a palette that matched
+    // `action.network.fetch` would find "Fetch" by typing "network".
+    actions: ACTIONS.filter((action) => action.where === "always" || !!app.open).map((action) => ({
+      ...action,
+      label: labelOf(action),
+    })),
     repositories: [...app.repositories],
     branches: app.refs.status === "ready" ? [...app.refs.value.branches] : [],
     files: app.status.status === "ready" ? [...app.status.value] : [],
@@ -99,7 +105,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           ref="box"
           class="palette-query"
           type="text"
-          placeholder="Une action, un dépôt, une branche, un fichier…"
+          :placeholder="t('palette.placeholder')"
           spellcheck="false"
           :value="app.palette.query"
           @input="setPaletteQuery(($event.target as HTMLInputElement).value)"

@@ -150,7 +150,7 @@ describe("staging", () => {
 
     const Notice = (await import("./components/Notice.vue")).default;
     const band = mount(Notice);
-    expect(band.find(".notice-what").text()).toContain("Indexer");
+    expect(band.find(".notice-what").text()).toContain("Stage");
     expect(band.find(".notice-said").text()).toContain("Aborting");
 
     // And the bar keeps only what fits it: the successes.
@@ -177,18 +177,18 @@ describe("staging", () => {
     });
 
     state.discardFile(row("modified"));
-    expect(state.app.question?.verb).toBe("Rejeter");
-    expect(state.app.question?.detail).toContain("perdues");
+    expect(state.app.question?.verb).toBe("Discard");
+    expect(state.app.question?.detail).toContain("will be lost");
     state.answer(false);
 
     state.discardFile(row("untracked"));
-    expect(state.app.question?.detail).toContain("supprime du disque");
+    expect(state.app.question?.detail).toContain("deletes it from the disk");
     state.answer(false);
 
     state.discardFile(row("deleted"));
-    expect(state.app.question?.title).toContain("Restaurer");
-    expect(state.app.question?.verb).toBe("Restaurer");
-    expect(state.app.question?.detail).toContain("rien n'est perdu");
+    expect(state.app.question?.title).toContain("Restore");
+    expect(state.app.question?.verb).toBe("Restore");
+    expect(state.app.question?.detail).toContain("nothing is lost");
     state.answer(false);
     await settled(state);
   });
@@ -295,7 +295,7 @@ describe("the destructive ones", () => {
     });
     // Not "your changes will be lost": there is no earlier version to go back
     // to, so the file is deleted outright.
-    expect(state.app.question?.detail).toContain("supprime");
+    expect(state.app.question?.detail).toContain("deletes it");
   });
 
   it("treat an amend as one, because it replaces a commit", async () => {
@@ -303,7 +303,7 @@ describe("the destructive ones", () => {
     await state.setAmend(true);
     state.setMessage("un message");
     state.commit();
-    expect(state.app.question?.title).toContain("Remplacer");
+    expect(state.app.question?.title).toContain("Replace");
     state.answer(false);
 
     expect(backend.current.commits).toHaveLength(0);

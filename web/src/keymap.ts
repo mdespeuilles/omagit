@@ -26,6 +26,7 @@
 // once rather than remembered at each call site.
 
 import { app } from "./state";
+import { t, type Key } from "./i18n";
 import * as store from "./state";
 
 /// Where a binding is allowed to fire.
@@ -53,8 +54,10 @@ export type Action = {
   /// Stable, and never shown: the palette searches labels, and settings will
   /// store bindings against this.
   id: string;
-  /// What the palette and the sheet print. French, like the rest of the window.
-  label: string;
+  /// What the palette, the sheet, the menu bar and the topbar's tooltips print
+  /// — a catalogue key, so the four of them say it in the language in force.
+  /// `labelOf` is what turns it into words.
+  label: Key;
   /// `Primary` is ⌘ on macOS and Ctrl elsewhere (SPEC §9). Parsed rather than
   /// stored as flags so the sheet can print it and settings can hold it as one
   /// string.
@@ -83,14 +86,14 @@ const idle = (): boolean => !app.busy && !app.running;
 /// and what the sheet prints must not drift, and the alternative — one table
 /// carrying both the raw key names and their prose — made `g` `g`, `/` and
 /// `Tab` fit badly, since each of the three is handled by hand.
-export const MOVEMENTS: { print: string; label: string }[] = [
-  { print: "1 2 3", label: "La sidebar, la colonne centrale, le panneau de détail" },
-  { print: "Tab · ⇧Tab", label: "L'arrêt suivant ou précédent : une liste entière en est un" },
-  { print: "j k · ↓ ↑", label: "Descendre et monter dans la zone" },
-  { print: "g g · G", label: "La première ligne · la dernière" },
-  { print: "⏎", label: "Ce à quoi sert la ligne : ouvrir, basculer, indexer" },
-  { print: "/", label: "Le filtre de cet écran" },
-  { print: "Esc", label: "Remonter d'un niveau : un filtre, puis la sidebar" },
+export const MOVEMENTS: { print: string; label: Key }[] = [
+  { print: "1 2 3", label: "move.zones" },
+  { print: "Tab · ⇧Tab", label: "move.tab" },
+  { print: "j k · ↓ ↑", label: "move.updown" },
+  { print: "g g · G", label: "move.ends" },
+  { print: "⏎", label: "move.enter" },
+  { print: "/", label: "move.filter" },
+  { print: "Esc", label: "move.escape" },
 ];
 
 const MOVES: { keys: string[]; run: () => boolean }[] = [
@@ -107,7 +110,7 @@ const MOVES: { keys: string[]; run: () => boolean }[] = [
 export const ACTIONS: Action[] = [
   {
     id: "repository.add",
-    label: "Ajouter un dépôt local",
+    label: "action.repository.add",
     binding: "Primary+O",
     where: "always",
     menu: "file",
@@ -116,7 +119,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "repository.clone",
-    label: "Cloner un dépôt",
+    label: "action.repository.clone",
     binding: "Shift+Primary+N",
     where: "always",
     menu: "file",
@@ -125,7 +128,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "repository.all",
-    label: "Tous les dépôts",
+    label: "action.repository.all",
     binding: "Shift+Primary+O",
     where: "always",
     menu: "file",
@@ -134,7 +137,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "screen.workingCopy",
-    label: "Aller à la copie de travail",
+    label: "action.screen.workingCopy",
     binding: "Primary+1",
     where: "repository",
     menu: "view",
@@ -143,7 +146,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "screen.history",
-    label: "Aller à l'historique",
+    label: "action.screen.history",
     binding: "Primary+2",
     where: "repository",
     menu: "view",
@@ -152,7 +155,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "screen.stashes",
-    label: "Aller aux remises",
+    label: "action.screen.stashes",
     binding: "Primary+3",
     where: "repository",
     menu: "view",
@@ -161,7 +164,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "network.fetch",
-    label: "Fetch",
+    label: "action.network.fetch",
     binding: "Primary+F",
     where: "repository",
     menu: "repository",
@@ -170,7 +173,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "network.pull",
-    label: "Pull",
+    label: "action.network.pull",
     binding: "Shift+Primary+P",
     where: "repository",
     menu: "repository",
@@ -179,7 +182,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "network.push",
-    label: "Push",
+    label: "action.network.push",
     binding: "Primary+P",
     where: "repository",
     menu: "repository",
@@ -188,7 +191,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "network.stop",
-    label: "Arrêter l'opération réseau",
+    label: "action.network.stop",
     binding: "Primary+.",
     where: "always",
     menu: "repository",
@@ -197,7 +200,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "workingCopy.refresh",
-    label: "Relire le dépôt",
+    label: "action.workingCopy.refresh",
     binding: "Primary+R",
     where: "repository",
     menu: "repository",
@@ -206,7 +209,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "stash.push",
-    label: "Remiser les modifications",
+    label: "action.stash.push",
     binding: "Shift+Primary+S",
     where: "repository",
     menu: "repository",
@@ -218,7 +221,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "palette.open",
-    label: "Palette de commandes",
+    label: "action.palette.open",
     binding: "Primary+K",
     where: "always",
     menu: "view",
@@ -227,7 +230,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "help.shortcuts",
-    label: "Raccourcis clavier",
+    label: "action.help.shortcuts",
     // `Shift+?`, not `Shift+/`, however it is engraved on the key: a browser
     // reports the character the layout produced, and holding Shift over `/`
     // produces `?`. Written the other way it matched nothing, on any layout.
@@ -239,7 +242,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "settings.open",
-    label: "Réglages",
+    label: "action.settings.open",
     binding: "Primary+,",
     where: "always",
     menu: "app",
@@ -248,7 +251,7 @@ export const ACTIONS: Action[] = [
   },
   {
     id: "journal.toggle",
-    label: "Journal des opérations",
+    label: "action.journal.toggle",
     binding: "Shift+Primary+J",
     where: "always",
     menu: "view",
@@ -264,6 +267,11 @@ export const ACTIONS: Action[] = [
 // binding goes through `binding()` — so a reassignment reaches the key handler,
 // the palette, the sheet and the macOS menu bar at once, because all four read
 // the same table through the same accessor.
+
+/// What an action is called, in the language in force.
+export function labelOf(action: Action): string {
+  return t(action.label);
+}
 
 /// The binding this action answers now: the user's, or the table's own.
 export function binding(action: Action): string {
@@ -328,10 +336,10 @@ export function refuse(id: string, chosen: string): string | null {
   const bare = !parts.includes("Primary") && !parts.includes("Alt");
 
   if (bare && MOVEMENT_KEYS.some((movement) => movement.toLowerCase() === key.toLowerCase())) {
-    return `${key} sert à se déplacer dans la fenêtre`;
+    return t("bind.movement", { key });
   }
   const taken = ACTIONS.find((action) => action.id !== id && binding(action) === chosen);
-  if (taken) return `déjà pris par « ${taken.label} »`;
+  if (taken) return t("bind.taken", { action: labelOf(taken) });
   return null;
 }
 

@@ -197,10 +197,10 @@ describe("the bindings", () => {
     const { keymap } = await opened();
     // Movement runs before the table, so this one would never fire. Whichever
     // case it was captured in: `matches` compares case-insensitively.
-    expect(keymap.refuse("network.fetch", "J")).toContain("déplacer");
+    expect(keymap.refuse("network.fetch", "J")).toContain("move around");
     // Shift is not enough to escape movement — `dispatch` calls that bare too,
     // and `G` is the last row before the table is ever reached.
-    expect(keymap.refuse("network.fetch", "Shift+G")).toContain("déplacer");
+    expect(keymap.refuse("network.fetch", "Shift+G")).toContain("move around");
     // A modifier that makes the event no longer bare does escape it.
     expect(keymap.refuse("network.fetch", "Primary+J")).toBeNull();
     // And the binding that looks assigned because somebody else answers it.

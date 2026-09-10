@@ -6,21 +6,21 @@
 // says `git apply --cached -` is a fact they can check.
 
 import { app, toggleJournal } from "../state";
+import { t } from "../i18n";
 </script>
 
 <template>
   <aside class="journal">
     <header class="pane-head">
-      <span>Journal</span>
+      <span>{{ t("journal.title") }}</span>
       <span class="pane-head-spacer" />
-      <button class="link" @click="toggleJournal()">Fermer</button>
+      <button class="link" @click="toggleJournal()">{{ t("journal.close") }}</button>
     </header>
     <!-- Says what the panel is for, not only that it is empty: this one is
          opened by somebody looking for it, and "Aucune commande" leaves them
          wondering whether it records anything at all. -->
     <p v-if="app.journal.length === 0" class="pane-empty">
-      Aucune commande pour l'instant — chaque écriture Git s'inscrit ici avec la ligne exacte qui a
-      été lancée.
+      {{ t("journal.empty") }}
     </p>
     <ol v-else class="journal-list">
       <li v-for="(row, at) in app.journal" :key="at" class="journal-row" :class="row.outcome">

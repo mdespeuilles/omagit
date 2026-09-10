@@ -12,7 +12,7 @@
 import { watch } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { api } from "./ipc";
-import { ACTIONS, binding, runAction } from "./keymap";
+import { ACTIONS, binding, labelOf, runAction } from "./keymap";
 import { app } from "./state";
 
 /// One item, as the backend needs it.
@@ -34,7 +34,7 @@ export type Entry = {
 export function entries(): Entry[] {
   return ACTIONS.map((action) => ({
     id: action.id,
-    label: action.label,
+    label: labelOf(action),
     binding: binding(action),
     menu: action.menu,
     enabled: action.where === "always" || !!app.open,

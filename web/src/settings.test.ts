@@ -69,9 +69,9 @@ describe("the preferences screen", () => {
     // sentence that says what it falls back through.
     const omarchy = screen
       .findAll(".settings-row")
-      .find((row) => row.text().startsWith("Suivre Omarchy"))!;
+      .find((row) => row.text().startsWith("Follow Omarchy"))!;
     expect(omarchy.attributes("disabled")).toBeDefined();
-    expect(omarchy.text()).toContain("aucun Omarchy");
+    expect(omarchy.text()).toContain("no Omarchy");
   });
 
   it("marks exactly one theme choice, whichever half it is in", async () => {
@@ -84,7 +84,7 @@ describe("the preferences screen", () => {
     // questions as a contradiction.
     const marked = () =>
       screen
-        .findAll('[aria-label="Thème"] [role="radio"][aria-checked="true"]')
+        .findAll('[aria-label="Theme"] [role="radio"][aria-checked="true"]')
         .map((one) => one.text());
 
     expect(marked()).toHaveLength(1);
@@ -101,17 +101,17 @@ describe("the preferences screen", () => {
     await settled(state);
     await screen.vm.$nextTick();
     expect(marked()).toHaveLength(1);
-    expect(marked()[0]).toContain("Embarqué");
+    expect(marked()[0]).toContain("Embedded");
   });
 
-  it("says what Automatique resolves through", async () => {
+  it("says what Automatic resolves through", async () => {
     // "ce que cette machine offre de mieux" said nothing anyone could act on.
     const { screen } = await opened();
     const automatic = screen
       .findAll(".settings-row")
-      .find((row) => row.text().startsWith("Automatique"))!;
+      .find((row) => row.text().startsWith("Automatic"))!;
     expect(automatic.text()).toContain("Omarchy");
-    expect(automatic.text()).toContain("embarqué");
+    expect(automatic.text()).toContain("embedded");
   });
 
   it("applies a change to the window in the same tick it saves it", async () => {
@@ -169,7 +169,7 @@ describe("reassigning a binding", () => {
     const { state, screen } = await opened();
     const { key } = keyOf(screen, "Fetch");
     await key.trigger("click");
-    expect(key.text()).toBe("Appuie…");
+    expect(key.text()).toBe("Press…");
 
     window.dispatchEvent(held({ key: "f", ctrlKey: true, altKey: true }));
     await settled(state);
@@ -192,7 +192,7 @@ describe("reassigning a binding", () => {
     expect(keyOf(screen, "Fetch").row.text()).toContain("Push");
     expect(backend.current.calls.some((call) => call.command === "set_binding")).toBe(false);
     // Still listening: a refusal is not an answer, so the row keeps the key.
-    expect(keyOf(screen, "Fetch").key.text()).toBe("Appuie…");
+    expect(keyOf(screen, "Fetch").key.text()).toBe("Press…");
     expect(state.app.keymap["network.fetch"]).toBeUndefined();
   });
 
@@ -205,7 +205,7 @@ describe("reassigning a binding", () => {
     window.dispatchEvent(held({ key: "j" }));
     await screen.vm.$nextTick();
 
-    expect(keyOf(screen, "Fetch").row.text()).toContain("déplacer");
+    expect(keyOf(screen, "Fetch").row.text()).toContain("move around");
     expect(backend.current.calls.some((call) => call.command === "set_binding")).toBe(false);
   });
 

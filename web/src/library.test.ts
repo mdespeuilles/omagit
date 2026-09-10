@@ -173,7 +173,7 @@ describe("forgetting", () => {
 
     state.forgetRepository(entry("/two"));
     expect(state.app.question?.title).toContain("two");
-    expect(state.app.question?.detail).toContain("reste sur le disque");
+    expect(state.app.question?.detail).toContain("stays on the disk");
     expect(backend.current.calls).toHaveLength(before);
   });
 

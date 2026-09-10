@@ -197,7 +197,7 @@ describe("the shelf", () => {
     await settled(state);
 
     state.dropStash(row!);
-    expect(state.app.question?.verb).toBe("Supprimer");
+    expect(state.app.question?.verb).toBe("Delete");
     expect(state.app.question?.detail).toContain("remise 1");
     state.answer(false);
     await settled(state);
@@ -213,23 +213,23 @@ describe("the shelf", () => {
 
     state.restoreStash(row!, true);
     await settled(state);
-    expect(state.app.notes).toContain("appliquée");
-    expect(state.app.notes).toContain("reste sur l'étagère");
+    expect(state.app.notes).toContain("applied");
+    expect(state.app.notes).toContain("stays on the shelf");
 
     state.restoreStash(row!, false);
     await settled(state);
-    expect(state.app.notes).toContain("retirée de l'étagère");
+    expect(state.app.notes).toContain("taken off the shelf");
   });
 
   it("names the three buttons for the three different things they do", async () => {
-    // "Appliquer" and "Retirer" read as a pair where one of them applies and
+    // "Apply" and "Remove" read as a pair where one of them applies and
     // the other does not; both apply, and only one keeps the entry.
     const { list } = await shelf(1);
 
     expect(list.findAll(".row-action").map((button) => button.text())).toEqual([
-      "Appliquer",
-      "Appliquer et retirer",
-      "Supprimer",
+      "Apply",
+      "Apply and remove",
+      "Delete",
     ]);
   });
 
@@ -283,7 +283,7 @@ describe("the shelf", () => {
     state.stashChanges();
     await settled(state);
 
-    expect(list.find(".stash-note").text()).toContain("non suivis");
+    expect(list.find(".stash-note").text()).toContain("untracked");
   });
 
   it("leaves the diff pane where it is while a write settles", async () => {

@@ -11,6 +11,7 @@
 
 import { computed } from "vue";
 import { app, stopNetwork } from "../state";
+import { t } from "../i18n";
 
 const running = computed(() => app.running);
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
@@ -19,7 +20,9 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
 <template>
   <div v-if="running" class="progress" role="status" aria-live="polite">
     <span class="progress-what">{{ running.what }}</span>
-    <span class="progress-phase mono">{{ app.stopping ? "arrêt…" : running.phase }}</span>
+    <span class="progress-phase mono">{{
+      app.stopping ? t("progress.stopping") : running.phase
+    }}</span>
 
     <span class="progress-track" :class="{ indeterminate: running.percent === null }">
       <span
@@ -33,7 +36,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
     </span>
 
     <button class="link danger" :disabled="app.stopping" @click="stopNetwork()">
-      Annuler<span class="hint">{{ modifier }}.</span>
+      {{ t("progress.cancel") }}<span class="hint">{{ modifier }}.</span>
     </button>
   </div>
 </template>

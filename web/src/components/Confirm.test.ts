@@ -75,7 +75,7 @@ describe("the confirmation", () => {
   it("names the file and says why the loss is final", async () => {
     const { app } = await asking();
     expect(app.find(".dialog-title").text()).toContain("notes.md");
-    expect(app.find(".dialog-detail").text()).toContain("supprime");
+    expect(app.find(".dialog-detail").text()).toContain("deletes it");
   });
 
   it("cancels on Escape without writing", async () => {

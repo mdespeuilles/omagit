@@ -11,6 +11,7 @@ import {
   stopComparing,
   zoneActive,
 } from "../state";
+import { count, t } from "../i18n";
 
 const detail = computed(() => (app.commit.status === "ready" ? app.commit.value : null));
 const comparison = computed(() => (app.compare.status === "ready" ? app.compare.value : null));
@@ -28,7 +29,7 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
 <template>
   <section class="detail">
     <header class="pane-head">
-      <span>{{ comparing ? "Comparaison" : "Commit" }}</span>
+      <span>{{ comparing ? t("commitDetail.comparison") : t("commitDetail.title") }}</span>
       <span v-if="comparing && comparison" class="pane-head-title mono">
         {{ comparison.from.short }} ↔ {{ comparison.to.short }}
       </span>
@@ -36,7 +37,9 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
     </header>
 
     <template v-if="comparing">
-      <p v-if="app.compare.status === 'loading'" class="pane-empty">Lecture de la comparaison…</p>
+      <p v-if="app.compare.status === 'loading'" class="pane-empty">
+        {{ t("commitDetail.readingComparison") }}
+      </p>
       <p v-else-if="app.compare.status === 'failed'" class="pane-error mono">
         {{ app.compare.error }}
       </p>
@@ -45,19 +48,20 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
           <p class="detail-summary mono">{{ comparison.from.short }} ↔ {{ comparison.to.short }}</p>
           <p class="detail-who">
             <span class="dim">
-              {{ comparison.files.length }} fichier{{ comparison.files.length > 1 ? "s" : "" }}
-              entre les deux
+              {{ count("commitDetail.between", comparison.files.length) }}
             </span>
-            <button class="link" @click="stopComparing()">Arrêter la comparaison</button>
+            <button class="link" @click="stopComparing()">
+              {{ t("commitDetail.stopComparing") }}
+            </button>
           </p>
         </div>
 
         <header class="pane-head">
-          <span>Fichiers</span>
+          <span>{{ t("commitDetail.files") }}</span>
           <span class="pane-head-count">{{ comparison.files.length }}</span>
         </header>
         <p v-if="comparison.files.length === 0" class="pane-empty">
-          Rien ne diffère entre ces deux commits
+          {{ t("commitDetail.same") }}
         </p>
         <ol v-else class="detail-files">
           <li
@@ -84,8 +88,10 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
       </template>
     </template>
 
-    <p v-else-if="app.commit.status === 'idle'" class="pane-empty">Aucun commit sélectionné</p>
-    <p v-else-if="app.commit.status === 'loading'" class="pane-empty">Lecture du commit…</p>
+    <p v-else-if="app.commit.status === 'idle'" class="pane-empty">{{ t("commitDetail.none") }}</p>
+    <p v-else-if="app.commit.status === 'loading'" class="pane-empty">
+      {{ t("commitDetail.reading") }}
+    </p>
     <p v-else-if="app.commit.status === 'failed'" class="pane-error mono">{{ app.commit.error }}</p>
 
     <template v-else-if="detail">
@@ -103,7 +109,7 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
         <!-- Only when it differs from the author, which is the case worth
              seeing: a rebase, a cherry-pick, a patch applied by someone else. -->
         <p v-if="detail.committer" class="detail-who">
-          <span class="dim">commité par</span>
+          <span class="dim">{{ t("commitDetail.committedBy") }}</span>
           <span class="mono">{{ detail.committer.name }}</span>
           <span class="dim" :title="exact(detail.committer.when)">
             {{ when(detail.committer.when) }}
@@ -111,17 +117,19 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
         </p>
 
         <p class="detail-parents mono">
-          <span class="dim">{{ detail.parents.length > 1 ? "parents" : "parent" }}</span>
-          <span v-if="detail.parents.length === 0" class="dim">aucun — commit racine</span>
+          <span class="dim">{{
+            detail.parents.length > 1 ? t("commitDetail.parents") : t("commitDetail.parent")
+          }}</span>
+          <span v-if="detail.parents.length === 0" class="dim">{{ t("commitDetail.root") }}</span>
           <span v-for="parent in detail.parents" :key="parent.full">{{ parent.short }}</span>
         </p>
       </div>
 
       <header class="pane-head">
-        <span>Fichiers</span>
+        <span>{{ t("commitDetail.files") }}</span>
         <span class="pane-head-count">{{ detail.files.length }}</span>
       </header>
-      <p v-if="detail.files.length === 0" class="pane-empty">Ce commit ne change aucun fichier</p>
+      <p v-if="detail.files.length === 0" class="pane-empty">{{ t("commitDetail.noFiles") }}</p>
       <ol v-else class="detail-files">
         <li
           v-for="file in detail.files"

@@ -21,6 +21,7 @@ import {
   nextConflict,
   openInEditor,
 } from "../state";
+import { t } from "../i18n";
 
 const resolving = computed(() => app.resolving);
 const body = computed(() =>
@@ -34,7 +35,7 @@ function name(side: "ours" | "theirs", label: string): string {
   const named = side === "ours" ? sides?.ours : sides?.theirs;
   // `HEAD` is what git writes on our side when there is nothing better to say;
   // the branch is better to say.
-  return named ?? (label === "HEAD" ? "la version en place" : label);
+  return named ?? (label === "HEAD" ? t("conflict.inPlace") : label);
 }
 
 /// The label `git` wrote into the file, when it adds anything to the name.
@@ -79,18 +80,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
   <div v-if="resolving" class="overlay" @click.self="closeConflict()">
     <section class="dialog form conflict-dialog" role="dialog" aria-modal="true">
       <header class="dialog-head">
-        <span class="dialog-title">Résoudre un conflit</span>
+        <span class="dialog-title">{{ t("conflict.title") }}</span>
         <span class="mono dim">{{ resolving.file }}</span>
         <span class="pane-head-spacer" />
         <template v-if="body && body.regions > 0">
-          <span class="dim">conflit {{ resolving.at + 1 }} / {{ body.regions }}</span>
+          <span class="dim">{{
+            t("conflict.of", { at: resolving.at + 1, total: body.regions })
+          }}</span>
           <button class="link" :disabled="body.regions < 2" @click="nextConflict()">
-            conflit suivant <span class="hint">n</span>
+            {{ t("conflict.next") }} <span class="hint">n</span>
           </button>
         </template>
       </header>
 
-      <p v-if="resolving.body.status === 'loading'" class="pane-empty">Lecture du fichier…</p>
+      <p v-if="resolving.body.status === 'loading'" class="pane-empty">
+        {{ t("conflict.readingFile") }}
+      </p>
       <p v-else-if="resolving.body.status === 'failed'" class="pane-error mono">
         {{ resolving.body.error }}
       </p>
@@ -99,8 +104,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
            only thing missing is the `git add`. Said rather than drawn as an
            empty panel. -->
       <p v-else-if="body && body.regions === 0" class="pane-empty">
-        Ce fichier ne contient plus de marqueurs de conflit — il a été résolu ailleurs. « Marquer
-        résolu et indexer » suffit.
+        {{ t("conflict.gone") }}
       </p>
 
       <div v-if="body" class="conflict-body">
@@ -119,34 +123,43 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             :class="{ current: resolving.at === segment.index, answered: !!chosen(segment.index) }"
           >
             <header class="conflict-choices">
-              <span class="dim mono">@@ ligne {{ segment.start }} @@</span>
+              <span class="dim mono"
+                >@@ {{ t("conflict.atLine", { line: segment.start }) }} @@</span
+              >
               <span class="pane-head-spacer" />
               <button
                 :class="{ primary: chosen(segment.index) === 'ours' }"
-                :title="`Garder la version de ${name('ours', segment.ours_label)} (ours)`"
+                :title="
+                  t('conflict.keep', { side: name('ours', segment.ours_label), pronoun: 'ours' })
+                "
                 @click="chooseSide(segment.index, 'ours')"
               >
-                Ours
+                {{ t("conflict.ours") }}
               </button>
               <button
                 :class="{ primary: chosen(segment.index) === 'theirs' }"
-                :title="`Garder la version de ${name('theirs', segment.theirs_label)} (theirs)`"
+                :title="
+                  t('conflict.keep', {
+                    side: name('theirs', segment.theirs_label),
+                    pronoun: 'theirs',
+                  })
+                "
                 @click="chooseSide(segment.index, 'theirs')"
               >
-                Theirs
+                {{ t("conflict.theirs") }}
               </button>
               <button
                 :class="{ primary: chosen(segment.index) === 'both' }"
-                title="Garder les deux côtés, Ours puis Theirs"
+                :title="t('conflict.bothTitle')"
                 @click="chooseSide(segment.index, 'both')"
               >
-                Both
+                {{ t("conflict.both") }}
               </button>
             </header>
 
             <div class="conflict-side">
               <span class="conflict-side-name">
-                Ours — {{ name("ours", segment.ours_label) }}
+                {{ t("conflict.ours") }} — {{ name("ours", segment.ours_label) }}
                 <span v-if="marker('ours', segment.ours_label)" class="mono dim">
                   {{ marker("ours", segment.ours_label) }}
                 </span>
@@ -167,7 +180,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
                  decision rather than one of its answers. -->
             <template v-if="segment.base">
               <div class="conflict-side">
-                <span class="conflict-side-name dim">Base — l'ancêtre commun</span>
+                <span class="conflict-side-name dim">{{ t("conflict.base") }}</span>
               </div>
               <div v-for="(line, offset) in segment.base" :key="`b${offset}`" class="conflict-line">
                 <span class="gutter mono" />
@@ -178,7 +191,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
             <div class="conflict-side">
               <span class="conflict-side-name">
-                Theirs — {{ name("theirs", segment.theirs_label) }}
+                {{ t("conflict.theirs") }} — {{ name("theirs", segment.theirs_label) }}
                 <span v-if="marker('theirs', segment.theirs_label)" class="mono dim">
                   {{ marker("theirs", segment.theirs_label) }}
                 </span>
@@ -198,16 +211,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       </div>
 
       <footer class="dialog-foot">
-        <button @click="openInEditor()">Ouvrir dans l'éditeur</button>
+        <button @click="openInEditor()">{{ t("conflict.openEditor") }}</button>
         <span class="dialog-foot-spacer" />
-        <button @click="closeConflict()">Annuler</button>
+        <button @click="closeConflict()">{{ t("conflict.cancel") }}</button>
         <button
           class="primary"
           :disabled="!conflictSettled() || !!app.busy"
-          :title="conflictSettled() ? '' : 'Chaque conflit attend une réponse'"
+          :title="conflictSettled() ? '' : t('conflict.unanswered')"
           @click="applyResolution()"
         >
-          Marquer résolu et indexer
+          {{ t("conflict.resolve") }}
         </button>
       </footer>
     </section>

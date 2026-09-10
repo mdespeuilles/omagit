@@ -80,8 +80,8 @@ describe("the diff", () => {
     const { diff } = await drawn([modified({ staged: "modified", unstaged: null })]);
 
     const labels = diff.findAll(".hunk-actions button").map((button) => button.text());
-    expect(labels).toContain("Désindexer le bloc");
-    expect(labels).not.toContain("Rejeter");
+    expect(labels).toContain("Unstage the hunk");
+    expect(labels).not.toContain("Discard");
   });
 
   it("offers nothing to stage when the diff is a commit's", async () => {

@@ -14,6 +14,7 @@
 // keyboard. `aria-label` still names them, so a screen reader has them.
 
 import type { Caption } from "../ipc";
+import { t } from "../i18n";
 
 defineProps<{ caption: Caption }>();
 
@@ -32,8 +33,8 @@ async function act(what: "minimize" | "toggleMaximize" | "close") {
     <button
       v-if="caption.minimize"
       tabindex="-1"
-      title="Réduire"
-      aria-label="Réduire"
+      :title="t('window.minimize')"
+      :aria-label="t('window.minimize')"
       @click="act('minimize')"
     >
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" /></svg>
@@ -41,8 +42,8 @@ async function act(what: "minimize" | "toggleMaximize" | "close") {
     <button
       v-if="caption.maximize"
       tabindex="-1"
-      title="Agrandir"
-      aria-label="Agrandir"
+      :title="t('window.maximize')"
+      :aria-label="t('window.maximize')"
       @click="act('toggleMaximize')"
     >
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5h9v9h-9z" /></svg>
@@ -51,8 +52,8 @@ async function act(what: "minimize" | "toggleMaximize" | "close") {
       v-if="caption.close"
       class="close"
       tabindex="-1"
-      title="Fermer"
-      aria-label="Fermer"
+      :title="t('window.close')"
+      :aria-label="t('window.close')"
       @click="act('close')"
     >
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>

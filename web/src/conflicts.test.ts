@@ -66,7 +66,7 @@ describe("a repository stopped on a conflict", () => {
     const list = mount(StatusList);
     const actions = list.findAll(".row-action").map((button) => button.text());
     // The dialog first, then the two whole-file answers named by branch.
-    expect(actions).toEqual(["Résoudre…", "main", "feature"]);
+    expect(actions).toEqual(["Resolve…", "main", "feature"]);
     expect(state.app.sides).toEqual({ ours: "main", theirs: "feature", replayed: false });
   });
 
@@ -78,9 +78,9 @@ describe("a repository stopped on a conflict", () => {
 
     const list = mount(StatusList);
     const titles = list.findAll(".row-action").map((button) => button.attributes("title") ?? "");
-    expect(titles[1]).toContain("déjà en place");
-    expect(titles[1]).toContain("rejou");
-    expect(titles[2]).toContain("rejoué");
+    expect(titles[1]).toContain("already in place");
+    expect(titles[1]).toContain("replayed");
+    expect(titles[2]).toContain("replayed");
   });
 
   it("asks for the sides only while something is running", async () => {
@@ -119,7 +119,7 @@ describe("a repository stopped on a conflict", () => {
     const StatusList = (await import("./components/StatusList.vue")).default;
 
     const list = mount(StatusList);
-    expect(list.find(".check").attributes("title")).toBe("Marquer ce fichier résolu");
+    expect(list.find(".check").attributes("title")).toBe("Mark this file resolved");
   });
 
   it("offers no discard on a conflicted row", async () => {
@@ -145,7 +145,7 @@ describe("a repository stopped on a conflict", () => {
     expect(diff.findAll(".hunk-actions")).toHaveLength(0);
     // And the pane says which one file it is looking at, rather than offering
     // two tabs that would do the same thing.
-    expect(diff.find(".tab").text()).toBe("En conflit");
+    expect(diff.find(".tab").text()).toBe("In conflict");
   });
 
   it("holds the way forward shut until the conflicts are settled", async () => {
@@ -229,7 +229,7 @@ describe("board 07's conflict dialog", () => {
 
     expect(sent("conflict_file")).toEqual([{ path: "/repo", file: "shared.txt" }]);
     expect(state.app.resolving?.choices).toEqual([null, null]);
-    expect(dialog.text()).toContain("conflit 1 / 2");
+    expect(dialog.text()).toContain("1 of 2");
   });
 
   it("names the sides by their branch rather than by the pronoun", async () => {
@@ -242,7 +242,7 @@ describe("board 07's conflict dialog", () => {
 
   it("holds the primary shut until every conflict has an answer", async () => {
     const { state, dialog } = await opened(2);
-    const primary = () => dialog.findAll("button").find((b) => b.text().includes("indexer"))!;
+    const primary = () => dialog.findAll("button").find((b) => b.text().includes("Mark resolved"))!;
 
     expect(primary().attributes("disabled")).toBeDefined();
 
@@ -322,7 +322,7 @@ describe("board 07's conflict dialog", () => {
   it("lets a file settled elsewhere be staged with no answers at all", async () => {
     const { state, dialog } = await opened(0);
 
-    expect(dialog.text()).toContain("plus de marqueurs");
+    expect(dialog.text()).toContain("no conflict markers");
     state.applyResolution();
     await settled(state);
 
