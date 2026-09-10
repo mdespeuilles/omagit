@@ -65,14 +65,14 @@ each finds what the other broke the next time it is used.
 
 ## Documentation
 
-| File | Authority over |
-|---|---|
-| `docs/SPEC.md` | everything not covered below |
-| `docs/DESIGN-TOKENS.md` | token names and derivation formulas |
-| `docs/DESIGN.md` | visual usage and interface states (mock-ups in `docs/design/`) |
-| `docs/ARCHITECTURE.md` | the decisions taken, and the open risks |
-| `docs/KEYMAP.md` | every binding, and the rules behind them |
-| `docs/notes/` | what each dependency was verified to actually do |
+| File                    | Authority over                                                 |
+| ----------------------- | -------------------------------------------------------------- |
+| `docs/SPEC.md`          | everything not covered below                                   |
+| `docs/DESIGN-TOKENS.md` | token names and derivation formulas                            |
+| `docs/DESIGN.md`        | visual usage and interface states (mock-ups in `docs/design/`) |
+| `docs/ARCHITECTURE.md`  | the decisions taken, and the open risks                        |
+| `docs/KEYMAP.md`        | every binding, and the rules behind them                       |
+| `docs/notes/`           | what each dependency was verified to actually do               |
 
 Where the first three disagree, `DESIGN-TOKENS.md` wins on tokens, `DESIGN.md`
 on appearance, `SPEC.md` on the rest.
@@ -82,9 +82,9 @@ on appearance, `SPEC.md` on the rest.
 Two files in the config directory — `~/Library/Application Support/omagit` on
 macOS, `$XDG_CONFIG_HOME/omagit` on Linux:
 
-| File | Holds |
-|---|---|
-| `settings.toml` | the theme source and the density |
+| File                | Holds                                                        |
+| ------------------- | ------------------------------------------------------------ |
+| `settings.toml`     | the theme source and the density                             |
 | `repositories.toml` | the repositories you added, and the groups you filed them in |
 
 They are separate because they change at completely different rates, and a bad
