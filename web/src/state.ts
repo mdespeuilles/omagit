@@ -1462,7 +1462,14 @@ export function stashChanges(): void {
   const { message: text, untracked } = form;
   state.stashing = null;
   void write("Remiser", async () => {
-    state.notes = await api.stashPush(path, text, untracked);
+    const said = await api.stashPush(path, text, untracked);
+    // The one case where `git`'s own line is the whole answer: "No local
+    // changes to save" is what happened, and no sentence of ours improves it.
+    state.notes = said.includes("No local changes")
+      ? said
+      : ["Remisé · la copie de travail est repartie propre", said.trim()]
+          .filter(Boolean)
+          .join("\n");
   });
 }
 
@@ -1476,8 +1483,22 @@ export function stashChanges(): void {
 export function restoreStash(row: StashRow, keep: boolean): void {
   const path = state.open;
   if (!path) return;
-  void write(keep ? `Appliquer ${address(row)}` : `Retirer ${address(row)}`, async () => {
-    state.notes = await api.stashRestore(path, row.id.full, keep);
+  const where = address(row);
+  void write(keep ? `Appliquer ${where}` : `Appliquer et retirer ${where}`, async () => {
+    const said = await api.stashRestore(path, row.id.full, keep);
+    // What `git stash apply` prints is a status — "On branch main" — which
+    // answers a question nobody asked and looks, on a screen where the shelf
+    // does not visibly move, exactly like a button that did nothing. The
+    // outcome is said here in the app's own words; `git`'s own text follows on
+    // the second line, and the exact command line is in the journal.
+    state.notes = [
+      keep
+        ? `${where} appliquée · elle reste sur l'étagère`
+        : `${where} appliquée et retirée de l'étagère`,
+      said.trim(),
+    ]
+      .filter(Boolean)
+      .join("\n");
   });
 }
 
@@ -1496,7 +1517,13 @@ export function dropStash(row: StashRow): void {
     },
     () =>
       void write(`Supprimer ${address(row)}`, async () => {
-        state.notes = await api.stashDrop(path, row.id.full);
+        const said = await api.stashDrop(path, row.id.full);
+        state.notes = [
+          `${address(row)} supprimée · son contenu n'est plus joignable que par le reflog`,
+          said.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n");
       }),
   );
 }

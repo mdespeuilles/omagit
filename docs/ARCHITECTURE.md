@@ -1205,6 +1205,26 @@ since §2.35 and was being used in exactly one place, the clone dialog. It is no
 what `say()` does, so it holds for every command; the exact line is still in the
 journal, marked, before it runs.
 
+### 2.41 "Appliquer" looked like a button that did nothing
+
+Two reports from the same click, and they are the same report.
+
+**Nothing said it had worked.** `git stash apply` prints a status — `On branch
+main` — and the app was showing that as its note: a sentence about which branch
+you are on, after an operation that put two files back somewhere else. On the
+Stashes screen nothing else moves either, because the entry *staying* is what
+apply means. So the outcome is now said in the app's own words — "stash@{0}
+appliquée · elle reste sur l'étagère" — with `git`'s text on the second line and
+the exact command in the journal. SPEC §3 rule 3 is about not re-wording Git's
+*errors*; it does not ask us to hand over its status output as an answer.
+
+**"Pourquoi il reste ?"** Because "Appliquer" and "Retirer" read as a pair where
+one applies and the other does not, when in fact both apply and only one keeps
+the entry. The labels were the bug: they are "Appliquer", "Appliquer et
+retirer" and "Supprimer" now, which is longer and says which of three things is
+about to happen. The titles spell out the rest, and the note repeats the answer
+at the moment the question actually arises — just after the click.
+
 ### 2.40 A failure gets a band, not a modal
 
 Reported from the fixture: "les messages d'erreur en rouge en bas ne sont pas

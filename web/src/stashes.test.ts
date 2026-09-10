@@ -204,6 +204,35 @@ describe("the shelf", () => {
     expect(sent("stash_drop")).toHaveLength(0);
   });
 
+  it("says what happened, because the shelf does not visibly move", async () => {
+    // `git stash apply` prints "On branch main", which answers a question
+    // nobody asked; on a screen where the entry stays put — that is what apply
+    // *means* — the whole thing looked like a button that did nothing.
+    const { state } = await shelf(1);
+    const row = state.app.stashes.status === "ready" ? state.app.stashes.value[0]! : null;
+
+    state.restoreStash(row!, true);
+    await settled(state);
+    expect(state.app.notes).toContain("appliquée");
+    expect(state.app.notes).toContain("reste sur l'étagère");
+
+    state.restoreStash(row!, false);
+    await settled(state);
+    expect(state.app.notes).toContain("retirée de l'étagère");
+  });
+
+  it("names the three buttons for the three different things they do", async () => {
+    // "Appliquer" and "Retirer" read as a pair where one of them applies and
+    // the other does not; both apply, and only one keeps the entry.
+    const { list } = await shelf(1);
+
+    expect(list.findAll(".row-action").map((button) => button.text())).toEqual([
+      "Appliquer",
+      "Appliquer et retirer",
+      "Supprimer",
+    ]);
+  });
+
   it("puts the files back on the working copy when one is popped", async () => {
     const { state } = await shelf(1);
     const row = state.app.stashes.status === "ready" ? state.app.stashes.value[0]! : null;

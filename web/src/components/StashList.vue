@@ -115,7 +115,7 @@ function origin(row: StashRow): string {
           <button
             class="row-action"
             :disabled="busy"
-            title="Appliquer sans retirer de la liste"
+            title="Remettre ces modifications dans la copie de travail. La remise reste sur l'étagère."
             @click="restoreStash(row, true)"
           >
             Appliquer
@@ -123,18 +123,18 @@ function origin(row: StashRow): string {
           <button
             class="row-action"
             :disabled="busy"
-            title="Appliquer et retirer de la liste"
+            title="Remettre ces modifications dans la copie de travail, puis retirer la remise de l'étagère."
             @click="restoreStash(row, false)"
           >
-            Retirer
+            Appliquer et retirer
           </button>
           <button
             class="row-action danger"
             :disabled="busy"
-            title="Jeter sans appliquer"
+            title="Jeter la remise sans l'appliquer. Son contenu ne sera plus joignable que par le reflog."
             @click="dropStash(row)"
           >
-            Suppr.
+            Supprimer
           </button>
         </span>
       </li>
