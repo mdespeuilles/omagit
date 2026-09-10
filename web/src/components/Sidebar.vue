@@ -11,10 +11,10 @@
 // milestones would move under the reader every time.
 
 import { computed } from "vue";
-import { app, showScreen, stagedCount, unstagedCount } from "../state";
+import { app, changedCount, showScreen } from "../state";
 import BranchTree from "./BranchTree.vue";
 
-const changes = computed(() => (app.open ? unstagedCount() + stagedCount() : 0));
+const changes = computed(() => (app.open ? changedCount() : 0));
 const conflicts = computed(() => app.summary?.counts.conflicted ?? 0);
 const stashes = computed(() => app.summary?.stashes ?? 0);
 </script>

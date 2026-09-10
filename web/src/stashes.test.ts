@@ -296,6 +296,31 @@ describe("the shelf", () => {
     expect(sent("stash_file_diff").length).toBeGreaterThan(afterOpening);
   });
 
+  it("counts files in the sidebar, not sides of the index", async () => {
+    // A file staged and then edited again is on both sides at once. Adding the
+    // two sides together made the sidebar say 2 over a list of one row, which
+    // is two counters on one screen disagreeing about the same thing.
+    backend.current = new Repository([
+      { path: "half.txt", staged: "modified", unstaged: "modified", hunks: 2 },
+      { path: "whole.txt", staged: null, unstaged: "modified", hunks: 1 },
+    ]);
+    vi.resetModules();
+    const state = await import("./state");
+    await state.boot();
+    await state.openRepository("/repo");
+    await settled(state);
+    const Sidebar = (await import("./components/Sidebar.vue")).default;
+
+    const sidebar = mount(Sidebar);
+    const row = sidebar.findAll(".sidebar-row").find((entry) => entry.text().includes("Working"))!;
+
+    expect(state.changedCount()).toBe(2);
+    expect(row.text()).toContain("2");
+    // And the two sides are still counted as sides where that is the question.
+    expect(state.stagedCount()).toBe(1);
+    expect(state.unstagedCount()).toBe(2);
+  });
+
   it("counts the shelf in the sidebar", async () => {
     const { state } = await shelf(2);
     const Sidebar = (await import("./components/Sidebar.vue")).default;

@@ -1754,6 +1754,17 @@ export function canCommit(): boolean {
   return state.amend || stagedCount() > 0;
 }
 
+/// How many files the working copy has anything to say about.
+///
+/// One per row, not one per side. The sidebar was adding the two sides
+/// together, so a file that is half in the index — staged, then edited again —
+/// counted twice: "Working Copy 8" over a list of seven. The two sides belong
+/// in the status bar, which is about the index; the sidebar's number answers
+/// "how many files need me", and that is a count of files.
+export function changedCount(): number {
+  return state.status.status === "ready" ? state.status.value.length : 0;
+}
+
 export function stagedCount(): number {
   return state.status.status === "ready"
     ? state.status.value.filter((row) => row.staged !== null).length
