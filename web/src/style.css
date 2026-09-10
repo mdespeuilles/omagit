@@ -706,12 +706,20 @@ button.icon {
    specificity is not something a linter catches when the selector lists differ;
    keeping them together is. */
 
-/* A list you read: the row you are looking at. */
+/* A list you read: the row you are looking at. The branch tree joins them —
+   its mark says "this is the history on screen", which is not the same claim as
+   the Workspace rows' accent fill, and two filled rows would make it. */
 .file-row.selected,
 .commit-row.selected,
-.stash-entry.selected {
+.stash-entry.selected,
+.branch-row.selected {
   background: var(--surface-raised);
   --row-bg: var(--surface-raised);
+}
+/* And an edge, because a branch row is narrow and a surface change alone is
+   easy to miss beside a filled row two lines above it. */
+.branch-row.selected {
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* A list you choose from: the row is the answer, so it is filled (board 03,
@@ -749,7 +757,8 @@ button.icon {
 }
 .file-row.selected:hover,
 .commit-row.selected:hover,
-.stash-entry.selected:hover {
+.stash-entry.selected:hover,
+.branch-row.selected:hover {
   background: var(--surface-raised);
   --row-bg: var(--surface-raised);
 }
