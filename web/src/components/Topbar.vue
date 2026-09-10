@@ -45,6 +45,7 @@ import {
 } from "../state";
 import { tildify } from "../format";
 import { ACTIONS, binding, hint } from "../keymap";
+import { t } from "../i18n";
 import Glyph from "./Glyph.vue";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
@@ -86,8 +87,8 @@ const ahead = computed(() => (tracking.value && !tracking.value.gone ? tracking.
 /// Why a button is off, said where the button is rather than after the fact.
 const cannotPush = computed(() => {
   if (app.gitUnusable) return app.gitUnusable;
-  if (busy.value) return "une opération réseau est déjà en cours";
-  if (detached.value) return "HEAD est détaché : il n'y a pas de branche à publier";
+  if (busy.value) return t("topbar.networkBusy");
+  if (detached.value) return t("topbar.detached");
   return null;
 });
 
@@ -143,8 +144,8 @@ const where = computed(() => {
            pixel high, and would sit somewhere else again in another web view. -->
       <button
         class="icon"
-        title="Retour aux dépôts"
-        aria-label="Retour aux dépôts"
+        :title="t('topbar.back')"
+        :aria-label="t('topbar.back')"
         @click="showScreen('repositories')"
       >
         <Glyph name="panel" />
@@ -159,13 +160,13 @@ const where = computed(() => {
     <template v-else>
       <span class="topbar-name mono">omagit</span>
       <span class="topbar-rule" />
-      <span class="topbar-crumb">Dépôts</span>
+      <span class="topbar-crumb">{{ t("topbar.repositories") }}</span>
     </template>
 
     <span class="topbar-spacer" data-tauri-drag-region />
 
     <span v-if="app.gitUnusable" class="banner danger">
-      git indisponible — {{ app.gitUnusable }}
+      {{ t("topbar.gitUnusable", { reason: app.gitUnusable }) }}
     </span>
 
     <template v-if="inRepository">
@@ -180,11 +181,7 @@ const where = computed(() => {
       </button>
       <button
         :disabled="busy || !!app.gitUnusable || !tracking"
-        :title="
-          tracking
-            ? titled('Pull', 'network.pull')
-            : 'Cette branche ne suit aucune branche distante'
-        "
+        :title="tracking ? titled('Pull', 'network.pull') : t('topbar.noUpstream')"
         @click="pullRemote()"
       >
         Pull<span v-if="behind > 0" class="hint">↓{{ behind }}</span>
@@ -201,21 +198,21 @@ const where = computed(() => {
       </button>
     </template>
     <template v-else>
-      <button :title="titled('Ajouter un dépôt local', 'repository.add')" @click="addRepository()">
-        Ajouter un dépôt local
+      <button :title="titled(t('topbar.addRepository'), 'repository.add')" @click="addRepository()">
+        {{ t("topbar.addRepository") }}
       </button>
       <button
         :disabled="busy || !!app.gitUnusable"
-        :title="titled('Cloner un dépôt', 'repository.clone')"
+        :title="titled(t('topbar.cloneTitle'), 'repository.clone')"
         @click="openClone()"
       >
-        Cloner…
+        {{ t("topbar.clone") }}
       </button>
     </template>
 
     <span class="topbar-rule" />
-    <button :title="titled('Palette de commandes', 'palette.open')" @click="openPalette()">
-      Rechercher
+    <button :title="titled(t('topbar.palette'), 'palette.open')" @click="openPalette()">
+      {{ t("topbar.search") }}
     </button>
 
     <span

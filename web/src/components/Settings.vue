@@ -21,11 +21,14 @@ import {
   chooseDensity,
   chooseScale,
   chooseTheme,
+  chooseLanguage,
+  languagePreference,
   readPreferences,
   setBinding,
   toggleShortcuts,
 } from "../state";
 import { ACTIONS, binding, capture, hint, reassigned, refuse } from "../keymap";
+import { LANGUAGES, systemLanguage, t } from "../i18n";
 
 const prefs = computed(() => (app.preferences.status === "ready" ? app.preferences.value : null));
 
@@ -95,6 +98,12 @@ function onKey(event: KeyboardEvent): void {
 function reset(id: string): void {
   setBinding(id, null);
   stopCapture();
+}
+
+/// A language's own name for itself, for the row that follows the system: "the
+/// system's, which is Français" says more than a tag does.
+function named(tag: string): string {
+  return LANGUAGES.find((one) => one.tag === tag)?.name ?? tag;
 }
 
 /// Whether a source is the one in force. `automatic` is a request, never an
@@ -278,6 +287,41 @@ function on(source: string, name = ""): boolean {
           <span class="settings-percent mono">{{ percent }} %</span>
           <button :disabled="percent >= 200" @click="scaleBy(0.05)">+</button>
           <button class="link" @click="chooseScale(1.15)">Défaut</button>
+        </div>
+      </section>
+
+      <section class="settings-block">
+        <h2 class="settings-title">{{ t("settings.language") }}</h2>
+        <p class="settings-note">{{ t("settings.languageNote") }}</p>
+        <div class="settings-picks" role="radiogroup" :aria-label="t('settings.language')">
+          <button
+            class="row settings-row"
+            role="radio"
+            :aria-checked="languagePreference() === null"
+            :class="{ selected: languagePreference() === null }"
+            @click="chooseLanguage(null)"
+          >
+            <span class="pick" :class="{ on: languagePreference() === null }" aria-hidden="true" />
+            <span>{{ t("settings.languageSystem") }}</span>
+            <span class="settings-detail">{{ named(systemLanguage()) }}</span>
+          </button>
+          <button
+            v-for="one in LANGUAGES"
+            :key="one.tag"
+            class="row settings-row"
+            role="radio"
+            :aria-checked="languagePreference() === one.tag"
+            :class="{ selected: languagePreference() === one.tag }"
+            @click="chooseLanguage(one.tag)"
+          >
+            <span
+              class="pick"
+              :class="{ on: languagePreference() === one.tag }"
+              aria-hidden="true"
+            />
+            <span>{{ one.name }}</span>
+            <span class="settings-detail mono">{{ one.tag }}</span>
+          </button>
         </div>
       </section>
 

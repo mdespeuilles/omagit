@@ -153,9 +153,9 @@ describe("a repository stopped on a conflict", () => {
     const StatusBar = (await import("./components/StatusBar.vue")).default;
 
     const bar = mount(StatusBar);
-    const carry = bar.findAll("button").find((button) => button.text() === "Poursuivre")!;
+    const carry = bar.findAll("button").find((button) => button.text() === "Continue")!;
     expect(carry.attributes("disabled")).toBeDefined();
-    expect(carry.attributes("title")).toContain("conflit");
+    expect(carry.attributes("title")).toContain("conflict");
 
     const row = state.app.status.status === "ready" ? state.app.status.value[0]! : null;
     state.resolveConflict(row!, "ours");
@@ -165,7 +165,7 @@ describe("a repository stopped on a conflict", () => {
     expect(
       bar
         .findAll("button")
-        .find((button) => button.text() === "Poursuivre")!
+        .find((button) => button.text() === "Continue")!
         .attributes("disabled"),
     ).toBeUndefined();
   });
@@ -204,8 +204,8 @@ describe("a repository stopped on a conflict", () => {
 
     const bar = mount(StatusBar);
     const labels = bar.findAll("button").map((button) => button.text());
-    expect(labels).toContain("Poursuivre");
-    expect(labels).toContain("Abandonner");
+    expect(labels).toContain("Continue");
+    expect(labels).toContain("Abort");
   });
 });
 

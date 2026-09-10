@@ -13,6 +13,7 @@
 
 import { app, closeTab, openRepository } from "../state";
 import Glyph from "./Glyph.vue";
+import { t } from "../i18n";
 </script>
 
 <template>
@@ -34,8 +35,8 @@ import Glyph from "./Glyph.vue";
       <button
         class="tabbar-close"
         :tabindex="tab.path === app.open ? 0 : -1"
-        :title="`Fermer ${tab.name}`"
-        :aria-label="`Fermer ${tab.name}`"
+        :title="t('tabs.close', { name: tab.name })"
+        :aria-label="t('tabs.close', { name: tab.name })"
         @click.stop="closeTab(tab.path)"
       >
         <Glyph name="close" />

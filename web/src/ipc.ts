@@ -357,6 +357,9 @@ export const api = {
   setScale: (scale: number) => invoke<string>("set_scale", { scale }),
   panes: () => invoke<Record<string, number>>("panes"),
   keymap: () => invoke<Record<string, string>>("keymap"),
+  /// `null` while the interface follows the system's language.
+  language: () => invoke<string | null>("language"),
+  setLanguage: (language: string | null) => invoke<void>("set_language", { language }),
   /// `null` puts the action back on the table's own binding.
   setBinding: (id: string, binding: string | null) => invoke<void>("set_binding", { id, binding }),
   setPane: (name: string, width: number) => invoke<void>("set_pane", { name, width }),

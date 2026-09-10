@@ -94,6 +94,8 @@ export class Repository {
   /// The bindings the user has changed (SPEC §11). Empty unless a test is about
   /// a window that starts with a reassignment already stored.
   keymap: Record<string, string> = {};
+  /// The stored interface language, `null` while it follows the system.
+  language: string | null = null;
 
   /// The history, newest first. Named for `git log` rather than "commits",
   /// which is already the list of commits the commit box has *made*.
@@ -266,6 +268,11 @@ export class Repository {
         return undefined;
       case "keymap":
         return { ...this.keymap };
+      case "language":
+        return this.language;
+      case "set_language":
+        this.language = args["language"] as string | null;
+        return undefined;
       case "set_binding": {
         const id = args["id"] as string;
         const binding = args["binding"] as string | null;

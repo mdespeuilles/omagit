@@ -18,6 +18,7 @@ import {
   showBranchHistory,
   toggleBranchGroup,
 } from "../state";
+import { count as plural, t } from "../i18n";
 import Glyph from "./Glyph.vue";
 
 /// Whether this row's history is the one History is showing, which is what a
@@ -100,7 +101,9 @@ function divergence(row: BranchRow): string {
 function stale(row: BranchRow): string {
   if (row.head || row.age < STALE) return "";
   const months = Math.round(row.age / (30 * 86_400));
-  return months >= 12 ? `${Math.round(months / 12)} ans` : `${months} mois`;
+  return months >= 12
+    ? plural("branches.years", Math.round(months / 12))
+    : plural("branches.months", months);
 }
 
 // ── Creating one ────────────────────────────────────────────────────────────
@@ -144,7 +147,7 @@ function stop(name: string): 0 | -1 {
          drew the same triangle and answered nothing. -->
       <button class="group-head as-button" @click="toggleBranchGroup('branches')">
         <Glyph :name="isCollapsed('branches') ? 'chevron-right' : 'chevron-down'" class="chevron" />
-        <span>Branches</span>
+        <span>{{ t("branches.title") }}</span>
         <span class="pane-head-spacer" />
         <span class="pane-head-count">{{ total }}</span>
       </button>
@@ -154,7 +157,7 @@ function stop(name: string): 0 | -1 {
          There is no branch yet — `main` is a name `HEAD` points at, not a ref —
          and a count of 0 with no rows under it reads as a tree that failed to
          load rather than as a repository waiting for its first commit. -->
-        <p v-if="total === 0" class="pane-empty">Aucune branche : elle naîtra du premier commit.</p>
+        <p v-if="total === 0" class="pane-empty">{{ t("branches.empty") }}</p>
 
         <!-- A `<div>` for the same reason as the library row: these rows hold
          their own action buttons, and a button inside a button is invalid. -->
@@ -163,7 +166,7 @@ function stop(name: string): 0 | -1 {
           :key="row.name"
           class="row branch-row"
           :class="{ selected: showing(row.name) }"
-          :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
+          :title="t('branches.row', { branch: row.name })"
           @click="showBranchHistory(row.name)"
           @dblclick="checkoutBranch(row.name)"
         >
@@ -172,17 +175,19 @@ function stop(name: string): 0 | -1 {
           <span v-if="row.head" class="ref head">HEAD</span>
           <span class="pane-head-spacer" />
           <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
-          <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
+          <span v-else-if="row.merged && !row.head" class="ref merged">{{
+            t("branches.merged")
+          }}</span>
           <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
           <span class="row-actions">
             <button
               v-if="!row.head"
               class="row-action"
               :tabindex="stop(row.name)"
-              :title="`Fusionner ${row.name} dans la branche courante`"
+              :title="t('branches.merge', { branch: row.name })"
               @click.stop="mergeBranch(row.name)"
             >
-              Fusionner
+              {{ t("branches.mergeShort") }}
             </button>
             <button
               v-if="!row.head"
@@ -191,16 +196,16 @@ function stop(name: string): 0 | -1 {
               :title="`Rebaser la branche courante sur ${row.name}`"
               @click.stop="rebaseOnto(row.name)"
             >
-              Rebaser
+              {{ t("branches.rebaseShort") }}
             </button>
             <button
               v-if="!row.head"
               class="row-action danger"
               :tabindex="stop(row.name)"
-              title="Supprimer cette branche"
+              :title="t('branches.delete')"
               @click.stop="deleteBranch(row)"
             >
-              Suppr.
+              {{ t("branches.deleteShort") }}
             </button>
           </span>
         </div>
@@ -235,17 +240,19 @@ function stop(name: string): 0 | -1 {
               <span v-if="row.head" class="ref head">HEAD</span>
               <span class="pane-head-spacer" />
               <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
-              <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
+              <span v-else-if="row.merged && !row.head" class="ref merged">{{
+                t("branches.merged")
+              }}</span>
               <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
               <span class="row-actions">
                 <button
                   v-if="!row.head"
                   class="row-action"
                   :tabindex="stop(row.name)"
-                  :title="`Fusionner ${row.name} dans la branche courante`"
+                  :title="t('branches.merge', { branch: row.name })"
                   @click.stop="mergeBranch(row.name)"
                 >
-                  Fusionner
+                  {{ t("branches.mergeShort") }}
                 </button>
                 <button
                   v-if="!row.head"
@@ -254,16 +261,16 @@ function stop(name: string): 0 | -1 {
                   :title="`Rebaser la branche courante sur ${row.name}`"
                   @click.stop="rebaseOnto(row.name)"
                 >
-                  Rebaser
+                  {{ t("branches.rebaseShort") }}
                 </button>
                 <button
                   v-if="!row.head"
                   class="row-action danger"
                   :tabindex="stop(row.name)"
-                  title="Supprimer cette branche"
+                  :title="t('branches.delete')"
                   @click.stop="deleteBranch(row)"
                 >
-                  Suppr.
+                  {{ t("branches.deleteShort") }}
                 </button>
               </span>
             </div>
@@ -274,7 +281,7 @@ function stop(name: string): 0 | -1 {
       <template v-if="refs.tags.length > 0">
         <button class="group-head as-button" @click="toggleBranchGroup('tags')">
           <Glyph :name="isCollapsed('tags') ? 'chevron-right' : 'chevron-down'" class="chevron" />
-          <Glyph name="tag" class="branch-glyph" /><span>Tags</span>
+          <Glyph name="tag" class="branch-glyph" /><span>{{ t("branches.tags") }}</span>
           <span class="pane-head-spacer" />
           <span class="pane-head-count">{{ refs.tags.length }}</span>
         </button>
@@ -292,7 +299,7 @@ function stop(name: string): 0 | -1 {
             :name="isCollapsed('remotes') ? 'chevron-right' : 'chevron-down'"
             class="chevron"
           />
-          <span>Remotes</span>
+          <span>{{ t("branches.remotes") }}</span>
           <span class="pane-head-spacer" />
           <span class="pane-head-count">{{ remotes.length }}</span>
         </button>
@@ -320,7 +327,7 @@ function stop(name: string): 0 | -1 {
               :key="`${row.remote}/${row.name}`"
               class="row branch-row nested"
               :class="{ selected: showing(`${row.remote}/${row.name}`) }"
-              :title="`${row.remote}/${row.name} — clic : son historique`"
+              :title="t('branches.remoteRow', { branch: `${row.remote}/${row.name}` })"
               @click="showBranchHistory(`${row.remote}/${row.name}`)"
               @dblclick="checkoutBranch(row.name)"
             >
@@ -336,18 +343,20 @@ function stop(name: string): 0 | -1 {
       <input
         v-model="name"
         type="text"
-        placeholder="Nom de la branche"
+        :placeholder="t('branches.name')"
         spellcheck="false"
         autofocus
         @keydown.esc="naming = false"
       />
-      <button class="primary" type="submit" :disabled="name.trim() === ''">Créer</button>
+      <button class="primary" type="submit" :disabled="name.trim() === ''">
+        {{ t("branches.create") }}
+      </button>
     </form>
     <button v-else class="sidebar-foot" @click="naming = true">
-      <span class="mono">+</span><span>Nouvelle branche</span>
+      <span class="mono">+</span><span>{{ t("branches.new") }}</span>
     </button>
   </template>
 
   <p v-else-if="app.refs.status === 'failed'" class="pane-error">{{ app.refs.error }}</p>
-  <p v-else class="sidebar-note">Lecture des branches…</p>
+  <p v-else class="sidebar-note">{{ t("branches.reading") }}</p>
 </template>

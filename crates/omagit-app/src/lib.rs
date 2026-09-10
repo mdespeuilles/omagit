@@ -15,7 +15,6 @@ pub mod logging;
 pub mod menu;
 pub mod platform;
 pub mod state;
-pub mod time;
 
 use state::AppState;
 
@@ -74,6 +73,8 @@ pub fn run() {
             commands::set_pane,
             commands::keymap,
             commands::set_binding,
+            commands::language,
+            commands::set_language,
             commands::git_status,
             commands::repositories,
             commands::add_repository,

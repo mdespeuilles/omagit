@@ -1,37 +1,41 @@
 // Dates, in the one place that knows what they should read like.
 //
 // The backend sends seconds since the epoch and nothing else: `omagit-git` has
-// no locale by rule, and `omagit-app` has one formatter already, for "last
-// opened" in the repository list. A second hand-written month table in
-// TypeScript would be the same thing said twice in two languages, and the two
-// would drift. `Intl` is the browser's own table.
+// no locale by rule. A hand-written month table would be the same thing said
+// twice in as many languages as the app has, and they would drift — `omagit-app`
+// had one, in French, and nothing had called it since the port. `Intl` is the
+// browser's own table.
+//
+// The formatters are rebuilt when the language changes rather than made once:
+// they are cheap, and one made at import time would have frozen the language
+// the window happened to start in.
 
-const LOCALE = "fr-FR";
+import { language, t } from "./i18n";
 
-const clock = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit" });
-const sameYear = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short" });
-const otherYear = new Intl.DateTimeFormat(LOCALE, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-const full = new Intl.DateTimeFormat(LOCALE, { dateStyle: "long", timeStyle: "short" });
+const clock = () => new Intl.DateTimeFormat(language.value, { hour: "2-digit", minute: "2-digit" });
+const sameYear = () => new Intl.DateTimeFormat(language.value, { day: "numeric", month: "short" });
+const otherYear = () =>
+  new Intl.DateTimeFormat(language.value, { day: "numeric", month: "short", year: "numeric" });
+const full = () =>
+  new Intl.DateTimeFormat(language.value, { dateStyle: "long", timeStyle: "short" });
 
-/// `aujourd'hui 09:14`, `hier 18:02`, `14 mars`, `14 mars 2024`.
+/// `today 09:14`, `yesterday 18:02`, `14 Mar`, `14 Mar 2024`.
 ///
 /// Days rather than elapsed hours: something that happened at 23:50 was
 /// yesterday at 00:10, and "il y a 20 min" would be true and useless.
 export function when(seconds: number, now = new Date()): string {
   const then = new Date(seconds * 1000);
   const days = midnights(then, now);
-  if (days === 0) return `aujourd'hui ${clock.format(then)}`;
-  if (days === 1) return `hier ${clock.format(then)}`;
-  return then.getFullYear() === now.getFullYear() ? sameYear.format(then) : otherYear.format(then);
+  if (days === 0) return t("date.today", { time: clock().format(then) });
+  if (days === 1) return t("date.yesterday", { time: clock().format(then) });
+  return then.getFullYear() === now.getFullYear()
+    ? sameYear().format(then)
+    : otherYear().format(then);
 }
 
 /// The whole thing, for a tooltip — where the short form is never enough.
 export function exact(seconds: number): string {
-  return full.format(new Date(seconds * 1000));
+  return full().format(new Date(seconds * 1000));
 }
 
 /// The author's own clock, from the offset they committed with.
@@ -44,7 +48,7 @@ export function authored(seconds: number, offsetSeconds: number): string {
   const sign = offsetSeconds < 0 ? "−" : "+";
   const minutes = Math.abs(Math.round(offsetSeconds / 60));
   const zone = `${sign}${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
-  return `${new Intl.DateTimeFormat(LOCALE, {
+  return `${new Intl.DateTimeFormat(language.value, {
     dateStyle: "long",
     timeStyle: "short",
     timeZone: "UTC",

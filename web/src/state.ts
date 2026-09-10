@@ -15,6 +15,7 @@ import { reactive, readonly } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { measure } from "./metrics";
+import { preference, useLanguage } from "./i18n";
 import type { Row as PaletteRow } from "./palette";
 import type { Action as KeymapAction } from "./keymap";
 import {
@@ -362,7 +363,7 @@ export const app = readonly(state);
 // ── Reading ─────────────────────────────────────────────────────────────────
 
 export async function boot(): Promise<void> {
-  const [theme, platform, gitUnusable, repositories, keymap] = await Promise.all([
+  const [theme, platform, gitUnusable, repositories, keymap, language] = await Promise.all([
     api.theme(),
     api.platform(),
     api.gitStatus(),
@@ -371,7 +372,12 @@ export async function boot(): Promise<void> {
     // from the defaults and corrected them a moment later would be a window
     // that lies about its own keyboard for a frame.
     api.keymap(),
+    // With everything else, and before the first frame: a window that drew in
+    // English and switched to French a tick later would be a window that
+    // flickers in a language you did not ask for.
+    api.language(),
   ]);
+  useLanguage(language);
   // Before anything is drawn: a frame rendered without the tokens shows the
   // browser's defaults, and every rule in `style.css` reads one of them.
   document.documentElement.setAttribute("style", theme);
@@ -1847,6 +1853,23 @@ export function toggleShortcuts(): void {
 
 export function closeShortcuts(): void {
   state.shortcuts = false;
+}
+
+/// Choose the interface language, or `null` to follow the system's.
+///
+/// The catalogues are the front end's, so this is the whole of it: set what is
+/// in force, and store the choice. Nothing is re-read — `t()` is reactive, so
+/// every string on screen changes in the same tick.
+export function chooseLanguage(tag: string | null): void {
+  useLanguage(tag);
+  void api
+    .setLanguage(tag)
+    .catch((error) => api.log("warn", `langue non enregistrée : ${message(error)}`));
+}
+
+/// What was chosen, `null` while following the system.
+export function languagePreference(): string | null {
+  return preference.value;
 }
 
 /// Give an action a different binding, or `null` to put back the table's own.

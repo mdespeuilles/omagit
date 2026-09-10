@@ -79,7 +79,13 @@ describe("the preferences screen", () => {
     // two lists let "Suivre le système" and a named theme both look chosen. One
     // radio group: one mark, wherever it lands.
     const { state, screen } = await opened();
-    const marked = () => screen.findAll('[role="radio"][aria-checked="true"]').map((o) => o.text());
+    // Scoped to the theme's own group: the screen has a second radiogroup now,
+    // for the language, and counting both would count two answers to two
+    // questions as a contradiction.
+    const marked = () =>
+      screen
+        .findAll('[aria-label="Thème"] [role="radio"][aria-checked="true"]')
+        .map((one) => one.text());
 
     expect(marked()).toHaveLength(1);
 

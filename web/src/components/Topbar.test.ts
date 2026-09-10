@@ -59,8 +59,8 @@ describe("the topbar", () => {
     const { app } = await running();
 
     expect(topbar(app)).toContain("omagit");
-    expect(topbar(app)).toContain("Dépôts");
-    expect(topbar(app)).toContain("Ajouter un dépôt local");
+    expect(topbar(app)).toContain("Repositories");
+    expect(topbar(app)).toContain("Add a local repository");
     expect(topbar(app)).not.toContain("Fetch");
     expect(app.find(".topbar").classes()).toContain("compact");
   });
@@ -104,8 +104,8 @@ describe("the topbar", () => {
     await app.vm.$nextTick();
 
     expect(state.app.open).toBe("/repo");
-    expect(topbar(app)).toContain("Dépôts");
-    expect(topbar(app)).toContain("Ajouter un dépôt local");
+    expect(topbar(app)).toContain("Repositories");
+    expect(topbar(app)).toContain("Add a local repository");
     expect(topbar(app)).not.toContain("Fetch");
     expect(app.find(".topbar").classes()).toContain("compact");
   });
@@ -120,7 +120,7 @@ describe("the topbar under a window system that draws into it", () => {
     const { app } = await running("macos");
     expect(app.find(".topbar").classes()).not.toContain("compact");
     // Still the app's own bar, with the app's own content on it.
-    expect(topbar(app)).toContain("Dépôts");
+    expect(topbar(app)).toContain("Repositories");
   });
 
   it("still reduces it where the app owns the whole bar", async () => {

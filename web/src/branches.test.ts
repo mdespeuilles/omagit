@@ -177,9 +177,9 @@ describe("the branch tree", () => {
     const rows = tree.findAll(".branch-row");
     expect(rows[0]!.findAll(".row-action")).toHaveLength(0);
     expect(rows[1]!.findAll(".row-action").map((b) => b.text())).toEqual([
-      "Fusionner",
-      "Rebaser",
-      "Suppr.",
+      "Merge",
+      "Rebase",
+      "Delete",
     ]);
   });
 });

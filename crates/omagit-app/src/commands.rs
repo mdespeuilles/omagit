@@ -118,6 +118,21 @@ pub fn close_repository(state: State<'_, AppState>, path: String) {
     state.close(&PathBuf::from(path));
 }
 
+/// The interface language, or `None` while it follows the system.
+///
+/// Stored here and chosen in the front end, which owns the catalogues: this
+/// side knows there is a preference, never what it can be.
+#[tauri::command]
+pub fn language(state: State<'_, AppState>) -> Option<String> {
+    state.settings().language
+}
+
+/// Change it, or `None` to follow the system again.
+#[tauri::command]
+pub fn set_language(state: State<'_, AppState>, language: Option<String>) {
+    state.with_settings(|settings| settings.language = language);
+}
+
 /// The bindings the user has changed, by action id (SPEC §11).
 ///
 /// Overrides only. The table of what omagit can do is the front end's, and this

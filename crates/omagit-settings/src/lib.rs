@@ -44,6 +44,14 @@ pub struct Settings {
     /// cheaper than a migration.
     #[serde(default)]
     pub panes: std::collections::BTreeMap<String, f32>,
+    /// The interface language, or `None` to follow the system.
+    ///
+    /// A tag — `en`, `fr` — and not a name: the front end owns the catalogues
+    /// and this crate has no business knowing which languages exist. `None` is
+    /// a real answer and the default one, the same shape as an automatic theme:
+    /// follow the machine until somebody says otherwise.
+    #[serde(default)]
+    pub language: Option<String>,
     /// The bindings the user has changed, by action id (SPEC §11, "keymap
     /// réassignable").
     ///
@@ -80,6 +88,7 @@ impl Default for Settings {
             density: DensityMode::default(),
             ui_scale: default_scale(),
             panes: std::collections::BTreeMap::new(),
+            language: None,
             keymap: std::collections::BTreeMap::new(),
         }
     }
@@ -179,6 +188,7 @@ mod tests {
             density: DensityMode::Comfortable,
             ui_scale: 1.25,
             panes: [("history".to_owned(), 480.0)].into_iter().collect(),
+            language: Some("en".to_owned()),
             keymap: [("network.fetch".to_owned(), "Alt+Primary+F".to_owned())]
                 .into_iter()
                 .collect(),

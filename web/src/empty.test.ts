@@ -92,7 +92,7 @@ describe("a branch tree with no branch", () => {
     await settled(state);
 
     const tree = await screenOf("BranchTree");
-    expect(tree.text()).toContain("Aucune branche");
+    expect(tree.text()).toContain("No branch yet");
     expect(tree.findAll(".branch-row")).toHaveLength(0);
   });
 });

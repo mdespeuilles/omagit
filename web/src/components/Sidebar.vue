@@ -14,6 +14,7 @@
 import { computed } from "vue";
 import { app, changedCount, goToZone, isCollapsed, showScreen, toggleBranchGroup } from "../state";
 import Glyph from "./Glyph.vue";
+import { t } from "../i18n";
 import BranchTree from "./BranchTree.vue";
 
 const changes = computed(() => (app.open ? changedCount() : 0));
@@ -32,7 +33,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
          and a triangle that answers nothing is worse than no triangle. -->
     <button class="group-head as-button" @click="toggleBranchGroup('workspace')">
       <Glyph :name="isCollapsed('workspace') ? 'chevron-right' : 'chevron-down'" class="chevron" />
-      <span>Workspace</span>
+      <span>{{ t("sidebar.workspace") }}</span>
     </button>
 
     <template v-if="!isCollapsed('workspace')">
@@ -42,7 +43,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
         @click="showScreen('working-copy')"
       >
         <Glyph name="working-copy" class="sidebar-glyph" />
-        <span>Working Copy</span>
+        <span>{{ t("sidebar.workingCopy") }}</span>
         <span class="pane-head-spacer" />
         <span v-if="conflicts > 0" class="sidebar-count conflict mono">{{ conflicts }} ⚠</span>
         <span v-else-if="changes > 0" class="sidebar-count mono">{{ changes }}</span>
@@ -54,7 +55,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
         @click="showScreen('history')"
       >
         <Glyph name="history" class="sidebar-glyph" />
-        <span>History</span>
+        <span>{{ t("sidebar.history") }}</span>
       </button>
 
       <button
@@ -63,7 +64,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
         @click="showScreen('stashes')"
       >
         <Glyph name="stashes" class="sidebar-glyph" />
-        <span>Stashes</span>
+        <span>{{ t("sidebar.stashes") }}</span>
         <span class="pane-head-spacer" />
         <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
       </button>
@@ -74,7 +75,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
         @click="showScreen('settings')"
       >
         <Glyph name="settings" class="sidebar-glyph" />
-        <span>Réglages</span>
+        <span>{{ t("sidebar.settings") }}</span>
       </button>
     </template>
 
@@ -85,7 +86,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
     <BranchTree />
 
     <button class="sidebar-foot" @click="showScreen('repositories')">
-      <Glyph name="panel" class="sidebar-glyph" /><span>Tous les dépôts</span>
+      <Glyph name="panel" class="sidebar-glyph" /><span>{{ t("sidebar.allRepositories") }}</span>
     </button>
   </nav>
 </template>

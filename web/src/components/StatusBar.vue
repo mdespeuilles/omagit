@@ -12,18 +12,21 @@ import {
   conflictCount,
   continueOperation,
   dismissNotes,
-  plural,
   stagedCount,
   toggleJournal,
   unstagedCount,
 } from "../state";
+import { count, t } from "../i18n";
 </script>
 
 <template>
   <footer class="statusbar">
     <span v-if="app.summary" class="mono">⑂ {{ app.summary.head }}</span>
     <span class="sep">│</span>
-    <span>{{ plural(stagedCount(), "indexé") }} · {{ unstagedCount() }} non indexé</span>
+    <span>
+      {{ count("statusbar.staged", stagedCount()) }} ·
+      {{ count("statusbar.unstaged", unstagedCount()) }}
+    </span>
 
     <!-- A half-finished merge or rebase, said instead of the branch: "on main"
          is misleading while one is stuck. Both ways out sit next to it —
@@ -31,25 +34,27 @@ import {
          repository left half-way with no visible exit, or with only the exit
          that throws the work away, is one somebody finishes in a terminal. -->
     <template v-if="app.summary?.operation">
-      <span class="conflict">│ {{ app.summary.operation }} en cours</span>
+      <span class="conflict">
+        │ {{ t("statusbar.running", { operation: app.summary.operation }) }}
+      </span>
       <button
         class="link"
         :disabled="!!app.busy || conflictCount() > 0"
         :title="
           conflictCount() > 0
-            ? `Il reste ${conflictCount()} conflit(s) à résoudre`
-            : `Terminer ${app.summary.operation}`
+            ? count('statusbar.conflictsLeft', conflictCount())
+            : t('statusbar.finish', { operation: app.summary.operation })
         "
         @click="continueOperation()"
       >
-        Poursuivre
+        {{ t("statusbar.continue") }}
       </button>
       <button class="link danger" :disabled="!!app.busy" @click="abortOperation()">
-        Abandonner
+        {{ t("statusbar.abort") }}
       </button>
     </template>
     <span v-if="app.summary && app.summary.counts.conflicted > 0" class="conflict">
-      │ {{ plural(app.summary.counts.conflicted, "conflit") }}
+      │ {{ count("statusbar.conflicts", app.summary.counts.conflicted) }}
     </span>
 
     <span class="pane-head-spacer" />
@@ -64,6 +69,6 @@ import {
       <span class="said">{{ app.notes.split("\n")[0] }} ✓</span>
     </button>
 
-    <button class="link" @click="toggleJournal()">Journal</button>
+    <button class="link" @click="toggleJournal()">{{ t("statusbar.journal") }}</button>
   </footer>
 </template>
