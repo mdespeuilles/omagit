@@ -2260,17 +2260,16 @@ select:focus {
   color: var(--text);
 }
 
-/* A prefix head sits between two lists — the loose branches above, its own
-   below — and needs air on **both** sides, evenly. The first attempt gave it
-   more above than below, on the prose convention that a heading binds to what
-   it introduces; on screen it read as lopsided, and the reason is that this
-   head is not a heading in prose. It is a row in the same list, with a chevron
-   and a folder on it, so an uneven gap reads as a mistake rather than as a
-   grouping. Measured text to text: 15px between two rows, 20px above a section
-   head, 17px on each side of this one. */
+/* A prefix head is a row of the list it sits in — a chevron, a folder, a name,
+   a count — so it keeps the list's rhythm exactly: the row's height, no margin
+   at all. Said as `--row-height` rather than as a margin that happens to add
+   up: a margin is only right at one density, and this holds at both and at
+   every scale. Two earlier passes picked numbers instead, 18/13 and then 17/17,
+   and both read as a gap where there should be none. */
 .group-head.as-button.prefix {
   padding-left: 22px;
-  margin: 7px 0;
+  height: var(--row-height);
+  margin: 0;
   text-transform: none;
   letter-spacing: 0;
   font-family: var(--font-mono);
