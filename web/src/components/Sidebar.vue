@@ -13,6 +13,7 @@
 
 import { computed } from "vue";
 import { app, changedCount, goToZone, showScreen } from "../state";
+import Glyph from "./Glyph.vue";
 import BranchTree from "./BranchTree.vue";
 
 const changes = computed(() => (app.open ? changedCount() : 0));
@@ -26,14 +27,16 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
        stops: nothing else reaches them, and `⌘1` `⌘2` `⌘3` is a shortcut, not a
        path for someone crossing the window with Tab. -->
   <nav class="sidebar" tabindex="0" data-zone="1" @focus="goToZone(1)">
-    <div class="group-head"><span class="chevron">▾</span><span>Workspace</span></div>
+    <div class="group-head">
+      <Glyph name="chevron-down" class="chevron" /><span>Workspace</span>
+    </div>
 
     <button
       class="row sidebar-row"
       :class="{ selected: app.screen === 'working-copy' }"
       @click="showScreen('working-copy')"
     >
-      <span class="sidebar-glyph mono">◱</span>
+      <Glyph name="working-copy" class="sidebar-glyph" />
       <span>Working Copy</span>
       <span class="pane-head-spacer" />
       <span v-if="conflicts > 0" class="sidebar-count conflict mono">{{ conflicts }} ⚠</span>
@@ -45,7 +48,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       :class="{ selected: app.screen === 'history' }"
       @click="showScreen('history')"
     >
-      <span class="sidebar-glyph mono">⌸</span>
+      <Glyph name="history" class="sidebar-glyph" />
       <span>History</span>
     </button>
 
@@ -54,7 +57,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       :class="{ selected: app.screen === 'stashes' }"
       @click="showScreen('stashes')"
     >
-      <span class="sidebar-glyph mono">⌥</span>
+      <Glyph name="stashes" class="sidebar-glyph" />
       <span>Stashes</span>
       <span class="pane-head-spacer" />
       <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
@@ -65,7 +68,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
       :class="{ selected: app.screen === 'settings' }"
       @click="showScreen('settings')"
     >
-      <span class="sidebar-glyph mono">⚙</span>
+      <Glyph name="settings" class="sidebar-glyph" />
       <span>Réglages</span>
     </button>
 
@@ -74,7 +77,7 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
     <span class="pane-head-spacer" />
 
     <button class="sidebar-foot" @click="showScreen('repositories')">
-      <span class="mono">◧</span><span>Tous les dépôts</span>
+      <Glyph name="panel" class="sidebar-glyph" /><span>Tous les dépôts</span>
     </button>
   </nav>
 </template>

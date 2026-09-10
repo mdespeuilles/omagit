@@ -18,6 +18,7 @@ import {
   showBranchHistory,
   toggleBranchGroup,
 } from "../state";
+import Glyph from "./Glyph.vue";
 
 /// Whether this row's history is the one History is showing, which is what a
 /// click on it asked for.
@@ -123,7 +124,7 @@ function stop(name: string): 0 | -1 {
 <template>
   <template v-if="refs">
     <div class="group-head">
-      <span class="chevron">▾</span><span>Branches</span>
+      <Glyph name="chevron-down" class="chevron" /><span>Branches</span>
       <span class="pane-head-spacer" />
       <span class="pane-head-count">{{ total }}</span>
     </div>
@@ -145,6 +146,7 @@ function stop(name: string): 0 | -1 {
       @click="showBranchHistory(row.name)"
       @dblclick="checkoutBranch(row.name)"
     >
+      <Glyph name="branch" class="branch-glyph" />
       <span class="branch-name">{{ row.name }}</span>
       <span v-if="row.head" class="ref head">HEAD</span>
       <span class="pane-head-spacer" />
@@ -184,11 +186,15 @@ function stop(name: string): 0 | -1 {
 
     <template v-for="group in grouped.groups" :key="group.prefix">
       <button class="group-head as-button" @click="toggleBranchGroup(group.prefix)">
-        <span class="chevron">{{ isCollapsed(group.prefix) ? "▸" : "▾" }}</span>
+        <Glyph
+          :name="isCollapsed(group.prefix) ? 'chevron-right' : 'chevron-down'"
+          class="chevron"
+        />
         <!-- A prefix is part of a branch's name, so it keeps its case. The
              headers around it are labels and take the section styling; board
              03 uppercases this one too, and uppercasing a name that Git treats
              case-sensitively is the kind of tidiness that misleads. -->
+        <Glyph name="folder" class="branch-glyph" />
         <span class="group-name">{{ group.prefix }}</span>
         <span class="pane-head-spacer" />
         <span class="pane-head-count">{{ group.rows.length }}</span>
@@ -203,6 +209,7 @@ function stop(name: string): 0 | -1 {
           @click="showBranchHistory(row.name)"
           @dblclick="checkoutBranch(row.name)"
         >
+          <Glyph name="branch" class="branch-glyph" />
           <span class="branch-name">{{ leaf(row.name) }}</span>
           <span v-if="row.head" class="ref head">HEAD</span>
           <span class="pane-head-spacer" />
@@ -244,13 +251,14 @@ function stop(name: string): 0 | -1 {
 
     <template v-if="refs.tags.length > 0">
       <button class="group-head as-button" @click="toggleBranchGroup('tags')">
-        <span class="chevron">{{ isCollapsed("tags") ? "▸" : "▾" }}</span>
-        <span>Tags</span>
+        <Glyph :name="isCollapsed('tags') ? 'chevron-right' : 'chevron-down'" class="chevron" />
+        <Glyph name="tag" class="branch-glyph" /><span>Tags</span>
         <span class="pane-head-spacer" />
         <span class="pane-head-count">{{ refs.tags.length }}</span>
       </button>
       <template v-if="!isCollapsed('tags')">
         <span v-for="tag in refs.tags" :key="tag.name" class="row branch-row nested">
+          <Glyph name="tag" class="branch-glyph" />
           <span class="branch-name mono">{{ tag.name }}</span>
         </span>
       </template>
@@ -258,7 +266,7 @@ function stop(name: string): 0 | -1 {
 
     <template v-if="remotes.length > 0">
       <button class="group-head as-button" @click="toggleBranchGroup('remotes')">
-        <span class="chevron">{{ isCollapsed("remotes") ? "▸" : "▾" }}</span>
+        <Glyph :name="isCollapsed('remotes') ? 'chevron-right' : 'chevron-down'" class="chevron" />
         <span>Remotes</span>
         <span class="pane-head-spacer" />
         <span class="pane-head-count">{{ remotes.length }}</span>
@@ -266,6 +274,7 @@ function stop(name: string): 0 | -1 {
       <template v-if="!isCollapsed('remotes')">
         <template v-for="[remote, rows] in remotes" :key="remote">
           <div class="group-head nested">
+            <Glyph name="folder" class="branch-glyph" />
             <span>{{ remote }}/</span>
           </div>
           <button
@@ -277,6 +286,7 @@ function stop(name: string): 0 | -1 {
             @click="showBranchHistory(`${row.remote}/${row.name}`)"
             @dblclick="checkoutBranch(row.name)"
           >
+            <Glyph name="branch" class="branch-glyph" />
             <span class="branch-name mono">{{ row.name }}</span>
           </button>
         </template>

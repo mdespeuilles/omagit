@@ -12,6 +12,7 @@
 // take hold of the window.
 
 import { app, closeTab, openRepository } from "../state";
+import Glyph from "./Glyph.vue";
 </script>
 
 <template>
@@ -37,7 +38,7 @@ import { app, closeTab, openRepository } from "../state";
         :aria-label="`Fermer ${tab.name}`"
         @click.stop="closeTab(tab.path)"
       >
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>
+        <Glyph name="close" />
       </button>
     </div>
   </nav>

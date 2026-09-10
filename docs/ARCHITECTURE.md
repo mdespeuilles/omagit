@@ -1802,6 +1802,33 @@ draws one of those over the whole window. A backend that could not let go of a
 handle is not a reason to lose the window you were working in; it is a line in
 the log.
 
+### 2.57 The icons, in one place
+
+`Caption.vue` has stated the rule since M6b — *drawn, not borrowed*, 16px grid,
+1.5px stroke — and only the window buttons obeyed it. The sidebar drew `◱` for
+the working copy, `⌸` for History (an APL symbol, which reads as a table), `⌥`
+for Stashes (the macOS Option key, which means something else entirely), `⚙` for
+the preferences, `▤` and `⊘` in the library, and `▾` for a disclosure triangle
+the fallback font drew as a *dot*. Branches had no icon at all, and neither did
+the groups a `/` makes.
+
+`Glyph.vue` holds every shape the window draws, and one CSS rule strokes them.
+One component rather than a path per call site, for the reason the bindings are
+one table: a glyph copied into four files is a glyph that will differ in four
+files. The topbar's own icon and the tab strip's cross, both written inline the
+day they were added, are entries in the set now.
+
+Right angles wherever a shape tolerates them, and no further: a clock is round,
+and so are the three commits on the branch glyph — a square commit reads as a
+stop. The gear is the one shape that lost: at 16px with a 1.5px stroke a gear is
+a blob, so preferences are two sliders.
+
+The test names the characters that were there — `◱ ⌸ ⌥ ⚙ ◧ ▾ ▸ ▤ ⊘` — and fails
+if any of them comes back to either left-hand bar. That is a narrower rule than
+"no pictographs anywhere", deliberately: `↑8 ↓2` on the Push button, `✓` in a
+checkbox and `⚠` beside a conflict count are typography doing a typographic job,
+not a picture standing in for an object.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

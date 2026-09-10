@@ -316,15 +316,11 @@ button.icon {
   font-size: var(--text-body);
   color: var(--text-muted);
 }
-/* The same grid as the caption's, and for the same reason: a glyph borrowed
-   from a font sits where that font's bearings put it, which is not the middle
-   and not the same in two web views. */
-button.icon svg {
+/* Sized here; the shape and the stroke come from `.glyph`, which every drawn
+   icon in the window shares. */
+button.icon .glyph {
   width: 16px;
   height: 16px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.5;
 }
 
 .reserve {
@@ -1520,11 +1516,10 @@ select:focus {
 /* ── The sidebar ─────────────────────────────────────────────────────────── */
 
 .sidebar-glyph {
-  width: 12px;
+  width: 14px;
+  height: 14px;
   flex: none;
-  font-size: var(--text-body);
   color: var(--text-muted);
-  text-align: center;
 }
 .sidebar-count {
   flex: none;
@@ -1837,8 +1832,11 @@ select:focus {
   letter-spacing: 0.08em;
 }
 .group-head .chevron {
-  /* A disclosure glyph, not type: sized to sit inside the header's 22px. */
-  font-size: 9px;
+  /* A disclosure glyph, not type: sized to sit inside the header's 22px. It was
+     the character `▾`, which the fallback font drew as a dot. */
+  width: 10px;
+  height: 10px;
+  flex: none;
 }
 
 /* Two lines and 36 high: the name, and what the repository is now. */
@@ -1863,6 +1861,8 @@ select:focus {
 }
 
 .library-icon {
+  width: 15px;
+  height: 15px;
   flex: none;
   color: var(--text-muted);
 }
@@ -2840,6 +2840,29 @@ select:focus {
   box-shadow: inset 0 0 0 1px var(--border-focus);
 }
 
+/* ── The icons (`Glyph.vue`) ─────────────────────────────────────────────── */
+
+/* One rule for every drawn shape in the window: stroke, never fill, on the
+   16px grid at 1.5px — board 02's own words for the caption buttons, applied to
+   the whole set. A shape that wants a fill says so on its own path. */
+.glyph {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+}
+
+/* In the branch tree, one size smaller than the sidebar's screen rows: these
+   sit beside a name, not beside a destination. */
+.branch-glyph {
+  width: 13px;
+  height: 13px;
+  color: var(--text-dim);
+}
+
 /* ── The repository tabs ─────────────────────────────────────────────────── */
 
 /* A row of its own under the topbar. It scrolls sideways rather than shrinking
@@ -2914,12 +2937,9 @@ select:focus {
   background: var(--surface-hover);
   color: var(--danger);
 }
-.tabbar-close svg {
+.tabbar-close .glyph {
   width: 10px;
   height: 10px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.5;
 }
 
 /* ── The reassignable keymap (M9, SPEC §11) ──────────────────────────────── */

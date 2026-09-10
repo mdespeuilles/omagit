@@ -21,6 +21,7 @@ import {
   visibleRepositories,
   zoneActive,
 } from "../state";
+import Glyph from "./Glyph.vue";
 
 /// What the filter leaves, which is what the empty state has to talk about.
 const rows = computed(() => visibleRepositories());
@@ -161,7 +162,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
           "
           @dblclick="openRepository(row.path)"
         >
-          <span class="library-icon" aria-hidden="true">{{ row.missing ? "⊘" : "▤" }}</span>
+          <Glyph :name="row.missing ? 'missing' : 'repository'" class="library-icon" />
           <span class="library-lines">
             <span class="library-name">{{ row.name }}</span>
             <span class="library-state mono" :class="state(row).kind">{{ state(row).text }}</span>

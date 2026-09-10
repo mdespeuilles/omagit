@@ -45,6 +45,7 @@ import {
 } from "../state";
 import { tildify } from "../format";
 import { ACTIONS, binding, hint } from "../keymap";
+import Glyph from "./Glyph.vue";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
 
@@ -146,11 +147,7 @@ const where = computed(() => {
         aria-label="Retour aux dépôts"
         @click="showScreen('repositories')"
       >
-        <svg viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M2.75 3.75h10.5v8.5h-10.5z" />
-          <path d="M6.75 3.75v8.5" />
-          <path d="M2.75 3.75h4v8.5h-4z" fill="currentcolor" />
-        </svg>
+        <Glyph name="panel" />
       </button>
       <span class="topbar-rule" />
       <span class="topbar-repo" data-tauri-drag-region>
