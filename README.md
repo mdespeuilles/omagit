@@ -147,3 +147,21 @@ repository groups, which can be seen but not made.
 
 Next is **M10 — distribution**: a signed and notarised macOS bundle, a Linux
 archive and PKGBUILD.
+
+## Cutting a release
+
+Linux only for now — macOS needs an Apple developer account, signing and
+notarisation, and a pipeline that cannot sign ships an `.app` nobody can open.
+
+```sh
+./scripts/check.sh                    # the gate, by hand: it is the only one
+$EDITOR crates/omagit-app/tauri.conf.json Cargo.toml   # the version, in both
+git commit -am "0.2.0" && git tag v0.2.0 && git push --follow-tags
+```
+
+The tag starts `.github/workflows/release.yml`, which refuses immediately if the
+tag and the manifests disagree, builds `.deb` and `.AppImage` from a clean
+checkout, and attaches them to a **draft** release — the notes are yours to
+write, and a tag pushed by mistake should not become an announcement.
+
+`scripts/release.sh` is what it runs, so the same build happens on a laptop.

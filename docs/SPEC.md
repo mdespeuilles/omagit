@@ -103,6 +103,15 @@ Lis cette section avant d'écrire une ligne de code, et relis-la avant chaque co
 > écrit, qui le savait déjà. Le coût, lui, était réel : macOS est facturé ×10, et
 > le seul run de la PR #1 a consommé environ 113 minutes.
 >
+> **Complément (2026-09-10) — une release n'est pas un gate.** Un workflow
+> déclenché par un tag construit les paquets Linux et les attache à une release
+> en brouillon (`.github/workflows/release.yml`). Il ne vérifie rien : il
+> *fabrique* l'artefact que quelqu'un d'autre installera, depuis un checkout
+> propre. La seule chose qu'il contrôle est celle qu'un clavier ne peut pas
+> contrôler — que le tag et les manifestes disent la même version. C'est la
+> partie Linux de M10, tirée en avant ; macOS attend la signature et la
+> notarisation.
+>
 > Donc, jusqu'à nouvel ordre :
 >
 > - **Pas de CI.** Le workflow est supprimé (`.github/workflows/ci.yml`, dernier

@@ -1948,6 +1948,37 @@ Tauri. `format.ts` builds its formatters from the language in force instead.
 The one place a French window still shows English is `git`'s own output, and that
 is deliberate.
 
+### 2.61 A release pipeline, which is not the gate that was deleted
+
+CLAUDE.md says there is no CI, and SPEC §3 rule 8's amendment says why: on a
+private repository with one developer, a gate on every push verifies the work of
+somebody who already knows whether it compiles, at a real cost. That reasoning is
+untouched, and the gate is still `scripts/check.sh`, run by hand.
+
+**A release build is a different job.** It runs on a tag, from a clean checkout,
+on a machine nobody has been editing, and what comes out is the thing other
+people install. It protects somebody — whoever installs it — which is the test
+CLAUDE.md sets for infrastructure: *name who it protects*.
+
+Linux only for now, which is what was asked and what SPEC §11 puts in M10: macOS
+needs an Apple developer account, signing and notarisation, and a pipeline that
+cannot sign is a pipeline that ships an unopenable `.app`.
+
+**One door.** `scripts/release.sh` is what the workflow runs, so a failure is
+reproducible on a laptop instead of only in a log, and CI has no build knowledge
+of its own.
+
+**The one check a keyboard cannot do**: that the tag and the two manifests agree
+about the version. A file named `0.2.0` whose About box says `0.1.0` is a release
+nobody can reason about afterwards, and it is checked before anything is built,
+so the failure costs seconds.
+
+Two choices worth the ink. The runner is `ubuntu-22.04` and not the newest:
+the glibc a binary is built against is the oldest one it will run on, and an
+AppImage built on 24.04 refuses to start on a stable desktop. And the release is
+created as a **draft**: the notes are written by a person, and a tag pushed by
+mistake should not become an announcement.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

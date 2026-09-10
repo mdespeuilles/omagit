@@ -3,10 +3,17 @@
 Projet privé, un seul développeur. Tant qu'il n'est pas à un stade avancé, on
 reste simple.
 
-- **Pas de CI.** Pas de GitHub Actions, pas de gate automatique, pas de
-  vérification déclenchée par un push. Ça a existé et ça a été retiré
-  (SPEC §3 règle 8 et son amendement) : ça vérifiait le travail de personne
-  d'autre, pour un coût réel — dépôt privé, runners macOS facturés ×10.
+- **Pas de CI *de vérification*.** Pas de gate automatique, pas de contrôle
+  déclenché par un push. Ça a existé et ça a été retiré (SPEC §3 règle 8 et son
+  amendement) : ça vérifiait le travail de personne d'autre, pour un coût réel —
+  dépôt privé, runners macOS facturés ×10.
+
+  Ce qui existe depuis (2026-09-10), et qui n'est pas la même chose :
+  `.github/workflows/release.yml`, déclenché **par un tag**, qui construit les
+  paquets Linux et les attache à une release en brouillon. Il ne vérifie
+  personne : il fabrique la chose que d'autres installent, depuis un checkout
+  propre, sur une machine que personne n'a éditée. Le gate, lui, reste
+  `scripts/check.sh` lancé à la main avant de couper le tag.
 - **Pas de PR.** On commite et on pousse sur `main`. Pas de branche de
   fonctionnalité, pas d'enveloppe de revue : il n'y a pas de relecteur.
 - **La seule porte, c'est `scripts/check.sh`**, lancé à la main quand on le

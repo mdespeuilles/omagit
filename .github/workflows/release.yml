@@ -1,0 +1,108 @@
+# The release build. Linux only, for now.
+#
+# This is not the gate that was deleted after M4 (SPEC §3 rule 8's amendment,
+# CLAUDE.md). That one ran on every push and verified the work of a person who
+# already knew whether it compiled. This one runs on a tag and *makes the thing
+# other people install* — a build from a clean checkout, on a machine nobody has
+# been editing, with artefacts anyone can download. That is a different job, and
+# it protects somebody: whoever installs it.
+#
+# The gate stays where it is: `scripts/check.sh`, run by hand before the tag is
+# cut. What CI adds here is the one check a keyboard cannot do — that the tag
+# and the manifests agree about which version this is.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  # So the build can be exercised without inventing a version. It produces the
+  # artefacts and skips the publishing.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  # A release tree is compiled once and thrown away.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # A tag that says one version and a manifest that says another is a
+      # release nobody can reason about afterwards: the file is named 0.2.0 and
+      # the About box says 0.1.0. Checked before anything is built, so the
+      # failure costs seconds rather than a full bundle.
+      - name: The tag and the manifest agree
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          conf=$(python3 -c 'import json;print(json.load(open("crates/omagit-app/tauri.conf.json"))["version"])')
+          crate=$(cargo metadata --no-deps --format-version 1 \
+            | python3 -c 'import json,sys;print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"]=="omagit-app"))')
+          echo "tag=$tag  tauri.conf.json=$conf  Cargo.toml=$crate"
+          test "$tag" = "$conf" || { echo "::error::the tag says $tag, tauri.conf.json says $conf"; exit 1; }
+          test "$tag" = "$crate" || { echo "::error::the tag says $tag, Cargo.toml says $crate"; exit 1; }
+
+      # WebKitGTK is the engine the Linux build renders in, and the rest is what
+      # the bundler links and packs. Named here so a link failure reads as a
+      # missing package rather than a mysterious error.
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev patchelf file
+
+      # The version comes from `rust-toolchain.toml`; this only makes it visible
+      # in the log and warms the cache.
+      - name: Toolchain
+        run: rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-linux
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # `deb` for the distributions that use it, `appimage` for every other one.
+      # Ubuntu 22.04 rather than the newest runner on purpose: the glibc a
+      # binary is built against is the oldest one it will run on, and an
+      # AppImage built on 24.04 refuses to start on a stable desktop.
+      - name: Build
+        run: scripts/release.sh --bundles deb,appimage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omagit-linux
+          if-no-files-found: error
+          path: |
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
+
+      # Draft, not published: the release notes are written by a person, and a
+      # tag pushed by mistake should not become an announcement.
+      - name: Draft the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Linux build. macOS arrives with M10." \
+            target/release/bundle/deb/*.deb \
+            target/release/bundle/appimage/*.AppImage
