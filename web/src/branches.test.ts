@@ -318,4 +318,28 @@ describe("integrating", () => {
     state.abortOperation();
     expect(state.app.question).toBeNull();
   });
+
+  it("folds every section that draws a chevron, Branches included", async () => {
+    // It was the one head that did not fold. Tags, Remotes and every `feat/`
+    // prefix did; "Branches" — the longest section, and the one worth folding —
+    // drew the same triangle and answered nothing.
+    const { tree } = await open([
+      branch("main", { head: true }),
+      branch("feat/one"),
+      branch("feat/two"),
+    ]);
+    expect(tree.findAll(".branch-row").length).toBe(3);
+
+    const head = tree.findAll(".group-head").find((one) => one.text().includes("Branches"))!;
+    await head.trigger("click");
+
+    // Everything under it: the loose branches and the prefix groups both.
+    expect(tree.findAll(".branch-row")).toHaveLength(0);
+    expect(tree.text()).not.toContain("feat/");
+    // And the head itself stays, with its chevron the other way round.
+    expect(tree.text()).toContain("Branches");
+
+    await head.trigger("click");
+    expect(tree.findAll(".branch-row").length).toBe(3);
+  });
 });

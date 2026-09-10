@@ -12,7 +12,7 @@
 // more.
 
 import { computed } from "vue";
-import { app, changedCount, goToZone, showScreen } from "../state";
+import { app, changedCount, goToZone, isCollapsed, showScreen, toggleBranchGroup } from "../state";
 import Glyph from "./Glyph.vue";
 import BranchTree from "./BranchTree.vue";
 
@@ -27,50 +27,56 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
        stops: nothing else reaches them, and `⌘1` `⌘2` `⌘3` is a shortcut, not a
        path for someone crossing the window with Tab. -->
   <nav class="sidebar" tabindex="0" data-zone="1" @focus="goToZone(1)">
-    <div class="group-head">
-      <Glyph name="chevron-down" class="chevron" /><span>Workspace</span>
-    </div>
-
-    <button
-      class="row sidebar-row"
-      :class="{ selected: app.screen === 'working-copy' }"
-      @click="showScreen('working-copy')"
-    >
-      <Glyph name="working-copy" class="sidebar-glyph" />
-      <span>Working Copy</span>
-      <span class="pane-head-spacer" />
-      <span v-if="conflicts > 0" class="sidebar-count conflict mono">{{ conflicts }} ⚠</span>
-      <span v-else-if="changes > 0" class="sidebar-count mono">{{ changes }}</span>
+    <!-- It folds, because it draws a chevron. Four rows is not much to gain —
+         but a repository with forty branches under them makes it worth having,
+         and a triangle that answers nothing is worse than no triangle. -->
+    <button class="group-head as-button" @click="toggleBranchGroup('workspace')">
+      <Glyph :name="isCollapsed('workspace') ? 'chevron-right' : 'chevron-down'" class="chevron" />
+      <span>Workspace</span>
     </button>
 
-    <button
-      class="row sidebar-row"
-      :class="{ selected: app.screen === 'history' }"
-      @click="showScreen('history')"
-    >
-      <Glyph name="history" class="sidebar-glyph" />
-      <span>History</span>
-    </button>
+    <template v-if="!isCollapsed('workspace')">
+      <button
+        class="row sidebar-row"
+        :class="{ selected: app.screen === 'working-copy' }"
+        @click="showScreen('working-copy')"
+      >
+        <Glyph name="working-copy" class="sidebar-glyph" />
+        <span>Working Copy</span>
+        <span class="pane-head-spacer" />
+        <span v-if="conflicts > 0" class="sidebar-count conflict mono">{{ conflicts }} ⚠</span>
+        <span v-else-if="changes > 0" class="sidebar-count mono">{{ changes }}</span>
+      </button>
 
-    <button
-      class="row sidebar-row"
-      :class="{ selected: app.screen === 'stashes' }"
-      @click="showScreen('stashes')"
-    >
-      <Glyph name="stashes" class="sidebar-glyph" />
-      <span>Stashes</span>
-      <span class="pane-head-spacer" />
-      <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
-    </button>
+      <button
+        class="row sidebar-row"
+        :class="{ selected: app.screen === 'history' }"
+        @click="showScreen('history')"
+      >
+        <Glyph name="history" class="sidebar-glyph" />
+        <span>History</span>
+      </button>
 
-    <button
-      class="row sidebar-row"
-      :class="{ selected: app.screen === 'settings' }"
-      @click="showScreen('settings')"
-    >
-      <Glyph name="settings" class="sidebar-glyph" />
-      <span>Réglages</span>
-    </button>
+      <button
+        class="row sidebar-row"
+        :class="{ selected: app.screen === 'stashes' }"
+        @click="showScreen('stashes')"
+      >
+        <Glyph name="stashes" class="sidebar-glyph" />
+        <span>Stashes</span>
+        <span class="pane-head-spacer" />
+        <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
+      </button>
+
+      <button
+        class="row sidebar-row"
+        :class="{ selected: app.screen === 'settings' }"
+        @click="showScreen('settings')"
+      >
+        <Glyph name="settings" class="sidebar-glyph" />
+        <span>Réglages</span>
+      </button>
+    </template>
 
     <BranchTree />
 

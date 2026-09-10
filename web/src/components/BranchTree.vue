@@ -123,129 +123,136 @@ function stop(name: string): 0 | -1 {
 
 <template>
   <template v-if="refs">
-    <div class="group-head">
-      <Glyph name="chevron-down" class="chevron" /><span>Branches</span>
+    <!-- A head with a chevron folds, or it should not carry one. This was the
+         one that did not: Tags, Remotes and every `feat/` prefix folded, and
+         "Branches" — the longest section of the three, the one worth folding —
+         drew the same triangle and answered nothing. -->
+    <button class="group-head as-button" @click="toggleBranchGroup('branches')">
+      <Glyph :name="isCollapsed('branches') ? 'chevron-right' : 'chevron-down'" class="chevron" />
+      <span>Branches</span>
       <span class="pane-head-spacer" />
       <span class="pane-head-count">{{ total }}</span>
-    </div>
+    </button>
 
-    <!-- SPEC §13's repository with no commit: `git init` and nothing since.
+    <template v-if="!isCollapsed('branches')">
+      <!-- SPEC §13's repository with no commit: `git init` and nothing since.
          There is no branch yet — `main` is a name `HEAD` points at, not a ref —
          and a count of 0 with no rows under it reads as a tree that failed to
          load rather than as a repository waiting for its first commit. -->
-    <p v-if="total === 0" class="pane-empty">Aucune branche : elle naîtra du premier commit.</p>
+      <p v-if="total === 0" class="pane-empty">Aucune branche : elle naîtra du premier commit.</p>
 
-    <!-- A `<div>` for the same reason as the library row: these rows hold
+      <!-- A `<div>` for the same reason as the library row: these rows hold
          their own action buttons, and a button inside a button is invalid. -->
-    <div
-      v-for="row in grouped.loose"
-      :key="row.name"
-      class="row branch-row"
-      :class="{ selected: showing(row.name) }"
-      :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
-      @click="showBranchHistory(row.name)"
-      @dblclick="checkoutBranch(row.name)"
-    >
-      <Glyph name="branch" class="branch-glyph" />
-      <span class="branch-name">{{ row.name }}</span>
-      <span v-if="row.head" class="ref head">HEAD</span>
-      <span class="pane-head-spacer" />
-      <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
-      <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
-      <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
-      <span class="row-actions">
-        <button
-          v-if="!row.head"
-          class="row-action"
-          :tabindex="stop(row.name)"
-          :title="`Fusionner ${row.name} dans la branche courante`"
-          @click.stop="mergeBranch(row.name)"
-        >
-          Fusionner
-        </button>
-        <button
-          v-if="!row.head"
-          class="row-action"
-          :tabindex="stop(row.name)"
-          :title="`Rebaser la branche courante sur ${row.name}`"
-          @click.stop="rebaseOnto(row.name)"
-        >
-          Rebaser
-        </button>
-        <button
-          v-if="!row.head"
-          class="row-action danger"
-          :tabindex="stop(row.name)"
-          title="Supprimer cette branche"
-          @click.stop="deleteBranch(row)"
-        >
-          Suppr.
-        </button>
-      </span>
-    </div>
+      <div
+        v-for="row in grouped.loose"
+        :key="row.name"
+        class="row branch-row"
+        :class="{ selected: showing(row.name) }"
+        :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
+        @click="showBranchHistory(row.name)"
+        @dblclick="checkoutBranch(row.name)"
+      >
+        <Glyph name="branch" class="branch-glyph" />
+        <span class="branch-name">{{ row.name }}</span>
+        <span v-if="row.head" class="ref head">HEAD</span>
+        <span class="pane-head-spacer" />
+        <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
+        <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
+        <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
+        <span class="row-actions">
+          <button
+            v-if="!row.head"
+            class="row-action"
+            :tabindex="stop(row.name)"
+            :title="`Fusionner ${row.name} dans la branche courante`"
+            @click.stop="mergeBranch(row.name)"
+          >
+            Fusionner
+          </button>
+          <button
+            v-if="!row.head"
+            class="row-action"
+            :tabindex="stop(row.name)"
+            :title="`Rebaser la branche courante sur ${row.name}`"
+            @click.stop="rebaseOnto(row.name)"
+          >
+            Rebaser
+          </button>
+          <button
+            v-if="!row.head"
+            class="row-action danger"
+            :tabindex="stop(row.name)"
+            title="Supprimer cette branche"
+            @click.stop="deleteBranch(row)"
+          >
+            Suppr.
+          </button>
+        </span>
+      </div>
 
-    <template v-for="group in grouped.groups" :key="group.prefix">
-      <button class="group-head as-button" @click="toggleBranchGroup(group.prefix)">
-        <Glyph
-          :name="isCollapsed(group.prefix) ? 'chevron-right' : 'chevron-down'"
-          class="chevron"
-        />
-        <!-- A prefix is part of a branch's name, so it keeps its case. The
+      <template v-for="group in grouped.groups" :key="group.prefix">
+        <button class="group-head as-button" @click="toggleBranchGroup(group.prefix)">
+          <Glyph
+            :name="isCollapsed(group.prefix) ? 'chevron-right' : 'chevron-down'"
+            class="chevron"
+          />
+          <!-- A prefix is part of a branch's name, so it keeps its case. The
              headers around it are labels and take the section styling; board
              03 uppercases this one too, and uppercasing a name that Git treats
              case-sensitively is the kind of tidiness that misleads. -->
-        <Glyph name="folder" class="branch-glyph" />
-        <span class="group-name">{{ group.prefix }}</span>
-        <span class="pane-head-spacer" />
-        <span class="pane-head-count">{{ group.rows.length }}</span>
-      </button>
-      <template v-if="!isCollapsed(group.prefix)">
-        <div
-          v-for="row in group.rows"
-          :key="row.name"
-          class="row branch-row nested"
-          :class="{ selected: showing(row.name) }"
-          :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
-          @click="showBranchHistory(row.name)"
-          @dblclick="checkoutBranch(row.name)"
-        >
-          <Glyph name="branch" class="branch-glyph" />
-          <span class="branch-name">{{ leaf(row.name) }}</span>
-          <span v-if="row.head" class="ref head">HEAD</span>
+          <Glyph name="folder" class="branch-glyph" />
+          <span class="group-name">{{ group.prefix }}</span>
           <span class="pane-head-spacer" />
-          <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
-          <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
-          <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
-          <span class="row-actions">
-            <button
-              v-if="!row.head"
-              class="row-action"
-              :tabindex="stop(row.name)"
-              :title="`Fusionner ${row.name} dans la branche courante`"
-              @click.stop="mergeBranch(row.name)"
-            >
-              Fusionner
-            </button>
-            <button
-              v-if="!row.head"
-              class="row-action"
-              :tabindex="stop(row.name)"
-              :title="`Rebaser la branche courante sur ${row.name}`"
-              @click.stop="rebaseOnto(row.name)"
-            >
-              Rebaser
-            </button>
-            <button
-              v-if="!row.head"
-              class="row-action danger"
-              :tabindex="stop(row.name)"
-              title="Supprimer cette branche"
-              @click.stop="deleteBranch(row)"
-            >
-              Suppr.
-            </button>
-          </span>
-        </div>
+          <span class="pane-head-count">{{ group.rows.length }}</span>
+        </button>
+        <template v-if="!isCollapsed(group.prefix)">
+          <div
+            v-for="row in group.rows"
+            :key="row.name"
+            class="row branch-row nested"
+            :class="{ selected: showing(row.name) }"
+            :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
+            @click="showBranchHistory(row.name)"
+            @dblclick="checkoutBranch(row.name)"
+          >
+            <Glyph name="branch" class="branch-glyph" />
+            <span class="branch-name">{{ leaf(row.name) }}</span>
+            <span v-if="row.head" class="ref head">HEAD</span>
+            <span class="pane-head-spacer" />
+            <span v-if="stale(row)" class="branch-note">{{ stale(row) }}</span>
+            <span v-else-if="row.merged && !row.head" class="ref merged">Merged</span>
+            <span v-if="divergence(row)" class="branch-note mono">{{ divergence(row) }}</span>
+            <span class="row-actions">
+              <button
+                v-if="!row.head"
+                class="row-action"
+                :tabindex="stop(row.name)"
+                :title="`Fusionner ${row.name} dans la branche courante`"
+                @click.stop="mergeBranch(row.name)"
+              >
+                Fusionner
+              </button>
+              <button
+                v-if="!row.head"
+                class="row-action"
+                :tabindex="stop(row.name)"
+                :title="`Rebaser la branche courante sur ${row.name}`"
+                @click.stop="rebaseOnto(row.name)"
+              >
+                Rebaser
+              </button>
+              <button
+                v-if="!row.head"
+                class="row-action danger"
+                :tabindex="stop(row.name)"
+                title="Supprimer cette branche"
+                @click.stop="deleteBranch(row)"
+              >
+                Suppr.
+              </button>
+            </span>
+          </div>
+        </template>
       </template>
     </template>
 
