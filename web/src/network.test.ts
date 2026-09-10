@@ -72,6 +72,32 @@ beforeEach(() => {
   backend.listeners = [];
 });
 
+describe("what the network says when it is done", () => {
+  it("puts the answer where every other success is read", async () => {
+    // It had a field of its own that nothing rendered: a fetch, a pull and a
+    // push all finished in silence — on the operations that take the longest,
+    // which is the worst place for it.
+    const state = await running();
+    backend.current.networkSays = "Everything up-to-date";
+
+    state.fetchRemote();
+    await settled(state);
+
+    expect(state.app.notes).toContain("Fetch terminé");
+    expect(state.app.notes).toContain("Everything up-to-date");
+  });
+
+  it("says so when git said nothing at all", async () => {
+    const state = await running();
+    backend.current.networkSays = "";
+
+    state.fetchRemote();
+    await settled(state);
+
+    expect(state.app.notes).toContain("rien à faire");
+  });
+});
+
 describe("a pull that has to choose", () => {
   it("asks how to reconcile when nothing says, and sends the answer once", async () => {
     // Since 2.27 `git pull` refuses on a diverged branch when neither
@@ -182,7 +208,7 @@ describe("running something on the network", () => {
     state.fetchRemote();
     await settled(state);
 
-    expect(state.app.networkSaid).toContain("new branch");
+    expect(state.app.notes).toContain("new branch");
   });
 
   it("lowers the overlay when the operation fails, and says why", async () => {

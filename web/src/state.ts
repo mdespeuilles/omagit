@@ -150,10 +150,6 @@ type State = {
   /// overlay says so rather than looking as though the button did nothing:
   /// `git` stops when it next checks, which is not instant.
   stopping: boolean;
-  /// What the last network operation said. `git` reports what it did on
-  /// stderr — "Everything up-to-date", the branches it created — and that is
-  /// worth keeping until the next one.
-  networkSaid: string | null;
   /// Every reference, for the sidebar's tree.
   ///
   /// Read in the background when a repository opens rather than with the
@@ -286,7 +282,6 @@ const state = reactive<State>({
   card: null,
   running: null,
   stopping: false,
-  networkSaid: null,
   refs: idle(),
   collapsed: {},
   panes: {},
@@ -849,10 +844,15 @@ async function overNetwork(what: string, run: () => Promise<string>): Promise<vo
   if (state.running) return;
   state.running = { what, phase: "…", percent: null };
   state.stopping = false;
-  state.networkSaid = null;
+  state.notes = null;
   try {
     const said = await run();
-    state.networkSaid = said.trim() || `${what} : rien à faire`;
+    // Into the same place every other success goes. It had a field of its own,
+    // `networkSaid`, which nothing ever rendered: a fetch, a pull and a push
+    // all finished in silence, which on the operations that take the longest is
+    // the worst place for it. One channel for what went right, one band for
+    // what did not.
+    state.notes = [`${what} terminé`, said.trim() || "rien à faire"].join("\n");
   } catch (error) {
     state.writeError = { what, said: message(error) };
   } finally {
@@ -1104,12 +1104,12 @@ export function startClone(): void {
     if (state.running) return;
     state.running = { what: "Clonage", phase: "…", percent: null };
     state.stopping = false;
-    state.networkSaid = null;
+    state.notes = null;
     let landed: string | null = null;
     try {
       const summary = await api.cloneRepository(request);
       landed = summary.path;
-      state.networkSaid = `Cloné dans ${summary.path}`;
+      state.notes = `Cloné dans ${summary.path}`;
     } catch (error) {
       state.addError = message(error);
     } finally {
@@ -1132,10 +1132,6 @@ export function stopNetwork(): void {
 
 export function dismissAddError(): void {
   state.addError = null;
-}
-
-export function dismissNetworkSaid(): void {
-  state.networkSaid = null;
 }
 
 // ── Integrating one branch into another (M7) ────────────────────────────────
