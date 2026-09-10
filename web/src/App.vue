@@ -28,7 +28,7 @@ import StashList from "./components/StashList.vue";
 import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
 import Topbar from "./components/Topbar.vue";
-import { onBeforeUnmount, onMounted } from "vue";
+import { onBeforeUnmount, onMounted, watch } from "vue";
 import { app, paneWidth } from "./state";
 import { dispatch } from "./keymap";
 
@@ -42,6 +42,24 @@ function onKey(event: KeyboardEvent): void {
 
 onMounted(() => window.addEventListener("keydown", onKey));
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
+
+// `1` `2` `3` are a shortcut *through* the tab order (board 09), so the native
+// focus follows them: without this the next `Tab` would carry on from wherever
+// focus happened to be left, and the ring would be in one place while the
+// keyboard was in another. The one piece of DOM the shell touches, and it is
+// here because focus is the browser's to own — the store deliberately holds
+// none of it.
+watch(
+  () => [app.zone, app.screen],
+  () => {
+    const zone = document.querySelector<HTMLElement>(`[data-zone="${app.zone}"]`);
+    // A zone with no list in it — the diff panel before a file is open — has
+    // nothing to focus, and moving focus to the body would lose the tab order's
+    // place. Leaving it is the better of the two.
+    if (zone && !zone.contains(document.activeElement)) zone.focus();
+  },
+  { flush: "post" },
+);
 
 /// The stylesheet's own widths, and the floor a column may be dragged to. The
 /// floor is per pane because what has to stay readable differs: a file list can

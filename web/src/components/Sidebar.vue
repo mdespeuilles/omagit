@@ -12,7 +12,7 @@
 // more.
 
 import { computed } from "vue";
-import { app, changedCount, showScreen } from "../state";
+import { app, changedCount, goToZone, showScreen } from "../state";
 import BranchTree from "./BranchTree.vue";
 
 const changes = computed(() => (app.open ? changedCount() : 0));
@@ -21,7 +21,11 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
 </script>
 
 <template>
-  <nav class="sidebar">
+  <!-- The whole sidebar is one stop, and `j` `k` walk the branches inside it
+       (board 09, stop 5). The three screen buttons above them keep their own
+       stops: nothing else reaches them, and `⌘1` `⌘2` `⌘3` is a shortcut, not a
+       path for someone crossing the window with Tab. -->
+  <nav class="sidebar" tabindex="0" data-zone="1" @focus="goToZone(1)">
     <div class="group-head"><span class="chevron">▾</span><span>Workspace</span></div>
 
     <button

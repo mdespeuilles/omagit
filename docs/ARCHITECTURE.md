@@ -1630,6 +1630,68 @@ not painted as an error either, which would teach people to fear a state they ma
 have chosen. It is a `--warning` line under the box. Amend in a repository with
 no commit *is* blocked, with the reason.
 
+### 2.52 M9, ninth slice: giving Tab back to the browser
+
+Board 09 counts the tab stops of each screen — eleven on Working Copy, seven on
+History, six on Repositories — and states the rule under them: *une zone = un
+arrêt*. Tab does not cross a list's forty rows; it enters the zone on the row the
+keyboard is already on.
+
+What shipped in the third slice answered `Tab` from the key table, cycling the
+three zones, and called `preventDefault` on every press to do it. The
+consequence took a while to see and is worse than the thing it implemented:
+**no button in the window was reachable from the keyboard at all.** Not Fetch,
+not the commit box's toggles, not "Retirer" — the browser's own tab order was
+being swallowed on every key press for a feature that moved a highlight.
+
+So `Tab` is not in the table any more, and that is the decision rather than an
+omission. The browser walks the stops; the markup declares them:
+
+* **A list is one stop.** Its container carries `tabindex="0"` and a
+  `data-zone`, and entering it tells the store which zone the keyboard is in —
+  so `j`, `k` and `⏎` act on the list Tab just entered.
+* **`1` `2` `3` move the native focus too**, in `App.vue`. They are a shortcut
+  *through* the tab order, so the next `Tab` has to carry on from where they
+  landed. It is the one piece of DOM the shell touches, and it is here because
+  focus is the browser's to own — a principle this codebase already wrote down
+  when `/` had to put the caret in a filter.
+* **A row's own actions are stops only for the row the keyboard is on.** Not
+  hidden from Tab entirely, which would make them mouse-only, and not all at
+  once either — three per row over forty rows is a hundred and twenty presses to
+  cross a file list. This is the shape board 09 draws: the list, then its current
+  row's controls.
+
+Where this build differs from the board's count, it differs deliberately. The
+sidebar's three screen buttons keep their own stops: `j`/`k` in that zone walk
+the *branches*, so nothing else would reach them. And the diff's hunk actions
+stay in the order because board 09 assumes `⌥S`/`⌥D` reach them and those do not
+exist yet — a control reachable by the mouse alone is worse than one stop too
+many.
+
+Untestable in jsdom, which implements no sequential focus navigation: the tests
+assert the declaration — which elements are stops, which are not, that entering
+one agrees with the state, that `1` `2` `3` move focus. The walking is the
+browser's, which is the whole point.
+
+### 2.53 The sixteenth defect, closed: a folder can be dropped again
+
+M3 took a folder dropped on the window; the port to Tauri did not carry it over,
+and the library was left with exactly one door — the platform's open panel,
+which on macOS does not show `/var/folders/…` and therefore could not reach a
+repository built under `$TMPDIR`. The fixture script moved to `~` because of it.
+
+The webview's event, not the DOM's: a browser drop hands over file *contents*,
+and what is wanted is the path on disk. Tauri answers with paths, which is why
+this is not `@dragover`/`@drop` on the shell. Folders are added one at a time and
+in order, so the first one that is not a repository says so and the rest still
+arrive.
+
+`dragDropEnabled` is now written out in both window configs rather than left to
+its default. It is not decoration: the same switch disables HTML drag and drop
+*inside* the page on macOS and Windows, and SPEC §11 asks for repository groups
+reorderable by drag. Whoever builds that will have to reconcile the two, and the
+line in the config is where they will find out.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -1845,6 +1907,27 @@ editor lives in a terminal. And both ways out of a stopped operation, side by
 side in the status bar: `continue` once the conflicts are settled, `abort` at
 any time.
 
+**M9 — finition** (§2.44 to §2.53). SPEC §11's transverse list, delivered whole:
+a command palette that searches actions, repositories, branches and files and
+runs what it finds; a keymap that is reassignable and stores only the difference
+from the table; a Preferences screen for the theme, the density and the scale,
+which nothing in DESIGN draws and which is therefore built from the vocabulary
+the window already has; the `?` sheet, printed from the table that answers the
+keys rather than written by hand; empty and error states that say *which* empty
+they are; and the native macOS menu bar, whose Édition menu is what gives the
+commit box an undo at all.
+
+One table underneath all of it. `web/src/keymap.ts` holds every action, and four
+things read it — the key handler, the palette, the sheet and the menu bar — so a
+binding changed in Preferences moves in all four. Printing it is also what
+audited it: the sheet found `Tab` documented since M3 and bound to nothing, and
+its own binding written `Shift+/`, which no layout produces.
+
+Keyboard navigation to board 09's model: three zones with `1` `2` `3`, `j`/`k`
+inside one, `Esc` up a level — and `Tab` handed back to the browser, which is
+what walks the window's stops. Answering it ourselves had left no button in the
+window reachable from the keyboard.
+
 **Verified on screen, not only in tests** (§2.38, §2.39). `scripts/fixture.sh`
 builds a repository with the shape all of this needs — a history with a merge in
 it, five branches, a divergence from a local "remote", two stashes, a working
@@ -1859,12 +1942,29 @@ only ever fail.
 
 Re-read at every milestone (SPEC §15).
 
-> **The table below is stamped M4 and has not been re-read since.** Three of its
-> rows are answered elsewhere in this document — risk 3 by §2.20's amendment,
-> risk 4 by M6's graph, risk 7 by the CI decision recorded in CLAUDE.md — and
-> the rest are owed a pass. Left stamped rather than quietly refreshed: a risk
-> table that says M4 and means it is more use than one that looks current and is
-> not.
+> **The table below is stamped M4 and has not been re-read since.** Left stamped
+> rather than quietly refreshed: a risk table that says M4 and means it is more
+> use than one that looks current and is not. Read at the end of M9, and the
+> pass is this note rather than a rewrite of the rows, because what changed is
+> the ground under them rather than their wording:
+>
+> * **Risks 1 and 3 no longer describe this build.** Both are about GPUI — a
+>   render thread to block, a vendored toolkit to be incomplete. The interface
+>   is a web view (§2.20); `assert_off_render_thread` still guards every entry
+>   point in `omagit-git` and still has not fired, and it now guards against a
+>   Tauri command thread instead.
+> * **Risk 4 is answered.** The graph shipped with M6 and the lanes stayed in
+>   `omagit-git/graph.rs`, topology only.
+> * **Risk 5 has come true in the only way that counts and is handled**:
+>   omagit writes now — index, commits, discards, merges, rebases, pushes — and
+>   every destructive one is behind SPEC §3 rule 7's confirmation, with the exact
+>   command in the journal before it runs. `--force-with-lease`, never a bare
+>   `--force`.
+> * **Risk 7 stands, and is the one to re-read at M10**: nothing compiles the
+>   other platform, and M9 added a whole file that only macOS ever executes
+>   (`menu.rs`).
+> * **Risk 6 is M10's, unchanged**: an Apple developer account, signing,
+>   notarisation.
 
 | # | Risk | State at M4 |
 |---|---|---|
@@ -1887,15 +1987,21 @@ drawn on top of the file path — is fixed: the path could not shrink and had no
 clip, so its text spilled over them. It now keeps a floor and the stats clip
 first (`tests/working_copy.rs`).
 
-A sixteenth, from M8, and it is M9's: **the only way to add a repository is the
-platform's folder picker.** M3 also took a folder dropped into the window; the
-port to Tauri did not carry that over, and there is nowhere to type or paste a
-path either. It is not a small gap in practice — the fixture script first built
-its repository under `$TMPDIR`, which on macOS is a `/var/folders/…` path the
-Finder's open panel hides, so the fixture was unreachable from the one button
-that adds one. The fixture moved to `~`; the app still has one door. Drag and
-drop belongs with M9's keyboard work, where a command palette gives paths a
-second way in.
+**Library groups can be seen but not made.** The backend has carried a group per
+repository since M3 and the list draws them, but nothing creates one, renames
+one, or reorders them — SPEC §11 asks for all three, "repliables, réordonnables
+par drag & drop, persistés". The Repositories column carried a "Nouveau groupe —
+jalon M9" placeholder for it; M9 ends without groups, so the placeholder is gone
+rather than re-dated. It is the last piece of the MVP's Repositories line that
+is not built, and it has no milestone: M10 is distribution.
+
+A sixteenth, from M8, **half closed by M9** (§2.53): **the only way to add a
+repository was the platform's folder picker.** A folder dropped on the window is
+added again, which is the half that mattered — the Finder's open panel hides
+`/var/folders/…`, so a repository built under `$TMPDIR` could not be reached by
+the one button that adds one. What is still open is *typing* a path: there is no
+dialog to type it into, and inventing one for this alone was not worth it while
+a drop and the picker both work. What follows is the defect as it stood.
 
 A fifteenth, from M8, now **closed by M9's first slice** (§2.44): `KEYMAP.md`
 described a build that no longer existed. It is rewritten against
@@ -1910,7 +2016,12 @@ tab order over rows that are buttons (§2.31), plus the keys a dialog binds whil
 it is open (§2.37). The whole of it is M9's, and until then the file should not
 be read as a description of what ships.
 
-A fourteenth, from M8: **the branch tree nests `<button>` inside `<button>`.**
+A fourteenth, from M8, now **closed by M9's fifth slice** (§2.48): the rows are
+`<div>`s, which is the shape `.file-row` and `.commit-row` already had, and the
+Vue compiler's warning is gone with them. The library row had the same defect
+and is fixed with it. What follows is the defect as it stood.
+
+**The branch tree nests `<button>` inside `<button>`.**
 Its row is a button so the keyboard can reach it (§2.31) and its three actions
 are buttons inside that one, which is invalid HTML — the Vue compiler warns
 about exactly this shape, and only stays quiet here because the actions are

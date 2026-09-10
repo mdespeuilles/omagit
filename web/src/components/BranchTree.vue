@@ -112,6 +112,12 @@ function submit(): void {
   name.value = "";
   naming.value = false;
 }
+
+/// Whether a branch's actions are in the tab order: only for the row the
+/// keyboard is on (board 09). The sidebar is one stop; `j` and `k` walk it.
+function stop(name: string): 0 | -1 {
+  return app.branchCursor === name ? 0 : -1;
+}
 </script>
 
 <template>
@@ -149,6 +155,7 @@ function submit(): void {
         <button
           v-if="!row.head"
           class="row-action"
+          :tabindex="stop(row.name)"
           :title="`Fusionner ${row.name} dans la branche courante`"
           @click.stop="mergeBranch(row.name)"
         >
@@ -157,6 +164,7 @@ function submit(): void {
         <button
           v-if="!row.head"
           class="row-action"
+          :tabindex="stop(row.name)"
           :title="`Rebaser la branche courante sur ${row.name}`"
           @click.stop="rebaseOnto(row.name)"
         >
@@ -165,6 +173,7 @@ function submit(): void {
         <button
           v-if="!row.head"
           class="row-action danger"
+          :tabindex="stop(row.name)"
           title="Supprimer cette branche"
           @click.stop="deleteBranch(row)"
         >
@@ -204,6 +213,7 @@ function submit(): void {
             <button
               v-if="!row.head"
               class="row-action"
+              :tabindex="stop(row.name)"
               :title="`Fusionner ${row.name} dans la branche courante`"
               @click.stop="mergeBranch(row.name)"
             >
@@ -212,6 +222,7 @@ function submit(): void {
             <button
               v-if="!row.head"
               class="row-action"
+              :tabindex="stop(row.name)"
               :title="`Rebaser la branche courante sur ${row.name}`"
               @click.stop="rebaseOnto(row.name)"
             >
@@ -220,6 +231,7 @@ function submit(): void {
             <button
               v-if="!row.head"
               class="row-action danger"
+              :tabindex="stop(row.name)"
               title="Supprimer cette branche"
               @click.stop="deleteBranch(row)"
             >

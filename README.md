@@ -93,9 +93,9 @@ parse is renamed aside rather than replaced: it is a list you arranged by hand.
 
 ## Choosing a theme
 
-There is no preferences screen yet (M9). Until then, `settings.toml` in the
-config directory — `~/Library/Application Support/omagit` on macOS,
-`$XDG_CONFIG_HOME/omagit` on Linux:
+Réglages → Thème, or `⌘,`. The same choices live in `settings.toml` in the config
+directory — `~/Library/Application Support/omagit` on macOS,
+`$XDG_CONFIG_HOME/omagit` on Linux — and editing it by hand is still supported:
 
 ```toml
 density = "compact"        # or "comfortable"
@@ -111,7 +111,17 @@ Other sources: `omarchy` (Linux, follows the live Quattro palette),
 
 ## Current state
 
-**M8 — stashes and conflicts.** A merge or a rebase that stops half-way is now
+**M9 — finition.** The window answers the keyboard end to end: three zones with
+`1` `2` `3`, `j`/`k` inside one, `Esc` up a level, and `Tab` walking the stops
+the markup declares. A command palette on `⌘K` searches actions, repositories,
+branches and files. `?` prints every binding — from the table that answers them,
+not from a list somebody keeps up to date. Réglages holds the theme, the density,
+the scale and the keymap, which is reassignable: press the key you want. On
+macOS there is a native menu bar, which is also where `⌘Z` and `⌘A` inside the
+commit box come from. And the empty states say which empty they are — a filter
+with nothing behind it is not an empty repository.
+
+Before it, **M8 — stashes and conflicts.** A merge or a rebase that stops half-way is now
 something you can get out of in either direction, from inside the window: the
 two sides of a conflicted file named by their branch rather than by "ours" and
 "theirs" — which mean the opposite of what they read like during a rebase —
@@ -132,5 +142,8 @@ the Working Copy with staging by file, hunk and line, the commit box, History
 with its graph and filters, and the diff viewer under all of them.
 
 `docs/ARCHITECTURE.md` §4 lists exactly what is built, and §5's known defects
-list exactly what is not — including what the port left behind and what waits
-for M9: the keyboard, the command palette, preferences.
+list exactly what is not — including the three-column layout below 1100px, and
+repository groups, which can be seen but not made.
+
+Next is **M10 — distribution**: a signed and notarised macOS bundle, a Linux
+archive and PKGBUILD.

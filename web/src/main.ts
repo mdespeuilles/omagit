@@ -3,6 +3,7 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import { api } from "./ipc";
+import { watchDrops } from "./drop";
 import { installMenu } from "./menu";
 import { boot, watchProgress, watchTheme } from "./state";
 
@@ -37,6 +38,11 @@ boot()
     ),
   )
   .catch(report);
+// Same independence as the two below: a window that could not subscribe to
+// drops is a window with one door into the library, not a broken one.
+watchDrops().catch((error) =>
+  api.log("warn", `dépôt par glisser-déposer indisponible : ${String(error)}`),
+);
 // Independent of `boot`: progress belongs to the window's lifetime, not to a
 // repository's, and a failure to subscribe must not stop the app from opening.
 watchProgress().catch(report);

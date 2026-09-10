@@ -85,7 +85,7 @@ const idle = (): boolean => !app.busy && !app.running;
 /// `Tab` fit badly, since each of the three is handled by hand.
 export const MOVEMENTS: { print: string; label: string }[] = [
   { print: "1 2 3", label: "La sidebar, la colonne centrale, le panneau de détail" },
-  { print: "Tab · ⇧Tab", label: "Zone suivante ou précédente, en boucle" },
+  { print: "Tab · ⇧Tab", label: "L'arrêt suivant ou précédent : une liste entière en est un" },
   { print: "j k · ↓ ↑", label: "Descendre et monter dans la zone" },
   { print: "g g · G", label: "La première ligne · la dernière" },
   { print: "⏎", label: "Ce à quoi sert la ligne : ouvrir, basculer, indexer" },
@@ -403,15 +403,11 @@ export function dispatch(event: KeyboardEvent): boolean {
   if (bare && typing(event.target)) return false;
 
   if (bare) {
-    // `Tab` moves between zones (DESIGN §5) — but only out here, where the
-    // caret is in no field: inside one it is the browser's, and taking it would
-    // trap somebody in a text box. It was written in KEYMAP.md and bound to
-    // nothing until the `?` sheet went to print it, which is the argument for
-    // the sheet in one line.
-    if (event.key === "Tab") {
-      store.nextZone(event.shiftKey ? -1 : 1);
-      return true;
-    }
+    // `Tab` is not here, and that is the decision rather than an omission: it
+    // belongs to the browser, which walks the window's tab stops in DOM order.
+    // Answering it meant `preventDefault` on every press, which is how the
+    // window ended up with *no* button reachable from the keyboard at all
+    // (board 09, §2.52). The stops are declared in the markup instead.
     // `/` puts the caret in whichever filter this screen has. A DOM act, done
     // here rather than in the store: focus is the one piece of interface state
     // the browser owns, and the store deliberately owns none of it.

@@ -37,6 +37,12 @@ const busy = computed(() => !!app.busy || !!app.gitUnusable);
 function origin(row: StashRow): string {
   return [row.branch ?? "HEAD détaché", when(row.when)].join(" · ");
 }
+
+/// Whether a per-row control is in the tab order: only for the row the keyboard
+/// is on (board 09). The list is one stop; `j` and `k` walk it.
+function stop(id: string): 0 | -1 {
+  return app.stash === id ? 0 : -1;
+}
 </script>
 
 <template>
@@ -88,7 +94,7 @@ function origin(row: StashRow): string {
       Rien de remisé. « Remiser » met la copie de travail de côté et laisse la branche propre.
     </p>
 
-    <ol v-else class="stash-rows">
+    <ol v-else class="stash-rows" tabindex="0" data-zone="2" @focus="goToZone(2)">
       <!-- The row is a button, and its three actions are buttons *beside* it
            rather than inside it: a `<button>` in a `<button>` is invalid. So
            the `<li>` is the row — it carries hover and selected — and the
@@ -106,6 +112,7 @@ function origin(row: StashRow): string {
       >
         <button
           class="row stash-row"
+          tabindex="-1"
           @click="
             goToZone(2);
             selectStash(row.id.full);
@@ -126,6 +133,7 @@ function origin(row: StashRow): string {
         <span class="row-actions">
           <button
             class="row-action"
+            :tabindex="stop(row.id.full)"
             :disabled="busy"
             title="Remettre ces modifications dans la copie de travail. La remise reste sur l'étagère."
             @click="restoreStash(row, true)"
@@ -134,6 +142,7 @@ function origin(row: StashRow): string {
           </button>
           <button
             class="row-action"
+            :tabindex="stop(row.id.full)"
             :disabled="busy"
             title="Remettre ces modifications dans la copie de travail, puis retirer la remise de l'étagère."
             @click="restoreStash(row, false)"
@@ -142,6 +151,7 @@ function origin(row: StashRow): string {
           </button>
           <button
             class="row-action danger"
+            :tabindex="stop(row.id.full)"
             :disabled="busy"
             title="Jeter la remise sans l'appliquer. Son contenu ne sera plus joignable que par le reflog."
             @click="dropStash(row)"

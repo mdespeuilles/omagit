@@ -89,7 +89,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
 </script>
 
 <template>
-  <nav class="library">
+  <nav class="library" :class="{ dropping: app.dragging }">
     <div class="library-filter">
       <input
         type="search"
@@ -126,8 +126,8 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
     <div v-else-if="app.repositories.length === 0" class="library-empty">
       <p class="library-empty-title">Aucun dépôt pour l'instant</p>
       <p class="library-empty-text">
-        Ajoute un dossier déjà versionné. Il reste sur le disque : cette liste n'en garde que le
-        chemin.
+        Ajoute un dossier déjà versionné, ou dépose-le sur la fenêtre. Il reste sur le disque :
+        cette liste n'en garde que le chemin.
       </p>
       <span class="library-empty-actions">
         <button class="primary" @click="addRepository()">Ajouter un dépôt local</button>
@@ -135,7 +135,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
       </span>
     </div>
 
-    <div v-else class="library-groups">
+    <div v-else class="library-groups" tabindex="0" data-zone="1" @focus="goToZone(1)">
       <template v-for="(group, at) in groups" :key="at">
         <div class="group-head">
           <span class="chevron">▾</span><span>{{ group.name }}</span>
@@ -169,6 +169,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
           <span class="library-dot" :class="state(row).kind" aria-hidden="true" />
           <button
             class="row-action danger"
+            :tabindex="app.card === row.path ? 0 : -1"
             title="Retirer de la liste — le dépôt reste sur le disque"
             @click.stop="forgetRepository(row)"
           >
@@ -178,10 +179,11 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
       </template>
     </div>
 
-    <div class="library-foot">
-      <span class="mono">+</span><span>Nouveau groupe</span>
-      <span class="pane-head-spacer" />
-      <span class="dim">jalon M9</span>
-    </div>
+    <!-- "Nouveau groupe — jalon M9" stood here, and M9 ends without groups.
+         An affordance for something unbuilt, labelled with a milestone that has
+         passed, is worse than no affordance: it is the dead code SPEC §2
+         forbids, wearing a date. The gap is recorded in ARCHITECTURE §5 where
+         it can be read, rather than hinted at in the window where it cannot be
+         acted on. -->
   </nav>
 </template>

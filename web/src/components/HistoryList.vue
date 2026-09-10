@@ -129,6 +129,9 @@ function open(id: string, extend: boolean): void {
 
     <VirtualList
       v-else
+      tabindex="0"
+      data-zone="2"
+      @focus="goToZone(2)"
       :items="rows"
       :row-height="ROW_HEIGHT"
       @near-end="moreHistory()"

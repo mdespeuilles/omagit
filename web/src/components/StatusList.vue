@@ -101,6 +101,16 @@ function name(path: string): string {
   const cut = path.lastIndexOf("/");
   return cut < 0 ? path : path.slice(cut + 1);
 }
+
+/// Whether a per-row control is in the tab order.
+///
+/// Board 09: the list is one stop and its rows are walked with `j` and `k`, so
+/// only the row the keyboard is on offers its controls to Tab. Not hidden from
+/// it entirely — a control reachable by the mouse alone is unreachable — and
+/// not all of them at once either, which would be three stops per row.
+function stop(path: string): 0 | -1 {
+  return app.selected?.path === path ? 0 : -1;
+}
 </script>
 
 <template>
@@ -126,10 +136,16 @@ function name(path: string): string {
       Rien de modifié
     </p>
 
+    <!-- One tab stop for the whole list (board 09): Tab enters the zone, `j`
+         and `k` move inside it. A list that put every row in the tab order
+         would take forty presses to cross. -->
     <VirtualList
       v-else-if="app.status.status === 'ready'"
       :items="rows"
       :row-height="ROW_HEIGHT"
+      tabindex="0"
+      data-zone="2"
+      @focus="goToZone(2)"
       v-slot="{ item }"
     >
       <div
@@ -152,6 +168,7 @@ function name(path: string): string {
              than sending the reader looking for a button that does not exist. -->
         <button
           class="check"
+          :tabindex="stop(item.path)"
           :class="mark(item)"
           :disabled="!!app.busy"
           :title="
@@ -187,12 +204,17 @@ function name(path: string): string {
              the two sides instead of a discard — `git checkout -- <path>`
              refuses an unmerged path, so that button would have been one that
              always fails. -->
-        <span class="row-actions">
+        <!-- In the tab order only for the row the keyboard is on (board 09):
+             the list is one stop, and the actions of its current row are the
+             next. Every row's actions in the order would be a hundred and
+             twenty presses to cross a list of forty files. -->
+        <span class="row-actions" :data-current="app.selected?.path === item.path">
           <template v-if="item.conflict">
             <!-- The two sides settle the whole file in one click; the dialog is
                  for a file whose conflicts do not all want the same answer. -->
             <button
               class="row-action"
+              :tabindex="stop(item.path)"
               :disabled="!!app.busy"
               title="Résoudre conflit par conflit"
               @click.stop="openConflict(item.path)"
@@ -201,6 +223,7 @@ function name(path: string): string {
             </button>
             <button
               class="row-action"
+              :tabindex="stop(item.path)"
               :disabled="!!app.busy"
               :title="explain('ours')"
               @click.stop="resolveConflict(item, 'ours')"
@@ -209,6 +232,7 @@ function name(path: string): string {
             </button>
             <button
               class="row-action"
+              :tabindex="stop(item.path)"
               :disabled="!!app.busy"
               :title="explain('theirs')"
               @click.stop="resolveConflict(item, 'theirs')"
@@ -219,6 +243,7 @@ function name(path: string): string {
           <button
             v-else
             class="row-action danger"
+            :tabindex="stop(item.path)"
             :disabled="!!app.busy || item.unstaged === null"
             title="Rejeter les modifications non indexées"
             @click.stop="discardFile(item)"

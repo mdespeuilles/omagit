@@ -12,6 +12,7 @@ import {
   clearPicked,
   discardHunk,
   discardPicked,
+  goToZone,
   lineKey,
   pickLine,
   plural,
@@ -136,7 +137,15 @@ function segments(
     </p>
     <p v-else-if="rows.length === 0" class="pane-empty">Rien à afficher pour ce fichier</p>
 
-    <VirtualList v-else :items="rows" :row-height="ROW_HEIGHT" v-slot="{ item }">
+    <VirtualList
+      v-else
+      :items="rows"
+      :row-height="ROW_HEIGHT"
+      tabindex="0"
+      data-zone="3"
+      @focus="goToZone(3)"
+      v-slot="{ item }"
+    >
       <div v-if="item.kind === 'header'" class="diff-header mono">
         <span class="diff-header-text">{{ item.text }}</span>
         <!-- Never fully hidden (DESIGN §3): at rest these sit at a low opacity

@@ -121,8 +121,22 @@ Two bindings are refused, both because they could not answer:
 Everything else is allowed. A bare key that does not fire while you are typing is
 the rule above, not a defect — `⇧?` is one.
 
+## Tab is the browser's
+
+`Tab` is not in the table, and that is the decision rather than an omission.
+The window's tab stops are declared in the markup and the browser walks them
+(board 09, ARCHITECTURE §2.52): **a whole list is one stop**, entered on the row
+the keyboard is already on, and a row's own actions are stops only for that row.
+`1` `2` `3` move the native focus with them, so the next `Tab` carries on from
+where they landed.
+
+It was answered here for one slice, by cycling the three zones — and
+`preventDefault`ing every press to do it, which left no button in the window
+reachable from the keyboard at all.
+
 ## Not yet bound
 
-The tab stops *inside* a zone — board 09 draws Working Copy with eleven of them,
-where this has three zones and a cursor in each. What is here is the vocabulary;
-the last stops are M9's own finishing.
+Per-hunk shortcuts: board 09 draws `⌥S` to stage the hunk the diff is on and
+`⌥D` to discard it. Until they exist the hunk's own buttons stay in the tab
+order, because a control reachable by the mouse alone is worse than one stop too
+many.

@@ -6,6 +6,7 @@
 // `document.activeElement` cannot be the record of where the keyboard is when
 // the element under it comes and goes with the scroll.
 
+import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Repository } from "./backend.fake";
 
@@ -80,13 +81,16 @@ describe("the three zones", () => {
     expect(state.app.zone).toBe(1);
   });
 
-  it("wraps rather than letting focus out of the window", async () => {
-    const { state } = await opened();
-    state.goToZone(3);
-    state.nextZone(1);
+  it("leaves Tab to the browser, which is what walks the stops", async () => {
+    // It used to answer Tab by cycling the three zones — and to
+    // `preventDefault` every press doing it, which meant no button in the
+    // window was reachable from the keyboard at all (board 09, §2.52). The
+    // stops are in the markup now; what this pins is that nothing swallows the
+    // key on the way.
+    const { state, keymap } = await opened();
+    expect(keymap.dispatch(press("Tab"))).toBe(false);
+    expect(keymap.dispatch(press("Tab", { shiftKey: true }))).toBe(false);
     expect(state.app.zone).toBe(1);
-    state.nextZone(-1);
-    expect(state.app.zone).toBe(3);
   });
 });
 
@@ -196,5 +200,67 @@ describe("the repository filter", () => {
 
     expect(state.escapeLevel()).toBe(true);
     expect(state.app.libraryFilter).toBe("");
+  });
+});
+
+// ── The tab stops (board 09) ────────────────────────────────────────────────
+//
+// jsdom does not implement sequential focus navigation — pressing Tab there
+// moves nothing — so what is asserted is the *declaration*: which elements are
+// stops, which are not, and that entering one agrees with the state. The
+// walking itself is the browser's, which is the point of giving Tab back to it.
+
+async function window_() {
+  const { state } = await opened();
+  const App = (await import("./App.vue")).default;
+  // One window at a time. `attachTo` appends, so a second mount left two
+  // `[data-zone="2"]` in the document and the focus assertions below compared
+  // the new list against the old one's element.
+  document.body.innerHTML = "";
+  const app = mount(App, { attachTo: document.body });
+  await app.vm.$nextTick();
+  return { state, app };
+}
+
+describe("the tab stops", () => {
+  it("makes a whole list one stop, not one per row", async () => {
+    const { app } = await window_();
+    const list = app.find('[data-zone="2"]');
+    expect(list.attributes("tabindex")).toBe("0");
+    // The rows themselves are not focusable at all: they are `<div>`s, walked
+    // with `j` and `k`.
+    expect(app.findAll(".file-row [tabindex='0']").length).toBeLessThanOrEqual(2);
+  });
+
+  it("offers a row's own actions only for the row the keyboard is on", async () => {
+    const { state, app } = await window_();
+    await state.selectFile("a.txt", false);
+    await app.vm.$nextTick();
+
+    const rows = app.findAll(".file-row");
+    const on = rows.find((row) => row.text().includes("a.txt"))!;
+    const off = rows.find((row) => row.text().includes("b.txt"))!;
+    expect(on.find(".row-action").attributes("tabindex")).toBe("0");
+    expect(off.find(".row-action").attributes("tabindex")).toBe("-1");
+  });
+
+  it("moves the native focus with 1 2 3, so the next Tab carries on from there", async () => {
+    const { state, app } = await window_();
+    state.goToZone(2);
+    await app.vm.$nextTick();
+    expect(document.activeElement).toBe(app.find('[data-zone="2"]').element);
+
+    state.goToZone(1);
+    await app.vm.$nextTick();
+    expect(document.activeElement).toBe(app.find('[data-zone="1"]').element);
+  });
+
+  it("agrees with the state when a stop is entered rather than jumped to", async () => {
+    const { state, app } = await window_();
+    state.goToZone(1);
+    await app.vm.$nextTick();
+
+    await app.find('[data-zone="2"]').trigger("focus");
+    expect(state.app.zone).toBe(2);
   });
 });

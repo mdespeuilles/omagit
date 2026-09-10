@@ -117,28 +117,24 @@ describe("the bindings", () => {
     expect(backend.current.calls.filter((call) => call.command === "fetch")).toHaveLength(1);
   });
 
-  it("moves between zones on Tab, but leaves it to a text field", async () => {
-    // Documented in KEYMAP.md since M3 and bound to nothing until the `?` sheet
-    // went to print it. Inside a field it is the browser's: taking it there
-    // would trap somebody in a text box.
+  it("does not answer Tab at all, so the browser can walk the stops", async () => {
+    // It answered it for one slice, by cycling the three zones — and
+    // `preventDefault`ing every press to do it, which left no button in the
+    // window reachable from the keyboard (board 09, §2.52). The stops are
+    // declared in the markup instead; the table's job is to stay out of the
+    // way.
     const { state, keymap } = await opened();
-    expect(keymap.dispatch(press("Tab"))).toBe(true);
-    expect(state.app.zone).toBe(2);
-    expect(keymap.dispatch(press("Tab", { shiftKey: true }))).toBe(true);
+    expect(keymap.dispatch(press("Tab"))).toBe(false);
+    expect(keymap.dispatch(press("Tab", { shiftKey: true }))).toBe(false);
     expect(state.app.zone).toBe(1);
-
-    const box = document.createElement("input");
-    document.body.append(box);
-    const inField = new KeyboardEvent("keydown", { key: "Tab", cancelable: true });
-    Object.defineProperty(inField, "target", { value: box });
-    expect(keymap.dispatch(inField)).toBe(false);
-    box.remove();
   });
 
-  it("prints every key it answers, so the sheet cannot drift from the table", async () => {
+  it("prints every key the window moves by, so the sheet cannot drift", async () => {
     // A sheet maintained by hand is wrong by the second slice — this project
     // has the receipt: KEYMAP.md spent three milestones describing a build that
-    // had been deleted.
+    // had been deleted. `Tab` is in the list without being in `dispatch`: the
+    // browser walks the stops, and a reader cannot tell which of the two
+    // answered a key — nor should the sheet ask them to.
     const { keymap } = await opened();
     const printed = keymap.MOVEMENTS.map((move) => move.print).join(" ");
 

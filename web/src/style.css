@@ -790,6 +790,15 @@ button.icon {
   box-shadow: inset 0 0 0 1px var(--border-focus);
 }
 
+/* A zone is one tab stop, and it is a container rather than a control — so the
+   ring is drawn inside it, the way board 09 draws it on full-width rows. An
+   outline offset by 2px, which is right on a button, would be clipped by the
+   scroller it sits in. */
+[data-zone]:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 1px var(--border-focus);
+}
+
 /* Where the keyboard is (DESIGN §1 and §5, board 09). Selected is a surface
    change and survives the keyboard leaving the zone; focus is this ring, and
    only one zone has it. Drawn *inside* the row so a virtualised container
@@ -1910,22 +1919,6 @@ select:focus {
   opacity: 1;
 }
 
-.library-foot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-  height: 26px;
-  padding: 0 10px;
-  font-size: var(--text-body);
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
-}
-.library-foot .dim {
-  font-size: var(--text-meta);
-  color: var(--text-dim);
-}
-
 .library-empty {
   padding: 16px 10px;
 }
@@ -2828,6 +2821,13 @@ select:focus {
 .settings-facts dd {
   margin: 0;
   color: var(--text-muted);
+}
+
+/* Board 06 draws no drop target, so the answer is the quietest one that is
+   still an answer: the column it will land in outlines itself while something
+   is over the window. No overlay, no dashed rectangle, nothing that moves. */
+.library.dropping {
+  box-shadow: inset 0 0 0 1px var(--border-focus);
 }
 
 /* ── The reassignable keymap (M9, SPEC §11) ──────────────────────────────── */

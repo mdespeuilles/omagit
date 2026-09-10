@@ -222,6 +222,10 @@ type State = {
   /// only: the table of defaults is `keymap.ts`, and `binding()` there is what
   /// puts the two together.
   keymap: Record<string, string>;
+  /// Whether something is being dragged over the window right now. Board 06
+  /// draws no drop target, so the window says it another way: the empty state
+  /// and the list edge answer the pointer rather than staying silent.
+  dragging: boolean;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
@@ -343,6 +347,7 @@ const state = reactive<State>({
   zone: 1,
   branchCursor: null,
   libraryFilter: "",
+  dragging: false,
 });
 
 export const app = readonly(state);
@@ -450,17 +455,39 @@ export function settlePane(name: string, width: number): void {
 export async function addRepository(): Promise<void> {
   const chosen = await open({ directory: true, multiple: false, title: "Ajouter un dépôt" });
   if (typeof chosen !== "string") return;
+  await addPath(chosen);
+}
 
+/// Add repositories by path — what the folder picker ends up calling, and what
+/// a folder dropped on the window calls too.
+///
+/// M3 took a drop and the port to Tauri did not carry it over, which left one
+/// door into the library: the platform's open panel. That is not a small gap —
+/// the Finder's panel hides `/var/folders/…`, so a repository built under
+/// `$TMPDIR` could not be added at all (§5, sixteenth defect).
+///
+/// One at a time and in order, because each one is a `git` open: the first
+/// folder that is not a repository says so, and the rest still arrive.
+export async function addRepositories(paths: string[]): Promise<void> {
+  for (const path of paths) await addPath(path);
+}
+
+async function addPath(path: string): Promise<void> {
   state.addError = null;
   try {
     // Opening it is what says whether it is a repository, so a folder that is
     // not one is refused here rather than added and struck through.
-    await api.addRepository(chosen);
+    await api.addRepository(path);
     await readLibrary();
-    state.card = chosen;
+    state.card = path;
   } catch (error) {
     state.addError = message(error);
   }
+}
+
+/// Something is over the window, or no longer is.
+export function dropping(over: boolean): void {
+  state.dragging = over;
 }
 
 /// Take a repository out of the list. Never off the disk.
@@ -1954,14 +1981,13 @@ export function setLibraryFilter(text: string): void {
 /// Go to one of the three zones. A zone with nothing in it still takes the
 /// keyboard: `3` on the Working Copy means "the diff", and the diff is there
 /// even when no list is.
+///
+/// The *native* focus follows, in `App.vue`, which is the one place allowed to
+/// touch the DOM for it: `1` `2` `3` are a shortcut through the tab order, so
+/// the next `Tab` has to continue from where they landed rather than from
+/// wherever focus was left.
 export function goToZone(zone: Zone): void {
   state.zone = zone;
-}
-
-/// `Tab` and `Shift+Tab`, wrapping. DESIGN §5: after the last stop, focus
-/// returns to the first — it never escapes into the window decoration.
-export function nextZone(by: 1 | -1): void {
-  state.zone = (((state.zone - 1 + by + 3) % 3) + 1) as Zone;
 }
 
 /// `j` `k`, and the arrows. Stops at the ends rather than wrapping: a list of

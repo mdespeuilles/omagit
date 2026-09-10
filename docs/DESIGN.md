@@ -123,6 +123,11 @@ tabs — on every screen.
 
 ## 5. Keyboard
 
+> **Built at M9** (ARCHITECTURE §2.52). Where the implementation departs from
+> the counts below, it is written down there: the sidebar's three screen buttons
+> keep their own stops because `j`/`k` in that zone walk the branches, and the
+> diff's hunk actions keep theirs until `⌥S`/`⌥D` exist.
+
 One zone is one tab stop. Tab enters a zone on its current element; movement
 inside is arrows or vim letters. Working Copy has 11 stops, History 7,
 Repositories 6. `1` `2` `3` jump to the sidebar, centre column and detail panel
