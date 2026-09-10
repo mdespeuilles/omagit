@@ -319,6 +319,29 @@ describe("integrating", () => {
     expect(state.app.question).toBeNull();
   });
 
+  it("sets every name in the tree the same way", async () => {
+    // DESIGN-TOKENS §8 puts every Git literal in the mono face, and half this
+    // tree obeyed it by hand: tags and remote branches carried a `mono` class,
+    // local branches carried nothing, and the prefix heads were mono at the
+    // *header's* size. The rule is in the stylesheet now, so what this pins is
+    // that nobody puts it back in the markup.
+    const { tree } = await open([
+      branch("main", { head: true }),
+      branch("feat/one"),
+      { ...branch("other"), remote: "origin" } as unknown as BranchRow,
+    ]);
+
+    const names = [...tree.findAll(".branch-name"), ...tree.findAll(".group-name")];
+    expect(names.length).toBeGreaterThan(1);
+    for (const name of names) {
+      expect(name.classes(), name.text()).not.toContain("mono");
+    }
+    // And a prefix is a name, not a section label: it is set like the branches
+    // under it and not like BRANCHES above it.
+    const prefix = tree.findAll(".group-name").find((one) => one.text().includes("feat/"));
+    expect(prefix).toBeTruthy();
+  });
+
   it("folds every section that draws a chevron, Branches included", async () => {
     // It was the one head that did not fold. Tags, Remotes and every `feat/`
     // prefix did; "Branches" — the longest section, and the one worth folding —

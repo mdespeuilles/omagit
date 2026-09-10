@@ -266,7 +266,7 @@ function stop(name: string): 0 | -1 {
       <template v-if="!isCollapsed('tags')">
         <span v-for="tag in refs.tags" :key="tag.name" class="row branch-row">
           <Glyph name="tag" class="branch-glyph" />
-          <span class="branch-name mono">{{ tag.name }}</span>
+          <span class="branch-name">{{ tag.name }}</span>
         </span>
       </template>
     </template>
@@ -282,7 +282,7 @@ function stop(name: string): 0 | -1 {
         <template v-for="[remote, rows] in remotes" :key="remote">
           <div class="group-head nested">
             <Glyph name="folder" class="branch-glyph" />
-            <span>{{ remote }}/</span>
+            <span class="group-name">{{ remote }}/</span>
           </div>
           <button
             v-for="row in rows"
@@ -294,7 +294,7 @@ function stop(name: string): 0 | -1 {
             @dblclick="checkoutBranch(row.name)"
           >
             <Glyph name="branch" class="branch-glyph" />
-            <span class="branch-name mono">{{ row.name }}</span>
+            <span class="branch-name">{{ row.name }}</span>
           </button>
         </template>
       </template>

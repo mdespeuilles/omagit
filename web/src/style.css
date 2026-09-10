@@ -2208,11 +2208,17 @@ select:focus {
   padding-left: 34px;
 }
 
+/* Mono, which DESIGN-TOKENS §8 asks of every Git literal — "hashes, noms de
+   branches, chemins". Half of this tree already obeyed it: tags and remote
+   branches carried the class, local branches did not, and the prefix heads were
+   mono at the *header's* size. Three treatments in one column, for one kind of
+   thing. */
 .branch-name {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: var(--font-mono);
 }
 .branch-note {
   flex: none;
@@ -2242,10 +2248,16 @@ select:focus {
   color: var(--text);
 }
 /* A name inside a header keeps its own case. */
+/* A prefix — `feat/`, `origin/` — is part of a branch's name, so it is set like
+   one and not like the section labels around it: the same face, the same size,
+   the same colour. What marks it as a header is its chevron, its folder and its
+   count, which is enough. */
 .group-name {
   text-transform: none;
   letter-spacing: 0;
   font-family: var(--font-mono);
+  font-size: var(--text-body);
+  color: var(--text);
 }
 
 .group-head.nested,
