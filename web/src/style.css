@@ -2261,12 +2261,16 @@ select:focus {
 }
 
 /* A prefix head sits between two lists — the loose branches above, its own
-   below — and needs air on both sides to read as the start of one rather than
-   as a row of the other. Less than a section head's 8px, because it is one rung
-   down and the rhythm should say so; not zero, which is what it had. */
+   below — and needs air on **both** sides, evenly. The first attempt gave it
+   more above than below, on the prose convention that a heading binds to what
+   it introduces; on screen it read as lopsided, and the reason is that this
+   head is not a heading in prose. It is a row in the same list, with a chevron
+   and a folder on it, so an uneven gap reads as a mistake rather than as a
+   grouping. Measured text to text: 15px between two rows, 20px above a section
+   head, 17px on each side of this one. */
 .group-head.as-button.prefix {
   padding-left: 22px;
-  margin: 8px 0 3px;
+  margin: 7px 0;
   text-transform: none;
   letter-spacing: 0;
   font-family: var(--font-mono);
