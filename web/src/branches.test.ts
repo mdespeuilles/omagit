@@ -76,6 +76,27 @@ describe("the branch tree", () => {
     expect(groups.join(" ")).toContain("fix/");
   });
 
+  it("marks as merged the branch that is merged, and only it", async () => {
+    // The badge answers "deleting this loses nothing", so it has to sit on the
+    // row it is about: `merged` travels with the row from `git branch
+    // --merged`, and a badge one row off would wave someone through a delete
+    // that throws commits away.
+    const { tree } = await open([
+      branch("main", { head: true, merged: true }),
+      branch("feature/graph-lanes", { merged: false }),
+      branch("feature/theme-runtime", { merged: true }),
+      branch("old/spike", { merged: false }),
+    ]);
+
+    const marked = tree
+      .findAll(".branch-row")
+      .filter((row) => row.find(".ref.merged").exists())
+      .map((row) => row.find(".branch-name").text());
+
+    // Not `main`: it is HEAD, and "merged into itself" says nothing.
+    expect(marked).toEqual(["theme-runtime"]);
+  });
+
   it("folds a group away and back", async () => {
     const { state, tree } = await open([branch("main", { head: true }), branch("feature/theme")]);
     expect(names(tree)).toContain("theme");
