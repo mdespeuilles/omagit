@@ -2190,17 +2190,21 @@ select:focus {
   gap: 6px;
   width: 100%;
   height: var(--row-height);
-  padding: 0 10px;
+  /* The ladder is 10 · 22 · 34: a section head, what it holds, and what a group
+     inside it holds. A row is never at the first rung — only a section head
+     is. */
+  padding: 0 10px 0 22px;
   border: 0;
   text-align: left;
   font-size: var(--text-body);
   cursor: pointer;
   white-space: nowrap;
 }
+/* One step in, because a branch belongs to the section above it. It used to sit
+   at the section's own left edge, which made the loose branches read as
+   siblings of BRANCHES rather than as its contents — while REMOTES, which
+   indents, read correctly. */
 .branch-row.nested {
-  padding-left: 22px;
-}
-.branch-row.nested.twice {
   padding-left: 34px;
 }
 
@@ -2244,7 +2248,8 @@ select:focus {
   font-family: var(--font-mono);
 }
 
-.group-head.nested {
+.group-head.nested,
+.group-head.as-button.prefix {
   padding-left: 22px;
   margin-top: 0;
   text-transform: none;

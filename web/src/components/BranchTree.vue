@@ -191,7 +191,7 @@ function stop(name: string): 0 | -1 {
       </div>
 
       <template v-for="group in grouped.groups" :key="group.prefix">
-        <button class="group-head as-button" @click="toggleBranchGroup(group.prefix)">
+        <button class="group-head as-button prefix" @click="toggleBranchGroup(group.prefix)">
           <Glyph
             :name="isCollapsed(group.prefix) ? 'chevron-right' : 'chevron-down'"
             class="chevron"
@@ -264,7 +264,7 @@ function stop(name: string): 0 | -1 {
         <span class="pane-head-count">{{ refs.tags.length }}</span>
       </button>
       <template v-if="!isCollapsed('tags')">
-        <span v-for="tag in refs.tags" :key="tag.name" class="row branch-row nested">
+        <span v-for="tag in refs.tags" :key="tag.name" class="row branch-row">
           <Glyph name="tag" class="branch-glyph" />
           <span class="branch-name mono">{{ tag.name }}</span>
         </span>
@@ -287,7 +287,7 @@ function stop(name: string): 0 | -1 {
           <button
             v-for="row in rows"
             :key="`${row.remote}/${row.name}`"
-            class="row branch-row nested twice"
+            class="row branch-row nested"
             :class="{ selected: showing(`${row.remote}/${row.name}`) }"
             :title="`${row.remote}/${row.name} — clic : son historique`"
             @click="showBranchHistory(`${row.remote}/${row.name}`)"
