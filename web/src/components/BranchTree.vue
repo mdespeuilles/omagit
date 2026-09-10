@@ -114,6 +114,15 @@ function submit(): void {
   naming.value = false;
 }
 
+/// What a group's folded state is stored under.
+///
+/// Namespaced, because the names in this tree are not ours to choose. A
+/// prefix keeps its slash, so `tags/` could never reach the `tags` section by
+/// accident — but a **remote's** name is a bare word, `git remote add tags` is
+/// legal, and that one did collide. The prefixes are namespaced with it so the
+/// three families cannot meet at all rather than happening not to.
+const key = (prefix: string): string => `prefix/${prefix}`;
+
 /// Whether a branch's actions are in the tab order: only for the row the
 /// keyboard is on (board 09). The sidebar is one stop; `j` and `k` walk it.
 function stop(name: string): 0 | -1 {
@@ -191,9 +200,9 @@ function stop(name: string): 0 | -1 {
       </div>
 
       <template v-for="group in grouped.groups" :key="group.prefix">
-        <button class="group-head as-button prefix" @click="toggleBranchGroup(group.prefix)">
+        <button class="group-head as-button prefix" @click="toggleBranchGroup(key(group.prefix))">
           <Glyph
-            :name="isCollapsed(group.prefix) ? 'chevron-right' : 'chevron-down'"
+            :name="isCollapsed(key(group.prefix)) ? 'chevron-right' : 'chevron-down'"
             class="chevron"
           />
           <!-- A prefix is part of a branch's name, so it keeps its case. The
@@ -205,7 +214,7 @@ function stop(name: string): 0 | -1 {
           <span class="pane-head-spacer" />
           <span class="pane-head-count">{{ group.rows.length }}</span>
         </button>
-        <template v-if="!isCollapsed(group.prefix)">
+        <template v-if="!isCollapsed(key(group.prefix))">
           <div
             v-for="row in group.rows"
             :key="row.name"
@@ -280,12 +289,25 @@ function stop(name: string): 0 | -1 {
       </button>
       <template v-if="!isCollapsed('remotes')">
         <template v-for="[remote, rows] in remotes" :key="remote">
-          <div class="group-head nested">
+          <!-- A remote holds branches under a prefix, which is what `feature/`
+               is: the same head, so it folds the same way and its name starts
+               at the same place. It was a `<div>` with no chevron, which left
+               the two siblings a chevron's width out of line. -->
+          <button
+            class="group-head as-button prefix"
+            @click="toggleBranchGroup(`remote/${remote}`)"
+          >
+            <Glyph
+              :name="isCollapsed(`remote/${remote}`) ? 'chevron-right' : 'chevron-down'"
+              class="chevron"
+            />
             <Glyph name="folder" class="branch-glyph" />
             <span class="group-name">{{ remote }}/</span>
-          </div>
+            <span class="pane-head-spacer" />
+            <span class="pane-head-count">{{ rows.length }}</span>
+          </button>
           <button
-            v-for="row in rows"
+            v-for="row in isCollapsed(`remote/${remote}`) ? [] : rows"
             :key="`${row.remote}/${row.name}`"
             class="row branch-row nested"
             :class="{ selected: showing(`${row.remote}/${row.name}`) }"

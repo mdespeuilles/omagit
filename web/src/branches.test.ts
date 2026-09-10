@@ -27,11 +27,12 @@ function branch(name: string, over: Partial<BranchRow> = {}): BranchRow {
   };
 }
 
-async function open(branches: BranchRow[]) {
+async function open(branches: BranchRow[], dress: (fake: Repository) => void = () => {}) {
   backend.current = new Repository([
     { path: "a.txt", staged: null, unstaged: "modified", hunks: 1 },
   ]);
   backend.current.branches = branches;
+  dress(backend.current);
   vi.resetModules();
   const state = await import("./state");
   await state.boot();
@@ -134,16 +135,38 @@ describe("the branch tree", () => {
   });
 
   it("folds a group away and back", async () => {
-    const { state, tree } = await open([branch("main", { head: true }), branch("feature/theme")]);
+    // Through the head, the way a hand does it: the key it is stored under is
+    // the component's business, and a test that reached for it agreed with any
+    // key at all — including one that collided with a section's.
+    const { tree } = await open([branch("main", { head: true }), branch("feature/theme")]);
     expect(names(tree)).toContain("theme");
 
-    state.toggleBranchGroup("feature/");
-    await tree.vm.$nextTick();
+    const head = tree.findAll(".group-head").find((one) => one.text().includes("feature/"))!;
+    await head.trigger("click");
     expect(names(tree)).not.toContain("theme");
 
-    state.toggleBranchGroup("feature/");
-    await tree.vm.$nextTick();
+    await head.trigger("click");
     expect(names(tree)).toContain("theme");
+  });
+
+  it("does not let a remote called `tags` fold the Tags section", async () => {
+    // Names in this tree are not ours to choose. A remote's is a bare word —
+    // `git remote add tags …` is legal — and the folded state used to be stored
+    // under it, which is the same key the Tags section uses.
+    const oid = (seed: string) => ({ full: seed.padEnd(40, "0"), short: seed.slice(0, 7) });
+    const { tree } = await open([branch("main", { head: true })], (fake) => {
+      fake.remoteBranches = [{ remote: "tags", name: "trunk", commit: oid("r") }];
+      fake.tags = [{ name: "v1.0", commit: oid("t"), annotated: false }];
+    });
+    expect(names(tree)).toContain("v1.0");
+
+    const head = tree.findAll(".group-head").find((one) => one.text().includes("tags/"))!;
+    await head.trigger("click");
+
+    // That remote's branch is gone…
+    expect(names(tree)).not.toContain("trunk");
+    // …and the Tags section is untouched.
+    expect(names(tree)).toContain("v1.0");
   });
 
   it("offers nothing on the branch you are on", async () => {
