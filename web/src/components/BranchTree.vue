@@ -16,6 +16,7 @@ import {
   mergeBranch,
   rebaseOnto,
   showBranchHistory,
+  shown,
   toggleBranchGroup,
 } from "../state";
 import { count as plural, t } from "../i18n";
@@ -32,7 +33,7 @@ function showing(name: string): boolean {
 /// shortest span for which "nobody is working on this" is a fair reading.
 const STALE = 90 * 86_400;
 
-const refs = computed(() => (app.refs.status === "ready" ? app.refs.value : null));
+const refs = computed(() => shown(app.refs));
 
 type Group = { prefix: string; rows: BranchRow[] };
 

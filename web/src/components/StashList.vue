@@ -21,13 +21,14 @@ import {
   selectStash,
   setStashMessage,
   setStashUntracked,
+  shown,
   stashChanges,
   zoneActive,
 } from "../state";
 import { t } from "../i18n";
 import { when } from "../format";
 
-const rows = computed(() => (app.stashes.status === "ready" ? app.stashes.value : []));
+const rows = computed(() => shown(app.stashes) ?? []);
 const busy = computed(() => !!app.busy || !!app.gitUnusable);
 
 /// What the second line says: where it came from, and when.
@@ -87,9 +88,11 @@ function stop(id: string): 0 | -1 {
       </div>
     </form>
 
-    <p v-if="app.stashes.status === 'loading'" class="pane-empty">{{ t("stash.reading") }}</p>
-    <p v-else-if="app.stashes.status === 'failed'" class="pane-error mono">
+    <p v-if="app.stashes.status === 'failed'" class="pane-error mono">
       {{ app.stashes.error }}
+    </p>
+    <p v-else-if="app.stashes.status === 'loading' && rows.length === 0" class="pane-empty">
+      {{ t("stash.reading") }}
     </p>
     <p v-else-if="rows.length === 0" class="pane-empty">
       {{ t("stash.empty") }}

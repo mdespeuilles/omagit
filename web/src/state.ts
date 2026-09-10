@@ -52,6 +52,27 @@ export type Async<T> =
 
 export const idle = <T>(): Async<T> => ({ status: "idle" });
 
+/// What a pane draws: the answer it has, or the one it is in the middle of
+/// replacing.
+///
+/// The `previous` in `loading` was declared with the type and never used, so
+/// every re-read emptied its pane and filled it again. On a screen that
+/// re-reads itself — the watcher settles after every write, every save, every
+/// commit made in a terminal — that is a window that flickers, which is what
+/// this is here to stop. A pane is blank only when it has never had an answer.
+export function shown<T>(state: Async<T>): T | null {
+  if (state.status === "ready") return state.value;
+  if (state.status === "loading") return state.previous ?? null;
+  return null;
+}
+
+/// The `loading` to move to when something is already on screen: it carries
+/// what it is replacing, so the pane keeps drawing until the answer lands.
+export function again<T>(state: Async<T>): Async<T> {
+  const previous = shown(state);
+  return previous === null ? { status: "loading" } : { status: "loading", previous };
+}
+
 export type Screen = "repositories" | "working-copy" | "history" | "stashes" | "settings";
 
 /// A write that did not happen: what was asked, and what came back.
@@ -626,7 +647,10 @@ export async function selectFile(file: string, staged: boolean): Promise<void> {
   const moved = state.selected?.path !== file || state.selected.staged !== staged;
   if (moved) state.picked.clear();
   state.selected = { path: file, staged };
-  state.diff = { status: "loading" };
+  // Another file's diff is not worth keeping on screen, but *this* file's is:
+  // re-reading it after a write is the same pane saying the same thing, and
+  // blanking it in between is the flicker.
+  state.diff = moved ? { status: "loading" } : again(state.diff);
 
   const started = performance.now();
   try {
@@ -1371,7 +1395,10 @@ export function abortOperation(): void {
 export async function readRefs(): Promise<void> {
   const path = state.open;
   if (!path) return;
-  state.refs = { status: "loading" };
+  // The tree stays up while it is re-read. `settle()` calls this after every
+  // write and after every change the watcher notices, and a branch column that
+  // empties itself each time is a sidebar that jumps for a living.
+  state.refs = again(state.refs);
   try {
     const refs = await api.refs(path);
     if (state.open !== path) return;
@@ -1601,7 +1628,10 @@ export function conflictCount(): number {
 export async function readStashes(): Promise<void> {
   const path = state.open;
   if (!path) return;
-  state.stashes = { status: "loading" };
+  // Same rule as the branch tree: `settle()` re-reads the shelf once it has
+  // been looked at, and the list it is replacing is still the truth until the
+  // new one arrives.
+  state.stashes = again(state.stashes);
   try {
     const shelf = await api.stashes(path);
     if (state.open !== path) return;

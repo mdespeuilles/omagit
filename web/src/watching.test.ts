@@ -119,6 +119,31 @@ describe("a repository that changes underneath us", () => {
     expect(reads("status")).toBe(before);
   });
 
+  it("keeps the branch tree on screen while it re-reads it", async () => {
+    // The flicker: `settle()` re-reads the branches after every change the
+    // watcher reports, and a `loading` that threw away what it was replacing
+    // emptied the column and filled it again — several times a minute, on a
+    // repository nobody had touched by hand.
+    const state = await watching();
+    const names = () => state.shown(state.app.refs)?.branches.map((row) => row.name) ?? [];
+    expect(names()).toEqual(["main"]);
+
+    let release = () => {};
+    backend.current.holdRefs = new Promise((resume) => {
+      release = () => resume();
+    });
+    changed({ status: false, refs: true });
+    await new Promise((resume) => setTimeout(resume, 0));
+
+    expect(state.app.refs.status).toBe("loading");
+    expect(names()).toEqual(["main"]);
+
+    backend.current.holdRefs = null;
+    release();
+    await settled(state);
+    expect(names()).toEqual(["main"]);
+  });
+
   it("does not walk the status for a branch that moved", async () => {
     // The backend says which invalidation it is, and a ref moving does not
     // cost a status walk.

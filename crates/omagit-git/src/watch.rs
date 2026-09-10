@@ -10,6 +10,9 @@
 //!   notification carrying the union of what changed.
 //! * **`.git/index.lock` ignored.** Git creates and removes it around every
 //!   write. Reacting to it means reacting to Git reacting to us.
+//! * **Reads ignored.** See [`changes_something`]: on Linux `notify` asks
+//!   inotify for `IN_OPEN`, so *opening* a file is an event like writing it —
+//!   and the loudest reader of this repository is omagit.
 //! * **Targeted.** A write under `.git/refs/` does not invalidate the working
 //!   copy, and a change to a file does not invalidate the branch list. The
 //!   caller is told *what* changed and re-reads only that.
@@ -233,8 +236,10 @@ fn debounce_loop(
         // to notice a shutdown, rarely enough not to matter.
         match events.recv_timeout(if pending.is_empty() { IDLE } else { DEBOUNCE }) {
             Ok(Ok(event)) => {
-                for path in &event.paths {
-                    pending.merge(classifier.classify(path));
+                if changes_something(&event.kind) {
+                    for path in &event.paths {
+                        pending.merge(classifier.classify(path));
+                    }
                 }
                 if !pending.is_empty() {
                     let started = *first_seen.get_or_insert_with(Instant::now);
@@ -261,6 +266,35 @@ fn debounce_loop(
             // The watcher was dropped.
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
+    }
+}
+
+/// Whether an event says the repository *changed*, as opposed to *was read*.
+///
+/// This is the one that cost a whole evening. `notify` 8 asks inotify for
+/// `IN_OPEN` along with the writes, so on Linux every `open(2)` under the
+/// watched tree arrives here as an event — and the process opening the most
+/// files under that tree is omagit itself. The loop that made was closed:
+/// reading the status opens `.git/index` and walks the work tree, each open
+/// arrives as a change, the change invalidates the status, and the status is
+/// read again. Two seconds apart, for as long as the window stayed open — the
+/// [`MAX_HOLD`] flush, because the reads never stopped long enough for the
+/// debounce to expire. The exclusion check amplified it further: asking whether
+/// a path is ignored opens `.gitignore` and `.git/info/exclude`, which are
+/// themselves events, which are themselves classified.
+///
+/// Only [`notify::event::AccessKind::Close`] with
+/// [`notify::event::AccessMode::Write`] survives, because that one is a write
+/// finishing rather than a read happening. Anything that is not an access at
+/// all — create, modify, remove, rename, and `Any` from the backends that do
+/// not say — is kept: a watch that guesses wrong here should guess towards
+/// re-reading.
+fn changes_something(kind: &notify::EventKind) -> bool {
+    use notify::event::{AccessKind, AccessMode, EventKind};
+    match kind {
+        EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        EventKind::Access(_) => false,
+        _ => true,
     }
 }
 

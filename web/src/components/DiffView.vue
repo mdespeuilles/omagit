@@ -16,6 +16,7 @@ import {
   lineKey,
   pickLine,
   selectFile,
+  shown,
   stageHunk,
   stagePicked,
 } from "../state";
@@ -28,7 +29,11 @@ import VirtualList from "./VirtualList.vue";
 /// and reading the token is what makes the density actually move them.
 const ROW_HEIGHT = lineHeight();
 
-const rows = computed(() => (app.diff.status === "ready" ? app.diff.value.rows : []));
+/// The diff on screen, which during a re-read is still the one it is about to
+/// replace: a pane that empties itself every time the repository settles makes
+/// the whole window jump (see `shown`).
+const diff = computed(() => shown(app.diff));
+const rows = computed(() => diff.value?.rows ?? []);
 const staged = computed(() => app.selected?.staged ?? false);
 
 /// The row of the open file, which is what says whether the other side of the
@@ -121,19 +126,19 @@ function segments(
         </button>
       </template>
       <span class="pane-head-title">
-        {{ app.diff.status === "ready" ? app.diff.value.header : "—" }}
+        {{ diff?.header ?? "—" }}
       </span>
     </header>
 
     <!-- The four states of SPEC §10, each drawn as itself: no spinner over the
          window, no blank pane, no error swallowed into an empty list. -->
     <p v-if="app.diff.status === 'idle'" class="pane-empty">{{ t("diff.none") }}</p>
-    <p v-else-if="app.diff.status === 'loading'" class="pane-empty">{{ t("diff.reading") }}</p>
     <p v-else-if="app.diff.status === 'failed'" class="pane-error mono">
       {{ app.diff.error }}
     </p>
-    <p v-else-if="app.diff.value.reason" class="pane-empty">
-      {{ app.diff.value.reason }}
+    <p v-else-if="!diff" class="pane-empty">{{ t("diff.reading") }}</p>
+    <p v-else-if="diff.reason" class="pane-empty">
+      {{ diff.reason }}
     </p>
     <p v-else-if="rows.length === 0" class="pane-empty">{{ t("diff.nothing") }}</p>
 

@@ -72,9 +72,21 @@ fn next(changes: &async_channel::Receiver<Changes>, what: &str) -> Changes {
     panic!("no notification for {what} within {TIMEOUT:?}");
 }
 
+/// Long enough that even a burst that never pauses would have been reported.
+///
+/// The debounce is not the only clock: a stream of events with no gap in it is
+/// held until the loop's two-second ceiling and flushed there. A silence of
+/// [`QUIET`] proves nothing about a *stream*, which is exactly the shape the
+/// read-amplification bug had — this is the window that catches it.
+const QUIET_THROUGH_A_BURST: Duration = Duration::from_millis(2600);
+
 /// Assert nothing arrives — the harder half of a watcher's contract.
 fn expect_quiet(changes: &async_channel::Receiver<Changes>, why: &str) {
-    std::thread::sleep(QUIET);
+    expect_quiet_for(changes, QUIET, why);
+}
+
+fn expect_quiet_for(changes: &async_channel::Receiver<Changes>, how_long: Duration, why: &str) {
+    std::thread::sleep(how_long);
     if let Ok(unexpected) = changes.try_recv() {
         panic!("{why}, but the watcher reported {unexpected:?}");
     }
@@ -129,6 +141,41 @@ fn the_index_lock_is_not_a_change() {
     std::fs::remove_file(&lock).expect("removable");
 
     expect_quiet(&changes, "index.lock is Git talking to itself");
+}
+
+#[test]
+fn reading_the_repository_is_not_a_change() {
+    // The same rule as the lock, and the one that actually bit: `notify` asks
+    // inotify for `IN_OPEN`, so on Linux *opening* a file is an event — and the
+    // process opening the most files under this tree is omagit. Reading the
+    // status opens `.git/index`, every `.gitignore` and every directory in the
+    // work tree; each open arrived as a change, each change invalidated the
+    // status, and the status was read again. Every two seconds, for as long as
+    // the window stayed open.
+    let fixture = TestRepo::new();
+    fixture.write(".gitignore", "target/\n");
+    fixture.commit_file("src/main.rs", "fn main() {}\n", "first");
+    let (_watcher, changes) = watch(&fixture);
+
+    // Spread out rather than in a tight loop: what a status walk looks like from
+    // here is a *stream* of opens with no gap long enough for the debounce, and
+    // that is the case the ceiling flush would otherwise report.
+    let until = std::time::Instant::now() + Duration::from_millis(800);
+    while std::time::Instant::now() < until {
+        std::fs::read(fixture.path().join("src/main.rs")).expect("a readable file");
+        std::fs::read(fixture.path().join(".gitignore")).expect("a readable file");
+        std::fs::read(fixture.path().join(".git/index")).expect("a readable index");
+        std::fs::read_dir(fixture.path().join("src"))
+            .expect("a readable directory")
+            .for_each(drop);
+        std::thread::sleep(Duration::from_millis(20));
+    }
+
+    expect_quiet_for(
+        &changes,
+        QUIET_THROUGH_A_BURST,
+        "reading a repository does not change it",
+    );
 }
 
 #[test]

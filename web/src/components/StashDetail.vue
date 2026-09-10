@@ -7,15 +7,11 @@
 // were never tracked starts to.
 
 import { computed } from "vue";
-import { app, goToZone, selectStashFile, zoneActive } from "../state";
+import { app, goToZone, selectStashFile, shown, zoneActive } from "../state";
 import { t } from "../i18n";
 import { when } from "../format";
 
-const entry = computed(() =>
-  app.stashes.status === "ready"
-    ? (app.stashes.value.find((row) => row.id.full === app.stash) ?? null)
-    : null,
-);
+const entry = computed(() => shown(app.stashes)?.find((row) => row.id.full === app.stash) ?? null);
 const files = computed(() => (app.stashFiles.status === "ready" ? app.stashFiles.value : []));
 
 function sign(row: { added: number; removed: number; reason: string | null }): string {

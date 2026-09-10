@@ -206,6 +206,10 @@ export class Repository {
   /// Numbers the fake's stash commits, so two entries never share an id.
   private stashed = 0;
 
+  /// Holds the branch read open, so a test can look at the sidebar while it is
+  /// being re-read.
+  holdRefs: Promise<void> | null = null;
+
   /// Holds one repository's summary open, by path.
   ///
   /// By path and not for all of them, because the repository being *opened*
@@ -446,6 +450,7 @@ export class Repository {
         this.cancelled += 1;
         return "Fetch";
       case "refs":
+        if (this.holdRefs) await this.holdRefs;
         return {
           branches: this.branches.map((row) => ({ ...row })),
           remote_branches: this.remoteBranches.map((row) => ({ ...row })),

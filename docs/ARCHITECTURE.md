@@ -1979,6 +1979,52 @@ AppImage built on 24.04 refuses to start on a stable desktop. And the release is
 created as a **draft**: the notes are written by a person, and a tag pushed by
 mistake should not become an announcement.
 
+### 2.62 The watcher was watching us read
+
+Reported from use, and the report was precise enough to be the diagnosis: *at
+every one of these log lines, the branch column reloads — the window jumps all
+the time*. The log lines were the ones §2.58's watch produces on the way round:
+one diff read, then another, exactly two seconds apart, on a repository nobody
+had touched.
+
+**`notify` asks inotify for `IN_OPEN`.** That is the whole of it. On Linux an
+`open(2)` under the watched tree arrives as an event exactly like a write does,
+and the process opening the most files under that tree is omagit. Reading a
+status opens `.git/index` and walks the work tree; each open came back as a
+change; the change invalidated the status; the status was read again. The window
+had been re-reading itself, without pause, since the watch was first called.
+
+**Two seconds, and that number is in the code.** The debounce is 150 ms, but a
+stream of events with no gap in it never reaches a debounce: it is held to
+`MAX_HOLD` and flushed there. So the loop ran at the ceiling — 2.000 s, visible
+in `~/.config/omagit/omagit.log` as a metronome. The exclusion check amplified
+it rather than damping it: asking whether a path is ignored opens `.gitignore`
+and `.git/info/exclude`, and those opens are events, which are classified, which
+ask again. Four seconds of `inotifywait` on the repository produced 694 KB of
+`OPEN .git/info/exclude`.
+
+**The fix is one question the classifier never asked: did anything *change*?**
+`changes_something` keeps everything that is not an access, and of the accesses
+keeps only a close-after-write, which is a write finishing rather than a read
+happening. A backend that does not say — `EventKind::Any` — is kept, because a
+watch that guesses wrong here should guess towards re-reading.
+
+**Why no test caught it.** `tests/watch.rs` asserts on outcomes, which was the
+right call, but every assertion made a change and waited for it; none of them
+read the repository and waited for *silence*. One does now, and it has to wait
+past `MAX_HOLD` to mean anything: the 900 ms silence the other tests use would
+have passed with the bug in place, because the flush was still 1.1 s away. This
+is also a Linux-only defect — FSEvents reports no such thing — which is the
+blind spot risk 7 names, seen from the other side.
+
+**And the flicker itself was a second bug, worth fixing separately.** `Async<T>`
+has carried `loading { previous }` since the port, and nothing had ever used it:
+every re-read replaced the pane's contents with a "Lecture des branches…" and
+filled it back in. Even with the loop closed, a commit made in a terminal would
+blink the sidebar. `shown()` is what panes read now — the answer, or the one it
+is in the middle of replacing — so a re-read is invisible unless it changes
+something, and a pane is blank only when it has never had an answer.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
