@@ -363,6 +363,29 @@ describe("filtering", () => {
 });
 
 describe("comparing two commits", () => {
+  it("leaves a comparison behind when a commit is chosen on its own", async () => {
+    // A plain click is "show me this one", and it is the ordinary way out of a
+    // comparison. It used to leave the comparison up: the detail pane kept
+    // answering about two other commits while the diff below showed a file of
+    // the one just clicked — three commits on screen, none of them agreeing.
+    const state = await open(chain(9));
+    state.showScreen("history");
+    await settled(state);
+    // Three rows is one page in the fake, which is all this needs.
+    const [newest, third, older] = rows(state).map((row) => row.id.full);
+
+    state.markCompareFrom(newest!);
+    await state.compareWith(older!);
+    await drawn(state);
+    expect(state.app.compare.status).toBe("ready");
+
+    await state.selectCommit(third!);
+    await drawn(state);
+
+    expect(state.app.compare.status).toBe("idle");
+    expect(state.app.commit.status === "ready" && state.app.commit.value.id.full).toBe(third);
+  });
+
   it("compares the marked commit with the second one, in that order", async () => {
     const state = await open(chain(9));
     state.showScreen("history");

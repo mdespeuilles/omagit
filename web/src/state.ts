@@ -664,6 +664,13 @@ export function toggleFilters(): void {
 export async function selectCommit(id: string): Promise<void> {
   const path = state.open;
   if (!path) return;
+  // Choosing a commit ends a comparison. The pane cannot answer "what did this
+  // change" and "what is between these two" at once, and it was trying: the
+  // detail kept the comparison, two rows kept their A and B marks, and the diff
+  // below showed a file belonging to neither — the commit that had just been
+  // clicked. A plain click is the ordinary way back out, and it has to work
+  // without finding the button that says so.
+  state.compare = idle();
   state.commit = { status: "loading" };
   state.commitFile = null;
   state.diff = idle();
