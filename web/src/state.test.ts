@@ -137,6 +137,36 @@ describe("staging", () => {
     expect(state.app.diff.status).toBe("idle");
   });
 
+  it("asks the question the row deserves before rejecting it", async () => {
+    // The same button does three different things. A confirmation that warns
+    // about losing work when the act *gives a file back* is a confirmation
+    // people learn to click through.
+    const state = await open([file("a.txt")]);
+    const row = (unstaged: string) => ({
+      path: "a.txt",
+      staged: null,
+      unstaged,
+      conflict: null,
+      code: " M",
+    });
+
+    state.discardFile(row("modified"));
+    expect(state.app.question?.verb).toBe("Rejeter");
+    expect(state.app.question?.detail).toContain("perdues");
+    state.answer(false);
+
+    state.discardFile(row("untracked"));
+    expect(state.app.question?.detail).toContain("supprime du disque");
+    state.answer(false);
+
+    state.discardFile(row("deleted"));
+    expect(state.app.question?.title).toContain("Restaurer");
+    expect(state.app.question?.verb).toBe("Restaurer");
+    expect(state.app.question?.detail).toContain("rien n'est perdu");
+    state.answer(false);
+    await settled(state);
+  });
+
   it("keeps the failure until something succeeds", async () => {
     const state = await open([file("a.txt")]);
     backend.current.failNextWrite = "error: patch does not apply";

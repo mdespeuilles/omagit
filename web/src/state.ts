@@ -1636,17 +1636,32 @@ export function answer(yes: boolean): void {
   if (yes) action?.();
 }
 
+/// What rejecting this row would actually do.
+function discardWarning(row: StatusRow): string {
+  if (row.unstaged === "untracked") {
+    return "Ce fichier n'est pas suivi : le rejeter le supprime du disque. Rien ne le retiendra.";
+  }
+  if (row.unstaged === "deleted") {
+    return "Ce fichier a été supprimé de la copie de travail. Le restaurer le remet tel qu'il est dans le dernier commit — rien n'est perdu.";
+  }
+  return "Les modifications non indexées de ce fichier seront perdues. Elles ne sont dans aucun commit ni dans le reflog.";
+}
+
 export function discardFile(row: StatusRow): void {
   const path = state.open;
   if (!path) return;
   ask(
     {
-      title: `Rejeter les modifications de ${row.path} ?`,
-      detail:
-        row.unstaged === "untracked"
-          ? "Ce fichier n'est pas suivi : le rejeter le supprime du disque. Rien ne le retiendra."
-          : "Les modifications non indexées de ce fichier seront perdues. Elles ne sont dans aucun commit ni dans le reflog.",
-      verb: "Rejeter",
+      title:
+        row.unstaged === "deleted"
+          ? `Restaurer ${row.path} ?`
+          : `Rejeter les modifications de ${row.path} ?`,
+      // Three different acts wear the same button, and the question has to say
+      // which one it is. Rejecting an edit loses work; rejecting a deletion
+      // *gives a file back*, and telling someone their work is about to be
+      // lost when nothing is at stake is how a confirmation stops being read.
+      detail: discardWarning(row),
+      verb: row.unstaged === "deleted" ? "Restaurer" : "Rejeter",
     },
     () => void write(`Rejeter ${row.path}`, () => api.discard(path, row.path, { kind: "file" })),
   );
