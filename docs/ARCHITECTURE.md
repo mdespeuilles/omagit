@@ -1721,6 +1721,40 @@ Verified the way §2.31 verifies anything: a probe page with the old expression
 prints `undefined @ undefined:undefined` against a missing module, and the new
 one prints `SCRIPT n'a pas pu être chargé : …`.
 
+### 2.55 Three points of design, and one of them moves a window control
+
+Reported from the running app, and the third is the interesting one.
+
+**The icon was a borrowed character.** The button back to the repositories drew
+`◧`. A character's bearings belong to the font: it sat left of centre and half a
+pixel high in Chrome, and would sit somewhere else again in another web view.
+`Caption.vue` already states the rule for the window buttons — *drawn, not
+borrowed*, 16px grid, 1.5px stroke — and this is the same rule applied to the
+same bar. Measured on a probe page (§2.31) before and after: 9.08/9.09 left and
+right, 4.58/5.42 top and bottom, against a shape whose geometry we now own.
+
+**The shortcut hints came off the buttons.** Board 02 prints `⌘F` beside Fetch
+and `⌘K` beside Rechercher, and M9's first slice made them true. They are in the
+tooltip now: three places print every binding — the `?` sheet, the palette, the
+macOS menu bar — and a fourth copy in the row where width is scarcest was noise.
+Still read from the table, so a reassignment moves the tooltip too, and the test
+that pinned the printed hint now pins the tooltip and asserts the label is bare.
+
+**The traffic lights are centred, which cost a height.** They sat about eight
+pixels above the centre of the topbar. Tauri places them from
+`trafficLightPosition` — and only at window creation: there is a
+`set_traffic_light_position` in the runtime trait and nothing public that reaches
+it. So the position is fixed once, and a topbar whose height changes between
+screens cannot be aligned with them on both. Board 06 asks for exactly that: 40px
+with no repository open, 48px inside one.
+
+The rule that resolves it: **a bar the window system draws into does not change
+height.** On macOS the topbar is 48px on every screen; on Linux, where the app
+owns the whole bar, board 06's reduction stands. `y: 24` is half of 48, which is
+what tao's inset arithmetic works out to — it resizes the title-bar container to
+`button height + y` and pins it to the top, so the button's top lands at `y`
+minus its own offset inside a standard 28pt container.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

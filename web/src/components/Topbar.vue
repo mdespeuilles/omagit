@@ -48,14 +48,17 @@ import { ACTIONS, binding, hint } from "../keymap";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
 
-/// The hint a button prints, read from the table that answers the key.
+/// A button's tooltip: what it does, and the key that does it too.
 ///
-/// Not written out beside the label: this bar has been drawing `⌘F` and `⌘O`
-/// since the port beside buttons that answered the mouse and nothing else, and
-/// a hint nobody can check against the binding drifts the moment one moves.
-function shortcut(id: string): string {
+/// The key used to be *printed* beside the label, which is what board 02 draws.
+/// It is in the tooltip now: three other places print every binding — the `?`
+/// sheet, the palette and the macOS menu bar — and a fourth copy in the one row
+/// where width is scarcest was noise. Still read from the table that answers the
+/// key, so a reassignment moves it here too.
+function titled(what: string, id: string): string {
   const action = ACTIONS.find((entry) => entry.id === id);
-  return action ? hint(binding(action), modifier.value) : "";
+  if (!action) return what;
+  return `${what} — ${hint(binding(action), modifier.value)}`;
 }
 
 /// The window buttons the app has to draw, and on which edge (board 02). None
@@ -87,6 +90,15 @@ const cannotPush = computed(() => {
   return null;
 });
 
+/// Whether the bar may be the shorter one board 06 draws.
+///
+/// Not on a platform whose window system draws *into* it. The macOS traffic
+/// lights are placed once, at window creation — there is no runtime setter in
+/// Tauri — so a bar that changed height between screens would have them centred
+/// on one screen and off-centre on the other, for ever. Where the app owns the
+/// whole bar, board 06's 40px stands.
+const reduced = computed(() => !inRepository.value && (app.platform?.reserve.leading ?? 0) === 0);
+
 /// Whether the window is looking *into* a repository, which is what decides the
 /// topbar's whole shape.
 const inRepository = computed(() => app.screen !== "repositories" && app.open !== null);
@@ -113,7 +125,7 @@ const where = computed(() => {
 </script>
 
 <template>
-  <header class="topbar" :class="{ compact: !inRepository }" data-tauri-drag-region>
+  <header class="topbar" :class="{ compact: reduced }" data-tauri-drag-region>
     <span
       v-if="app.platform && app.platform.reserve.leading > 0"
       class="reserve"
@@ -124,13 +136,21 @@ const where = computed(() => {
 
     <template v-if="inRepository && app.summary">
       <!-- Board 02: the repository, named on two lines. -->
+      <!-- Drawn, not borrowed — the rule `Caption.vue` already states, on the
+           same 16px grid at 1.5px. It was the character `◧`, and a character's
+           bearings are the font's business: it sat left of centre and half a
+           pixel high, and would sit somewhere else again in another web view. -->
       <button
         class="icon"
         title="Retour aux dépôts"
         aria-label="Retour aux dépôts"
         @click="showScreen('repositories')"
       >
-        ◧
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M2.75 3.75h10.5v8.5h-10.5z" />
+          <path d="M6.75 3.75v8.5" />
+          <path d="M2.75 3.75h4v8.5h-4z" fill="currentcolor" />
+        </svg>
       </button>
       <span class="topbar-rule" />
       <span class="topbar-repo" data-tauri-drag-region>
@@ -154,12 +174,20 @@ const where = computed(() => {
     <template v-if="inRepository">
       <!-- Board 02's three, and each carries the number that is the reason to
            press it. -->
-      <button :disabled="busy || !!app.gitUnusable" @click="fetchRemote()">
-        Fetch<span class="hint">{{ shortcut("network.fetch") }}</span>
+      <button
+        :disabled="busy || !!app.gitUnusable"
+        :title="titled('Fetch', 'network.fetch')"
+        @click="fetchRemote()"
+      >
+        Fetch
       </button>
       <button
         :disabled="busy || !!app.gitUnusable || !tracking"
-        :title="tracking ? '' : 'Cette branche ne suit aucune branche distante'"
+        :title="
+          tracking
+            ? titled('Pull', 'network.pull')
+            : 'Cette branche ne suit aucune branche distante'
+        "
         @click="pullRemote()"
       >
         Pull<span v-if="behind > 0" class="hint">↓{{ behind }}</span>
@@ -169,24 +197,28 @@ const where = computed(() => {
       <button
         :class="{ primary: ahead > 0 }"
         :disabled="!!cannotPush"
-        :title="cannotPush ?? ''"
+        :title="cannotPush ?? titled('Push', 'network.push')"
         @click="pushBranch(false)"
       >
         Push<span v-if="ahead > 0" class="hint">↑{{ ahead }}</span>
       </button>
     </template>
     <template v-else>
-      <button @click="addRepository()">
-        Ajouter un dépôt local<span class="hint">{{ shortcut("repository.add") }}</span>
+      <button :title="titled('Ajouter un dépôt local', 'repository.add')" @click="addRepository()">
+        Ajouter un dépôt local
       </button>
-      <button :disabled="busy || !!app.gitUnusable" @click="openClone()">
-        Cloner…<span class="hint">{{ shortcut("repository.clone") }}</span>
+      <button
+        :disabled="busy || !!app.gitUnusable"
+        :title="titled('Cloner un dépôt', 'repository.clone')"
+        @click="openClone()"
+      >
+        Cloner…
       </button>
     </template>
 
     <span class="topbar-rule" />
-    <button title="Palette de commandes" @click="openPalette()">
-      Rechercher<span class="hint">{{ shortcut("palette.open") }}</span>
+    <button :title="titled('Palette de commandes', 'palette.open')" @click="openPalette()">
+      Rechercher
     </button>
 
     <span

@@ -159,6 +159,20 @@ boards.
 One more, from the boards' own copy: the mock-ups list `'Segoe UI Variable
 Text'` in the UI stack. Windows is out of scope, so it is dropped in code.
 
+### Two the running app settled
+
+**The shortcut hints are not printed on the topbar's buttons.** Board 02 draws
+`Fetch ⌘F` and `Rechercher ⌘K`. They live in the tooltip instead: the `?` sheet,
+the palette and the macOS menu bar each print every binding, and a fourth copy
+in the one row where width is scarcest reads as noise (ARCHITECTURE §2.55).
+
+**On macOS the topbar does not shrink to 40px.** Board 06 reduces it with no
+repository open, and it stays reduced on Linux. It cannot on macOS: the window
+system draws the traffic lights into that bar and Tauri places them once, at
+window creation, so a bar that changed height between screens would be aligned
+with them on one screen and not the other. A bar the window system draws into
+does not change height.
+
 ### Four more, found on board 06 while building M3
 
 Same rule, one level up: where **this document** states something and a board

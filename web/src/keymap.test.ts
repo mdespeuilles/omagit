@@ -229,12 +229,19 @@ describe("the bindings", () => {
     expect(keymap.hint("Shift+Primary+S", "Ctrl")).toBe("Maj Ctrl S");
   });
 
-  it("shows in the topbar what it answers, from the same table", async () => {
+  it("tells the topbar what it answers, from the same table", async () => {
+    // Printed beside the label until M9's last pass, which is what board 02
+    // draws. It is in the tooltip now — three other places print every binding,
+    // and a fourth copy in the row where width is scarcest was noise — but it
+    // still comes from the table, so a reassignment moves it here too.
     const { keymap } = await opened();
     const Topbar = (await import("./components/Topbar.vue")).default;
 
     const bar = mount(Topbar);
     const fetch = keymap.ACTIONS.find((action) => action.id === "network.fetch")!;
-    expect(bar.text()).toContain(keymap.hint(fetch.binding, "Ctrl"));
+    const button = bar.findAll("button").find((one) => one.text() === "Fetch")!;
+    expect(button.attributes("title")).toContain(keymap.hint(fetch.binding, "Ctrl"));
+    // And not beside the label, which is the change.
+    expect(bar.text()).not.toContain(keymap.hint(fetch.binding, "Ctrl"));
   });
 });

@@ -23,10 +23,11 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve(null) }));
 
-async function running() {
+async function running(os: "linux" | "macos" = "linux") {
   backend.current = new Repository([
     { path: "a.txt", staged: null, unstaged: "modified", hunks: 1 },
   ]);
+  backend.current.os = os;
   vi.resetModules();
   const state = await import("../state");
   await state.boot();
@@ -106,6 +107,24 @@ describe("the topbar", () => {
     expect(topbar(app)).toContain("Dépôts");
     expect(topbar(app)).toContain("Ajouter un dépôt local");
     expect(topbar(app)).not.toContain("Fetch");
+    expect(app.find(".topbar").classes()).toContain("compact");
+  });
+});
+
+describe("the topbar under a window system that draws into it", () => {
+  it("keeps one height on macOS, where the traffic lights are placed once", async () => {
+    // Board 06 reduces the bar to 40px with no repository open. On macOS the
+    // system draws its window controls *into* that bar and Tauri places them
+    // once, at window creation — a bar that changed height between screens
+    // would have them centred on one and off-centre on the other, for ever.
+    const { app } = await running("macos");
+    expect(app.find(".topbar").classes()).not.toContain("compact");
+    // Still the app's own bar, with the app's own content on it.
+    expect(topbar(app)).toContain("Dépôts");
+  });
+
+  it("still reduces it where the app owns the whole bar", async () => {
+    const { app } = await running("linux");
     expect(app.find(".topbar").classes()).toContain("compact");
   });
 });

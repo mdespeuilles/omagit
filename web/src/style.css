@@ -316,6 +316,16 @@ button.icon {
   font-size: var(--text-body);
   color: var(--text-muted);
 }
+/* The same grid as the caption's, and for the same reason: a glyph borrowed
+   from a font sits where that font's bearings put it, which is not the middle
+   and not the same in two web views. */
+button.icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+}
 
 .reserve {
   flex: none;
