@@ -12,7 +12,7 @@
 import { watch } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { api } from "./ipc";
-import { ACTIONS, runAction } from "./keymap";
+import { ACTIONS, binding, runAction } from "./keymap";
 import { app } from "./state";
 
 /// One item, as the backend needs it.
@@ -35,7 +35,7 @@ export function entries(): Entry[] {
   return ACTIONS.map((action) => ({
     id: action.id,
     label: action.label,
-    binding: action.binding,
+    binding: binding(action),
     menu: action.menu,
     enabled: action.where === "always" || !!app.open,
   }));
@@ -56,13 +56,12 @@ export function wanted(): boolean {
 export async function installMenu(): Promise<void> {
   if (!wanted()) return;
   await send();
-  // Opening or closing a repository is the one change that moves what the bar
-  // offers. Watched rather than called from `openRepository`, so a second way
-  // to open one cannot forget the menu.
-  watch(
-    () => !!app.open,
-    () => void send(),
-  );
+  // Watched rather than called from wherever the change happens, so a second
+  // way to open a repository — or a third place a binding can be changed from —
+  // cannot forget the menu. What is watched is what the bar would *show*:
+  // opening a repository ungreys half of it, and a reassignment moves an
+  // accelerator.
+  watch(signature, () => void send());
   await listen<string>("menu", (event) => {
     // Ids the table does not know are the platform's own — Quitter, Coller,
     // Plein écran — and the window system has already handled them.
@@ -70,18 +69,23 @@ export async function installMenu(): Promise<void> {
   });
 }
 
-/// The bar as it should be now, sent only if that differs from what it is.
+/// Everything the bar draws, in one string.
 ///
 /// Rebuilding a menu bar is cheap but not free, and doing it on every state
 /// change would mean doing it while one of its menus is pulled down.
+function signature(): string {
+  return entries()
+    .map((entry) => `${entry.id}:${entry.binding}:${entry.enabled}`)
+    .join(" ");
+}
+
 let sent = "";
 
 async function send(): Promise<void> {
-  const now = entries();
-  const signature = now.map((entry) => `${entry.id}:${entry.enabled}`).join(" ");
-  if (signature === sent) return;
-  sent = signature;
-  await api.setMenu(now);
+  const now = signature();
+  if (now === sent) return;
+  sent = now;
+  await api.setMenu(entries());
 }
 
 /// For tests: the bar has no memory of a previous window.

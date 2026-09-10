@@ -218,6 +218,10 @@ type State = {
   shortcuts: boolean;
   /// What the Preferences screen is showing, once it has been opened.
   preferences: Async<Preferences>;
+  /// The bindings the user has changed, by action id (SPEC §11). Overrides
+  /// only: the table of defaults is `keymap.ts`, and `binding()` there is what
+  /// puts the two together.
+  keymap: Record<string, string>;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
@@ -335,6 +339,7 @@ const state = reactive<State>({
   palette: null,
   shortcuts: false,
   preferences: idle(),
+  keymap: {},
   zone: 1,
   branchCursor: null,
   libraryFilter: "",
@@ -345,11 +350,15 @@ export const app = readonly(state);
 // ── Reading ─────────────────────────────────────────────────────────────────
 
 export async function boot(): Promise<void> {
-  const [theme, platform, gitUnusable, repositories] = await Promise.all([
+  const [theme, platform, gitUnusable, repositories, keymap] = await Promise.all([
     api.theme(),
     api.platform(),
     api.gitStatus(),
     api.repositories(),
+    // With everything else, not lazily: a window that drew its shortcut hints
+    // from the defaults and corrected them a moment later would be a window
+    // that lies about its own keyboard for a frame.
+    api.keymap(),
   ]);
   // Before anything is drawn: a frame rendered without the tokens shows the
   // browser's defaults, and every rule in `style.css` reads one of them.
@@ -371,6 +380,7 @@ export async function boot(): Promise<void> {
     .catch((error) => api.log("warn", `largeurs de colonnes illisibles : ${message(error)}`));
   state.gitUnusable = gitUnusable;
   state.repositories = repositories;
+  state.keymap = keymap;
 
   // The list first, then a summary per row in the background: the screen draws
   // immediately and fills in, rather than waiting on a status walk per
@@ -1733,6 +1743,20 @@ export function toggleShortcuts(): void {
 
 export function closeShortcuts(): void {
   state.shortcuts = false;
+}
+
+/// Give an action a different binding, or `null` to put back the table's own.
+///
+/// What may be bound is decided in `keymap.ts` — it has the table — and the
+/// caller is expected to have asked it. This writes.
+export function setBinding(id: string, chosen: string | null): void {
+  void write(chosen ? `Raccourci : ${chosen}` : "Raccourci par défaut", async () => {
+    await api.setBinding(id, chosen);
+    // The map, not a reassignment of the object: `state.keymap` is reactive and
+    // everything printing a binding reads through it.
+    if (chosen) state.keymap[id] = chosen;
+    else delete state.keymap[id];
+  });
 }
 
 export async function readPreferences(): Promise<void> {

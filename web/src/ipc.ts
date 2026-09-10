@@ -348,6 +348,9 @@ export const api = {
   setDensity: (density: string) => invoke<string>("set_density", { density }),
   setScale: (scale: number) => invoke<string>("set_scale", { scale }),
   panes: () => invoke<Record<string, number>>("panes"),
+  keymap: () => invoke<Record<string, string>>("keymap"),
+  /// `null` puts the action back on the table's own binding.
+  setBinding: (id: string, binding: string | null) => invoke<void>("set_binding", { id, binding }),
   setPane: (name: string, width: number) => invoke<void>("set_pane", { name, width }),
   gitStatus: () => invoke<string | null>("git_status"),
   repositories: () => invoke<LibraryRow[]>("repositories"),

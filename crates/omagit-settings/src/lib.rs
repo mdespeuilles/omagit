@@ -9,8 +9,8 @@
 //!   arranged them in.
 //!
 //! They are written at completely different rates, and a corrupted write to one
-//! must not take the other with it. The keymap and the persisted layout arrive
-//! with M9.
+//! must not take the other with it. The persisted layout and the keymap arrived
+//! with M9, both in [`Settings`].
 
 use std::path::{Path, PathBuf};
 
@@ -44,6 +44,21 @@ pub struct Settings {
     /// cheaper than a migration.
     #[serde(default)]
     pub panes: std::collections::BTreeMap<String, f32>,
+    /// The bindings the user has changed, by action id (SPEC §11, "keymap
+    /// réassignable").
+    ///
+    /// **Overrides only, never the whole keymap.** The table of what omagit can
+    /// do lives in the front end, and writing it out here would freeze it: an
+    /// action added in a later version would arrive bound to nothing for anyone
+    /// whose settings file predates it, and a binding this app no longer has
+    /// would be answered forever. What is stored is the difference, which is
+    /// what the user actually chose.
+    ///
+    /// The value is the front end's own spelling — `Shift+Primary+N` — because
+    /// `Primary` is the point: a keymap written on macOS and synced to a Linux
+    /// machine must not arrive spelled `⌘`.
+    #[serde(default)]
+    pub keymap: std::collections::BTreeMap<String, String>,
 }
 
 /// Slightly larger than the boards, because the boards are a reference frame
@@ -65,6 +80,7 @@ impl Default for Settings {
             density: DensityMode::default(),
             ui_scale: default_scale(),
             panes: std::collections::BTreeMap::new(),
+            keymap: std::collections::BTreeMap::new(),
         }
     }
 }
@@ -163,6 +179,9 @@ mod tests {
             density: DensityMode::Comfortable,
             ui_scale: 1.25,
             panes: [("history".to_owned(), 480.0)].into_iter().collect(),
+            keymap: [("network.fetch".to_owned(), "Alt+Primary+F".to_owned())]
+                .into_iter()
+                .collect(),
         };
         settings.save(dir.path()).expect("save");
         assert_eq!(Settings::load(dir.path()), settings);

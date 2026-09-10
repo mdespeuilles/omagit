@@ -168,6 +168,62 @@ describe("the bindings", () => {
     box.remove();
   });
 
+  it("answers the binding the user chose, not the table's own", async () => {
+    // SPEC §11. The whole point of one table: a reassignment reaches the key
+    // handler without anything else in the window being told.
+    backend.current = new Repository([]);
+    backend.current.keymap = { "network.fetch": "Shift+Primary+F" };
+    vi.resetModules();
+    const state = await import("./state");
+    await state.boot();
+    await state.openRepository("/repo");
+    await settled(state);
+    const keymap = await import("./keymap");
+
+    expect(keymap.dispatch(press("f", { ctrlKey: true }))).toBe(false);
+    expect(keymap.dispatch(press("f", { ctrlKey: true, shiftKey: true }))).toBe(true);
+    await settled(state);
+    expect(backend.current.calls.some((call) => call.command === "fetch")).toBe(true);
+  });
+
+  it("reads a key press as the binding it would be", async () => {
+    const { keymap } = await opened();
+    expect(keymap.capture(press("f", { metaKey: true }), "meta")).toBe("Primary+F");
+    expect(keymap.capture(press("N", { metaKey: true, shiftKey: true }), "meta")).toBe(
+      "Shift+Primary+N",
+    );
+    expect(keymap.capture(press(",", { ctrlKey: true }), "control")).toBe("Primary+,");
+    // A modifier alone is the first half of an answer, not an answer.
+    expect(keymap.capture(press("Shift", { shiftKey: true }), "meta")).toBeNull();
+  });
+
+  it("refuses a binding that would answer nothing", async () => {
+    const { keymap } = await opened();
+    // Movement runs before the table, so this one would never fire. Whichever
+    // case it was captured in: `matches` compares case-insensitively.
+    expect(keymap.refuse("network.fetch", "J")).toContain("déplacer");
+    // Shift is not enough to escape movement — `dispatch` calls that bare too,
+    // and `G` is the last row before the table is ever reached.
+    expect(keymap.refuse("network.fetch", "Shift+G")).toContain("déplacer");
+    // A modifier that makes the event no longer bare does escape it.
+    expect(keymap.refuse("network.fetch", "Primary+J")).toBeNull();
+    // And the binding that looks assigned because somebody else answers it.
+    expect(keymap.refuse("network.fetch", "Primary+P")).toContain("Push");
+    // Its own binding is not a conflict with itself.
+    expect(keymap.refuse("network.fetch", "Primary+F")).toBeNull();
+    expect(keymap.refuse("network.fetch", "Alt+Primary+F")).toBeNull();
+  });
+
+  it("prints a modifier it never had to print before", async () => {
+    // Nothing in the table used `Alt`, so `hint` dropped it — and a hint that
+    // names a key the app does not answer is the defect this table exists to
+    // stop. Reassignment is what made it reachable.
+    const { keymap } = await opened();
+    expect(keymap.hint("Alt+Primary+F", "⌘")).toBe("⌥⌘F");
+    expect(keymap.hint("Alt+Shift+Primary+F", "⌘")).toBe("⌥⇧⌘F");
+    expect(keymap.hint("Alt+Primary+F", "Ctrl")).toBe("Alt Ctrl F");
+  });
+
   it("prints the binding the way the platform spells it", async () => {
     const { keymap } = await opened();
     expect(keymap.hint("Primary+F", "⌘")).toBe("⌘F");

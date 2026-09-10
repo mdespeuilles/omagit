@@ -183,8 +183,14 @@ contradicts it, this document wins — it is the authority on interface states
 ## 7. Not yet designed
 
 Called out by the boards themselves, so they are not mistaken for oversights:
-side-by-side diff, drag line-selection in the gutter, visible whitespace,
-binary / image / rename / oversized-file diffs, and the `?` shortcut sheet.
+side-by-side diff, drag line-selection in the gutter, visible whitespace, and
+binary / image / rename / oversized-file diffs.
+
+The **`?` shortcut sheet** was on that list and is built (M9, ARCHITECTURE
+§2.48): two columns of key and meaning, printed from the table that answers the
+keys rather than written out. The **keymap screen** under Réglages → Clavier
+(§2.50) is the same list made editable — the key each command answers is a
+button shaped like the key, and pressing it is what starts listening.
 
 The **Preferences screen** was on that list and is built (M9, ARCHITECTURE
 §2.47). Nothing draws it, so it is made of what the rest of the window already

@@ -44,7 +44,7 @@ import {
   showScreen,
 } from "../state";
 import { tildify } from "../format";
-import { ACTIONS, hint } from "../keymap";
+import { ACTIONS, binding, hint } from "../keymap";
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
 
@@ -55,7 +55,7 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
 /// a hint nobody can check against the binding drifts the moment one moves.
 function shortcut(id: string): string {
   const action = ACTIONS.find((entry) => entry.id === id);
-  return action ? hint(action.binding, modifier.value) : "";
+  return action ? hint(binding(action), modifier.value) : "";
 }
 
 /// The window buttons the app has to draw, and on which edge (board 02). None

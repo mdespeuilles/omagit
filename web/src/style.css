@@ -968,6 +968,13 @@ button.link:hover:not(:disabled) {
   background: transparent;
   color: var(--text);
 }
+/* Said again here, and not redundantly: `button:disabled` above has the same
+   specificity as `button.link` and loses to it on source order alone, so every
+   disabled link in the window — "Effacer" on the History filters, "Défaut" on a
+   binding nobody has changed — read as one you could press. */
+button.link:disabled {
+  color: var(--text-dim);
+}
 button.link.danger {
   color: var(--danger);
 }
@@ -2813,6 +2820,48 @@ select:focus {
 .settings-facts dd {
   margin: 0;
   color: var(--text-muted);
+}
+
+/* ── The reassignable keymap (M9, SPEC §11) ──────────────────────────────── */
+
+.keymap-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+/* The row being pressed lifts, it does not *fill*: an accent-filled row would
+   take the key button's own colour with it and print "Appuie…" in accent on
+   accent — the §2.47 lesson, met again the first time a row held a control that
+   had a state of its own. */
+.keymap-row .settings-row.listening {
+  background: var(--surface-hover);
+}
+/* The key sits in a button shaped like the key: pressing it is what starts
+   listening, so the target and the thing it changes are the same object. */
+.keymap-key {
+  min-width: 76px;
+  height: 20px;
+  font-size: var(--text-meta);
+  text-align: center;
+}
+.keymap-key.listening {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* What it used to be, beside what it is now: a reassignment you cannot see is
+   one you cannot undo on purpose. */
+.keymap-was {
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+.keymap-refused {
+  margin: 0 0 4px 10px;
+  font-size: var(--text-meta);
+  color: var(--danger);
+}
+.keymap-hint {
+  margin: 0 0 4px 10px;
 }
 
 /* ── The `?` sheet (M9) ──────────────────────────────────────────────────── */

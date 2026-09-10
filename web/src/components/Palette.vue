@@ -10,7 +10,7 @@
 
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { app, closePalette, movePalette, runPaletteRow, setPaletteQuery } from "../state";
-import { ACTIONS, hint } from "../keymap";
+import { ACTIONS, binding, hint } from "../keymap";
 import { flatten, search, type Row } from "../palette";
 
 const box = ref<HTMLInputElement | null>(null);
@@ -54,7 +54,7 @@ function pieces(row: Row): { text: string; mark: boolean }[] {
 function shortcut(row: Row): string {
   if (row.kind !== "action") return "";
   const action = ACTIONS.find((entry) => entry.id === row.key);
-  return action ? hint(action.binding, app.platform?.modifier_label ?? "Ctrl") : "";
+  return action ? hint(binding(action), app.platform?.modifier_label ?? "Ctrl") : "";
 }
 
 function run(row: Row): void {

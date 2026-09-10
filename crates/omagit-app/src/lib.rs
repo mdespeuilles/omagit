@@ -66,6 +66,8 @@ pub fn run() {
             commands::set_scale,
             commands::panes,
             commands::set_pane,
+            commands::keymap,
+            commands::set_binding,
             commands::git_status,
             commands::repositories,
             commands::add_repository,

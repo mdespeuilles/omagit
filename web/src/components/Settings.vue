@@ -15,15 +15,17 @@
 // something else, and a screen showing the request rather than the answer would
 // be lying about what you are looking at.
 
-import { computed } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import {
   app,
   chooseDensity,
   chooseScale,
   chooseTheme,
   readPreferences,
+  setBinding,
   toggleShortcuts,
 } from "../state";
+import { ACTIONS, binding, capture, hint, reassigned, refuse } from "../keymap";
 
 const prefs = computed(() => (app.preferences.status === "ready" ? app.preferences.value : null));
 
@@ -33,6 +35,66 @@ const percent = computed(() => Math.round((prefs.value?.scale ?? 1) * 100));
 function scaleBy(step: number): void {
   const wanted = Math.min(Math.max((prefs.value?.scale ?? 1) + step, 0.8), 2);
   chooseScale(Number(wanted.toFixed(2)));
+}
+
+// ── Reassignment (SPEC §11) ───────────────────────────────────────────────
+//
+// The way to say which keys you want is to press them, so a row being changed
+// listens on the window: a key press is not something a text box could report
+// without inventing a spelling for it, and half the interesting bindings —
+// `⌘,`, `⌘.` — are ones the box would swallow.
+
+/// The action whose binding is being pressed, or `null`.
+const capturing = ref<string | null>(null);
+/// Why the last press was refused, printed under the row it was refused for.
+const refused = ref<string | null>(null);
+
+const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
+const primary = computed(() => (app.platform?.modifier === "command" ? "meta" : "control"));
+
+function listenFor(id: string): void {
+  if (capturing.value === id) return stopCapture();
+  capturing.value = id;
+  refused.value = null;
+  // Captured, so nothing else in the window answers the press being offered —
+  // `⌘W` while listening must not close the window, `Esc` must cancel here
+  // rather than in the shell.
+  window.addEventListener("keydown", onKey, true);
+}
+
+function stopCapture(): void {
+  capturing.value = null;
+  refused.value = null;
+  window.removeEventListener("keydown", onKey, true);
+}
+
+// A screen that vanished mid-capture would leave a handler on the window
+// answering keys for a row nobody can see.
+onBeforeUnmount(stopCapture);
+
+function onKey(event: KeyboardEvent): void {
+  const id = capturing.value;
+  if (!id) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.key === "Escape") return stopCapture();
+
+  const chosen = capture(event, primary.value);
+  // A modifier on its own is the first half of an answer: keep listening.
+  if (!chosen) return;
+
+  const no = refuse(id, chosen);
+  if (no) {
+    refused.value = `${hint(chosen, modifier.value)} : ${no}`;
+    return;
+  }
+  setBinding(id, chosen);
+  stopCapture();
+}
+
+function reset(id: string): void {
+  setBinding(id, null);
+  stopCapture();
 }
 
 /// Whether a source is the one in force. `automatic` is a request, never an
@@ -191,14 +253,44 @@ function on(source: string, name = ""): boolean {
       <section class="settings-block">
         <h2 class="settings-title">Clavier</h2>
         <p class="settings-note">
-          Les liaisons sont dans une table unique que trois choses lisent : le clavier, la palette
-          et cette feuille. Les rendre réassignables est le prochain morceau ; d'ici là, elles sont
-          au moins toutes visibles au même endroit.
+          Une seule table, lue par quatre choses : le clavier, la palette, la feuille des raccourcis
+          et la barre de menus. Changer une liaison ici les change toutes les quatre.
         </p>
         <button class="row settings-row" @click="toggleShortcuts()">
           <span>Voir tous les raccourcis</span>
           <span class="settings-detail">?</span>
         </button>
+
+        <ol class="keymap-list">
+          <li v-for="action in ACTIONS" :key="action.id" class="keymap-row">
+            <div class="row settings-row" :class="{ listening: capturing === action.id }">
+              <span>{{ action.label }}</span>
+              <span class="pane-head-spacer" />
+              <span v-if="reassigned(action)" class="keymap-was mono">
+                {{ hint(action.binding, modifier) }}
+              </span>
+              <button
+                class="keymap-key mono"
+                :class="{ listening: capturing === action.id }"
+                @click="listenFor(action.id)"
+              >
+                {{ capturing === action.id ? "Appuie…" : hint(binding(action), modifier) }}
+              </button>
+              <button
+                class="link"
+                :disabled="!reassigned(action)"
+                title="Remettre la liaison de départ"
+                @click="reset(action.id)"
+              >
+                Défaut
+              </button>
+            </div>
+            <p v-if="capturing === action.id && refused" class="keymap-refused">{{ refused }}</p>
+            <p v-else-if="capturing === action.id" class="settings-note keymap-hint">
+              Appuie sur la combinaison voulue. Échap annule.
+            </p>
+          </li>
+        </ol>
       </section>
 
       <section class="settings-block">

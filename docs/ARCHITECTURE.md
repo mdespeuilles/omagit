@@ -1542,6 +1542,60 @@ puts its own English default menu up until the front end has booted and sent
 ours. The alternative is a skeleton menu in Rust, which is the second list this
 whole design exists to avoid.
 
+### 2.50 M9, seventh slice: the keymap, reassignable
+
+SPEC §11 asks for it in three words — "keymap réassignable" — and the design was
+settled two slices ago: a settings screen over the table, not a rewrite. What
+this slice adds is the difference between the table and what the user chose.
+
+**Overrides are stored, never the keymap.** `Settings::keymap` is a map from
+action id to binding, holding only what was changed. Writing the whole keymap out
+would freeze it: an action added in a later version would arrive bound to nothing
+for anyone whose `settings.toml` predates it, and a binding this app no longer
+has would be answered forever. The stored spelling is the front end's own —
+`Shift+Primary+N` — because `Primary` is the point: a keymap written on macOS
+and carried to a Linux machine must not arrive spelled `⌘`.
+
+**Nothing in Rust reads the string.** What a binding may be — which keys are
+free, which are taken, which belong to movement — is knowledge the table has, and
+the table is in the front end. `set_binding` stores what it was told.
+
+**Everything that answers or prints a binding goes through `binding(action)`**,
+which is `app.keymap[id] ?? action.binding`. That is what makes one change reach
+four readers at once: the key handler, the palette, the `?` sheet and the macOS
+menu bar. The bar is watched on what it would *show* rather than on what is open,
+so a reassignment moves its accelerator without anyone calling it.
+
+**The screen listens on the window, not through a text box.** The way to say
+which keys you want is to press them, and half the interesting bindings — `⌘,`,
+`⌘.`, `⌘W` — are ones a text field would swallow or the window would act on. The
+handler is registered in the capture phase for that reason, and removed when the
+screen goes away: a listener left behind would answer keys for a row nobody can
+see.
+
+**What is refused is what could not answer.** `dispatch` consults movement before
+the table, and it does so whenever no primary and no alt are held — Shift alone
+counts as bare there. So `j` is refused, and so is `⇧G`: both would look assigned
+in the settings screen and fire never. A binding another action already answers is
+refused with that action's name. Everything else is allowed, `⇧?` included — a
+bare key not firing while you type is the documented rule, not a defect.
+
+Two defects the slice found by making them reachable:
+
+* **`hint` could not print `Alt`.** Nothing in the table used it, so `⌥⌘F` came
+  out as `⌘F` — a hint naming a key the app does not answer, which is the exact
+  failure this table was built to end. It prints in the platform's order now,
+  `⌥⇧⌘` on macOS.
+* **A disabled `button.link` looked enabled.** `button:disabled` and
+  `button.link` have the same specificity, and the link rule comes later in the
+  file, so it won on source order — every disabled link in the window, "Effacer"
+  on the History filters included, read as one you could press.
+
+And one caught on the probe page, which is the §2.31 lesson met again: the row
+being pressed used the accent *fill*, which took the key button's colour with it
+and printed "Appuie…" in accent on accent. It lifts to the hover surface instead.
+A filled row cannot hold a control that has a state of its own.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

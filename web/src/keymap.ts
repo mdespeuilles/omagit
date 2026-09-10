@@ -257,6 +257,84 @@ export const ACTIONS: Action[] = [
   },
 ];
 
+// ── Reassignment (SPEC §11) ─────────────────────────────────────────────────
+//
+// The table above is the *default* keymap. What the user changed is held in the
+// store, read from `settings.toml`, and everything that answers or prints a
+// binding goes through `binding()` — so a reassignment reaches the key handler,
+// the palette, the sheet and the macOS menu bar at once, because all four read
+// the same table through the same accessor.
+
+/// The binding this action answers now: the user's, or the table's own.
+export function binding(action: Action): string {
+  return app.keymap[action.id] ?? action.binding;
+}
+
+/// Whether this action is on a binding the user chose.
+export function reassigned(action: Action): boolean {
+  return app.keymap[action.id] !== undefined && app.keymap[action.id] !== action.binding;
+}
+
+/// The keys movement owns, which no command may take.
+///
+/// Not a copy of `MOVES`: `Tab`, `/`, `g` and `Enter` are answered by hand in
+/// `dispatch` before the table is consulted, so a list built from `MOVES` alone
+/// would miss four of them.
+const MOVEMENT_KEYS = [
+  "1",
+  "2",
+  "3",
+  "j",
+  "k",
+  "g",
+  "G",
+  "Tab",
+  "Enter",
+  "Escape",
+  "/",
+  "ArrowDown",
+  "ArrowUp",
+];
+
+/// A key press as a binding, or `null` when it is not one yet.
+///
+/// Used by the reassignment screen: the way to say which keys you want is to
+/// press them. A press of a modifier *alone* is not an answer — it is the first
+/// half of one — so it returns `null` and the screen keeps listening.
+export function capture(event: KeyboardEvent, primary: "meta" | "control"): string | null {
+  const key = event.key;
+  if (["Shift", "Control", "Alt", "Meta", "CapsLock", "Dead"].includes(key)) return null;
+  const parts: string[] = [];
+  if (event.shiftKey) parts.push("Shift");
+  if (event.altKey) parts.push("Alt");
+  if (primary === "meta" ? event.metaKey : event.ctrlKey) parts.push("Primary");
+  // The character the layout produced, upper-cased so the table reads as it is
+  // written — `matches` lower-cases both sides, so this is spelling, not
+  // meaning.
+  parts.push(key.length === 1 ? key.toUpperCase() : key);
+  return parts.join("+");
+}
+
+/// Why this binding cannot be given to this action, or `null` when it can.
+///
+/// Refused rather than accepted-and-broken: each of these is a binding that
+/// would look assigned in the settings screen and answer nothing at the keyboard.
+export function refuse(id: string, chosen: string): string | null {
+  const parts = chosen.split("+");
+  const key = parts[parts.length - 1]!;
+  // What `dispatch` calls a bare event: no primary, no alt. Shift alone counts,
+  // which is why `⇧G` is refused below — movement answers `G` before the table
+  // is ever consulted.
+  const bare = !parts.includes("Primary") && !parts.includes("Alt");
+
+  if (bare && MOVEMENT_KEYS.some((movement) => movement.toLowerCase() === key.toLowerCase())) {
+    return `${key} sert à se déplacer dans la fenêtre`;
+  }
+  const taken = ACTIONS.find((action) => action.id !== id && binding(action) === chosen);
+  if (taken) return `déjà pris par « ${taken.label} »`;
+  return null;
+}
+
 /// One event, matched against one binding.
 ///
 /// `Primary` is resolved here rather than stored twice: the platform says which
@@ -355,7 +433,7 @@ export function dispatch(event: KeyboardEvent): boolean {
   }
 
   for (const action of ACTIONS) {
-    if (!matches(action.binding, event, primary)) continue;
+    if (!matches(binding(action), event, primary)) continue;
     if (action.where === "repository" && !app.open) return false;
     if (!action.enabled()) return true;
     action.run();
@@ -415,7 +493,12 @@ export function hint(binding: string, modifier: string): string {
   const parts = binding.split("+");
   const key = parts[parts.length - 1]!;
   const glyph = modifier === "⌘";
+  // In the platform's own order: ⌥⇧⌘ on macOS is how every menu there prints
+  // it. `Alt` had no printed form at all until bindings became reassignable —
+  // nothing in the table used it, so `⌥⌘F` came out as `⌘F`, a hint that named
+  // a key the app did not answer.
+  const alt = parts.includes("Alt") ? (glyph ? "⌥" : "Alt ") : "";
   const shift = parts.includes("Shift") ? (glyph ? "⇧" : "Maj ") : "";
   const primary = parts.includes("Primary") ? (glyph ? modifier : `${modifier} `) : "";
-  return `${shift}${primary}${key.toUpperCase()}`;
+  return `${alt}${shift}${primary}${key.toUpperCase()}`;
 }

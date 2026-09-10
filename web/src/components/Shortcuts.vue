@@ -10,7 +10,7 @@
 
 import { onBeforeUnmount, onMounted } from "vue";
 import { app, closeShortcuts } from "../state";
-import { ACTIONS, MOVEMENTS, hint } from "../keymap";
+import { ACTIONS, MOVEMENTS, binding, hint } from "../keymap";
 
 const modifier = app.platform?.modifier_label ?? "Ctrl";
 
@@ -39,7 +39,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           <h3 class="settings-subtitle">Commandes</h3>
           <dl class="sheet-list">
             <template v-for="entry in ACTIONS" :key="entry.id">
-              <dt class="sheet-key mono">{{ hint(entry.binding, modifier) }}</dt>
+              <dt class="sheet-key mono">{{ hint(binding(entry), modifier) }}</dt>
               <dd class="sheet-label">{{ entry.label }}</dd>
             </template>
           </dl>

@@ -103,11 +103,26 @@ reach a text field cannot be one: `⌘F` fetches while you type and belongs ther
 in Aide, and the key still works — through the front end, which knows where the
 caret is.
 
+## Changing one
+
+Réglages → Clavier lists every command with the key it answers. Press the key
+button, then press the combination you want; `Échap` cancels, and *Défaut* puts
+back the table's own. What changes is stored as an override in `settings.toml` —
+only the difference, so an action added in a later version arrives with its own
+binding rather than none.
+
+Two bindings are refused, both because they could not answer:
+
+* **a movement key with no `Primary` and no `Alt`** — `j`, `⇧G`, `Tab`, `/`.
+  Movement is consulted before this table, and Shift alone does not change that,
+  so the command would look assigned and fire never;
+* **one another command already answers**, named in the refusal.
+
+Everything else is allowed. A bare key that does not fire while you are typing is
+the rule above, not a defect — `⇧?` is one.
+
 ## Not yet bound
 
-The reassignment screen, and the tab stops *inside* a zone — board 09 draws
-Working Copy with eleven of them, where this has three zones and a cursor in
-each. What is here is the vocabulary; the last stops are M9's own finishing.
-
-Reassignment is a settings screen over this same table rather than a rewrite,
-which is the whole reason the table exists.
+The tab stops *inside* a zone — board 09 draws Working Copy with eleven of them,
+where this has three zones and a cursor in each. What is here is the vocabulary;
+the last stops are M9's own finishing.

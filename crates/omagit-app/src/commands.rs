@@ -108,6 +108,33 @@ pub fn set_pane(state: State<'_, AppState>, name: String, width: f32) {
     });
 }
 
+/// The bindings the user has changed, by action id (SPEC §11).
+///
+/// Overrides only. The table of what omagit can do is the front end's, and this
+/// is the difference from it — see `omagit_settings::Settings::keymap` for why
+/// storing the whole thing would go stale.
+#[tauri::command]
+pub fn keymap(state: State<'_, AppState>) -> std::collections::BTreeMap<String, String> {
+    state.settings().keymap
+}
+
+/// Change one binding, or put it back to the table's own.
+///
+/// Nothing here reads the string: what a binding may be — which keys are free,
+/// which are already taken, which belong to movement — is knowledge the table
+/// has, and the table is in the front end. This stores what it was told.
+#[tauri::command]
+pub fn set_binding(state: State<'_, AppState>, id: String, binding: Option<String>) {
+    state.with_settings(|settings| match binding {
+        Some(binding) => {
+            settings.keymap.insert(id, binding);
+        }
+        None => {
+            settings.keymap.remove(&id);
+        }
+    });
+}
+
 /// Whether writing is possible at all, and why not when it is not.
 #[tauri::command]
 pub fn git_status(state: State<'_, AppState>) -> Option<String> {
