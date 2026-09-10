@@ -90,10 +90,11 @@ function origin(row: StashRow): string {
 
     <ol v-else class="stash-rows">
       <!-- The row is a button, and its three actions are buttons *beside* it
-           rather than inside it: a `<button>` in a `<button>` is invalid, and
-           the branch tree only gets away with it because its actions are
-           conditional. So the `<li>` is the row — it carries hover and
-           selected — and the button inside it stays transparent. -->
+           rather than inside it: a `<button>` in a `<button>` is invalid. So
+           the `<li>` is the row — it carries hover and selected — and the
+           button inside it stays transparent. Elsewhere the row itself is the
+           `<div>` and the actions sit inside it; either shape is valid, and
+           this one is what a list of `<li>` wanted. -->
       <li
         v-for="row in rows"
         :key="row.id.full"

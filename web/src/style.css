@@ -780,6 +780,9 @@ button.icon {
   background: var(--surface-raised);
   --row-bg: var(--surface-raised);
 }
+/* Rows are not tab stops — Tab moves between zones (DESIGN §5), and the
+   keyboard's place inside one is the `.focused` ring below. This ring is for
+   the day a row is reached natively all the same. */
 .file-row:focus-visible,
 .library-row:focus-visible,
 .commit-row:focus-visible {
@@ -2809,5 +2812,58 @@ select:focus {
 }
 .settings-facts dd {
   margin: 0;
+  color: var(--text-muted);
+}
+
+/* ── The `?` sheet (M9) ──────────────────────────────────────────────────── */
+
+.sheet {
+  width: min(760px, 92vw);
+  max-height: 76vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+/* The two blocks stand side by side while there is room for them, and fall
+   into one column when there is not. Stacked, the sheet was taller than the
+   window it explains — a reference you have to scroll to read is one you read
+   once. `auto-fit` is what makes the fallback automatic rather than a
+   breakpoint someone has to keep in step with the width above. */
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+  gap: 0 20px;
+  padding: 4px 16px 16px;
+}
+.sheet-block {
+  padding-top: 8px;
+}
+/* Two columns, keys right-aligned against their meanings: the eye scans the
+   keys, so they are the edge that lines up. `start`, because a label long
+   enough to wrap must not drag its key down to the middle of the pair. */
+.sheet-list {
+  display: grid;
+  /* `max-content` rather than a fixed width: the keys are the one part of this
+     sheet whose printed length is not ours to choose — `⇧⌘N` on macOS is
+     `Ctrl+Shift+N` on Linux, and a column measured for one would clip the
+     other. */
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  gap: 3px 12px;
+  margin: 0;
+}
+.sheet-key {
+  text-align: right;
+  font-size: var(--text-meta);
+  color: var(--text);
+  white-space: nowrap;
+}
+.sheet-label {
+  margin: 0;
+  font-size: var(--text-meta);
   color: var(--text-muted);
 }

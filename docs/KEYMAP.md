@@ -31,6 +31,8 @@ always shows one or the other, never both, and never spells them together:
 | `Primary`+`R` | Relire le dépôt — ou la liste, sur l'écran Dépôts | anywhere |
 | `Shift`+`Primary`+`S` | Remiser les modifications | with a repository open |
 | `Primary`+`K` | Palette de commandes | anywhere |
+| `Shift`+`?` | La feuille des raccourcis | anywhere |
+| `Primary`+`,` | Réglages | anywhere |
 | `Shift`+`Primary`+`J` | Journal des opérations | anywhere |
 | `Primary`+`⏎` | Commiter | in the commit box |
 
@@ -52,6 +54,10 @@ A dialog answers its own keys while it is up — `Esc` closes every one of them,
 `⌘⏎` applies the conflict dialog's answers, `n` moves to its next conflict — and
 the table above stays quiet behind it.
 
+Inside the palette: `↑` `↓` (or `Ctrl`+`P` / `Ctrl`+`N`) walk the rows across
+its groups and wrap, `⏎` runs the row, `Esc` closes. What `⏎` *does* depends on
+the row, which is why every row prints it: `exécuter`, `ouvrir`, `basculer`.
+
 ## The rules
 
 **A shortcut fires while you are typing; a bare key never does.** `⌘F` in a text
@@ -72,17 +78,22 @@ is left alone.
 binding does not stop working the moment you leave the screen that declared it —
 which is the same reason the topbar and the sidebar belong to `App.vue` (§2.28).
 
+## The sheet
+
+`?` prints this file's two tables from the table that answers them — the
+commands from `ACTIONS`, each with its binding spelled for the platform running,
+and the movements from `MOVEMENTS`. A test asserts the sheet holds one line per
+entry, so an action added without a line is not something anyone can forget.
+
+It is written `Shift`+`?`, not `Shift`+`/`, however the key is engraved: a
+browser reports the character the layout produced. Written the other way it
+matched nothing on any layout, which is what the sheet's first test found.
+
 ## Not yet bound
 
-The `?` sheet, the reassignment screen, and the tab stops *inside* a zone —
-board 09 draws Working Copy with eleven of them, where this has three zones and
-a cursor in each. What is here is the vocabulary; the last stops are M9's own
-finishing.
+The reassignment screen, and the tab stops *inside* a zone — board 09 draws
+Working Copy with eleven of them, where this has three zones and a cursor in
+each. What is here is the vocabulary; the last stops are M9's own finishing.
 
-Inside the palette: `↑` `↓` (or `Ctrl`+`P` / `Ctrl`+`N`) walk the rows across
-its groups and wrap, `⏎` runs the row, `Esc` closes. What `⏎` *does* depends on
-the row, which is why every row prints it: `exécuter`, `ouvrir`, `basculer`.
-
-The `?` sheet and the reassignment screen are the slices after that.
 Reassignment is a settings screen over this same table rather than a rewrite,
 which is the whole reason the table exists.

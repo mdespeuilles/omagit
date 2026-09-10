@@ -214,6 +214,8 @@ type State = {
   /// branch has no "selected" of its own: moving through them must not re-walk
   /// a history per keystroke, so `⏎` is what asks for one.
   branchCursor: string | null;
+  /// Whether the `?` sheet is up.
+  shortcuts: boolean;
   /// What the Preferences screen is showing, once it has been opened.
   preferences: Async<Preferences>;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
@@ -331,6 +333,7 @@ const state = reactive<State>({
   sides: null,
   resolving: null,
   palette: null,
+  shortcuts: false,
   preferences: idle(),
   zone: 1,
   branchCursor: null,
@@ -1722,6 +1725,15 @@ export function runPaletteRow(row: PaletteRow, actions: KeymapAction[]): void {
 // is the stylesheet it renders to, because a preference you cannot see the
 // effect of is one nobody trusts — and because the alternative, re-asking for
 // the theme afterwards, is two round trips where the second can fail on its own.
+
+/// The `?` sheet: every binding, read from the table that answers them.
+export function toggleShortcuts(): void {
+  state.shortcuts = !state.shortcuts;
+}
+
+export function closeShortcuts(): void {
+  state.shortcuts = false;
+}
 
 export async function readPreferences(): Promise<void> {
   state.preferences = { status: "loading" };

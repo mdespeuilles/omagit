@@ -16,7 +16,14 @@
 // be lying about what you are looking at.
 
 import { computed } from "vue";
-import { app, chooseDensity, chooseScale, chooseTheme, readPreferences } from "../state";
+import {
+  app,
+  chooseDensity,
+  chooseScale,
+  chooseTheme,
+  readPreferences,
+  toggleShortcuts,
+} from "../state";
 
 const prefs = computed(() => (app.preferences.status === "ready" ? app.preferences.value : null));
 
@@ -179,6 +186,19 @@ function on(source: string, name = ""): boolean {
           <button :disabled="percent >= 200" @click="scaleBy(0.05)">+</button>
           <button class="link" @click="chooseScale(1.15)">Défaut</button>
         </div>
+      </section>
+
+      <section class="settings-block">
+        <h2 class="settings-title">Clavier</h2>
+        <p class="settings-note">
+          Les liaisons sont dans une table unique que trois choses lisent : le clavier, la palette
+          et cette feuille. Les rendre réassignables est le prochain morceau ; d'ici là, elles sont
+          au moins toutes visibles au même endroit.
+        </p>
+        <button class="row settings-row" @click="toggleShortcuts()">
+          <span>Voir tous les raccourcis</span>
+          <span class="settings-detail">?</span>
+        </button>
       </section>
 
       <section class="settings-block">

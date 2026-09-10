@@ -122,7 +122,9 @@ function submit(): void {
       <span class="pane-head-count">{{ total }}</span>
     </div>
 
-    <button
+    <!-- A `<div>` for the same reason as the library row: these rows hold
+         their own action buttons, and a button inside a button is invalid. -->
+    <div
       v-for="row in grouped.loose"
       :key="row.name"
       class="row branch-row"
@@ -163,7 +165,7 @@ function submit(): void {
           Suppr.
         </button>
       </span>
-    </button>
+    </div>
 
     <template v-for="group in grouped.groups" :key="group.prefix">
       <button class="group-head as-button" @click="toggleBranchGroup(group.prefix)">
@@ -177,7 +179,7 @@ function submit(): void {
         <span class="pane-head-count">{{ group.rows.length }}</span>
       </button>
       <template v-if="!isCollapsed(group.prefix)">
-        <button
+        <div
           v-for="row in group.rows"
           :key="row.name"
           class="row branch-row nested"
@@ -218,7 +220,7 @@ function submit(): void {
               Suppr.
             </button>
           </span>
-        </button>
+        </div>
       </template>
     </template>
 

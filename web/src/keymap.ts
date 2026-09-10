@@ -61,6 +61,23 @@ const idle = (): boolean => !app.busy && !app.running;
 /// own block.
 ///
 /// They answer in order, and the first one that claims the event ends it.
+/// How the movement keys are *printed* — the `?` sheet's half of the same
+/// vocabulary.
+///
+/// A second table, and a test holds the two together: what `dispatch` answers
+/// and what the sheet prints must not drift, and the alternative — one table
+/// carrying both the raw key names and their prose — made `g` `g`, `/` and
+/// `Tab` fit badly, since each of the three is handled by hand.
+export const MOVEMENTS: { print: string; label: string }[] = [
+  { print: "1 2 3", label: "La sidebar, la colonne centrale, le panneau de détail" },
+  { print: "Tab · ⇧Tab", label: "Zone suivante ou précédente, en boucle" },
+  { print: "j k · ↓ ↑", label: "Descendre et monter dans la zone" },
+  { print: "g g · G", label: "La première ligne · la dernière" },
+  { print: "⏎", label: "Ce à quoi sert la ligne : ouvrir, basculer, indexer" },
+  { print: "/", label: "Le filtre de cet écran" },
+  { print: "Esc", label: "Remonter d'un niveau : un filtre, puis la sidebar" },
+];
+
 const MOVES: { keys: string[]; run: () => boolean }[] = [
   { keys: ["1"], run: () => (store.goToZone(1), true) },
   { keys: ["2"], run: () => (store.goToZone(2), true) },
@@ -181,6 +198,17 @@ export const ACTIONS: Action[] = [
     run: () => store.openPalette(),
   },
   {
+    id: "help.shortcuts",
+    label: "Raccourcis clavier",
+    // `Shift+?`, not `Shift+/`, however it is engraved on the key: a browser
+    // reports the character the layout produced, and holding Shift over `/`
+    // produces `?`. Written the other way it matched nothing, on any layout.
+    binding: "Shift+?",
+    where: "always",
+    enabled: () => true,
+    run: () => store.toggleShortcuts(),
+  },
+  {
     id: "settings.open",
     label: "Réglages",
     binding: "Primary+,",
@@ -245,7 +273,7 @@ function typing(target: EventTarget | null): boolean {
 /// Whether a dialog is up. Dialogs answer their own keys — `Esc`, `⌘⏎`, `n` —
 /// and a global binding firing behind one would act on a screen nobody can see.
 function overlaid(): boolean {
-  return !!app.question || !!app.clone || !!app.resolving || !!app.palette;
+  return !!app.question || !!app.clone || !!app.resolving || !!app.palette || app.shortcuts;
 }
 
 /// Run whichever action the event names, and say whether one did.
@@ -266,6 +294,15 @@ export function dispatch(event: KeyboardEvent): boolean {
   if (bare && typing(event.target)) return false;
 
   if (bare) {
+    // `Tab` moves between zones (DESIGN §5) — but only out here, where the
+    // caret is in no field: inside one it is the browser's, and taking it would
+    // trap somebody in a text box. It was written in KEYMAP.md and bound to
+    // nothing until the `?` sheet went to print it, which is the argument for
+    // the sheet in one line.
+    if (event.key === "Tab") {
+      store.nextZone(event.shiftKey ? -1 : 1);
+      return true;
+    }
     // `/` puts the caret in whichever filter this screen has. A DOM act, done
     // here rather than in the store: focus is the one piece of interface state
     // the browser owns, and the store deliberately owns none of it.

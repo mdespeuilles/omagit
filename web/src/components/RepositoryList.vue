@@ -123,7 +123,11 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
           <span class="pane-head-spacer" />
           <span class="pane-head-count">{{ group.rows.length }}</span>
         </div>
-        <button
+        <!-- A `<div>`, not a `<button>`: the row carries a button of its own
+             ("Retirer"), and a button inside a button is invalid markup the
+             compiler warns about and a parser undoes. `.file-row` and
+             `.commit-row` were already this shape. -->
+        <div
           v-for="row in group.rows"
           :key="row.path"
           class="row library-row"
@@ -151,7 +155,7 @@ const plural = (count: number, word: string): string => `${count} ${word}${count
           >
             Retirer
           </button>
-        </button>
+        </div>
       </template>
     </div>
 

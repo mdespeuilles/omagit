@@ -1459,6 +1459,44 @@ still `--text-dim`, a colour chosen against a surface, which on accent reads as
 noise. It takes the fill's own text colour, faded — the §2.31 lesson, once more,
 in the place where a screen full of two-line rows made it obvious.
 
+### 2.48 M9, fifth slice: the sheet, and what printing a table finds
+
+`?` opens the shortcut sheet. It is not a written list: it prints `ACTIONS` and
+`MOVEMENTS` straight from `web/src/keymap.ts`, and a test asserts one line per
+entry, so an action added without its line is not something anyone can forget to
+do. This project has the receipt for the other way — `KEYMAP.md` spent three
+milestones describing a GPUI build that had been deleted (§5, defect 12).
+
+Printing the table is also how it gets audited, and it found two things in the
+half hour it took to build:
+
+**`Tab` was documented since M3 and bound to nothing.** DESIGN §5 and KEYMAP.md
+both described it as the way between zones. Nothing answered it. It is bound now
+— out where the caret is in no field only, because inside one it belongs to the
+browser and taking it would trap somebody in a text box.
+
+**The sheet's own binding matched nothing, on any layout.** It was written
+`Shift+/`, which is how the key is engraved; a browser reports the character the
+layout *produced*, which is `?`. So the feature whose reason for existing is to
+stop the documentation drifting from the build was itself unreachable, and its
+first test is what said so. `matches()` compares `event.key`, so the fix is the
+binding string, not the comparison: `Shift+?` is right on QWERTY, on AZERTY
+where the character sits over `,`, and on QWERTZ where it sits over `ß`.
+
+Laid out as two blocks side by side, falling to one column under 320px per
+block. Stacked, the sheet was taller than the window it explains, and a
+reference you have to scroll to read is one you read once. The key column is
+`max-content` rather than a measured width for the reason §2.31 keeps teaching:
+the printed length is not ours to choose — `⇧⌘N` on macOS is `Maj Ctrl N` on
+Linux, and a column measured for one clips the other.
+
+Fixed on the way past, because the compiler says it out loud on every build: the
+library row and two branch rows were `<button>` elements holding their own
+action buttons. A button inside a button is invalid markup, and a parser undoes
+it. They are `<div>`s now, which is the shape `.file-row` and `.commit-row`
+already had — and the shape `.stash-entry` reached from the other side, with the
+row as the `<li>` and the actions beside the button inside it.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

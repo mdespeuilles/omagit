@@ -20,6 +20,7 @@ import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
 import Progress from "./components/Progress.vue";
 import Settings from "./components/Settings.vue";
+import Shortcuts from "./components/Shortcuts.vue";
 import Sidebar from "./components/Sidebar.vue";
 import Splitter from "./components/Splitter.vue";
 import StashDetail from "./components/StashDetail.vue";
@@ -129,5 +130,6 @@ const widths = {
   <Confirm v-if="app.question" />
   <CloneDialog v-if="app.clone" />
   <Palette v-if="app.palette" />
+  <Shortcuts v-if="app.shortcuts" />
   <ConflictDialog v-if="app.resolving" />
 </template>
