@@ -5,7 +5,6 @@
 // than break. The rest is the arithmetic — plurals, placeholders — which is
 // where a hand-rolled i18n usually goes wrong.
 
-import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LANGUAGES, count, language, systemLanguage, t, useLanguage } from "./i18n";
 import { strings as english } from "./i18n/languages/en";
@@ -96,23 +95,21 @@ describe("the catalogues", () => {
 });
 
 describe("the source", () => {
-  // Read off the disk rather than imported: what is being checked is what is
-  // *written*, and a string that never reaches a screen is exactly the kind
-  // that stays behind when a language moves.
-  const sources = () => {
-    const found: string[] = [];
-    const walk = (dir: string): void => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const path = `${dir}/${entry.name}`;
-        if (entry.isDirectory()) walk(path);
-        else if (/\.(ts|vue)$/.test(entry.name) && !entry.name.includes(".test.")) found.push(path);
-      }
-    };
-    // `import.meta.dirname` is this file's own directory — `web/src` — which is
-    // the tree to read.
-    walk(import.meta.dirname);
-    return found.filter((path) => !path.includes("/i18n/languages/"));
-  };
+  // The files as *text*, through Vite rather than through `node:fs`: the same
+  // mechanism that finds the catalogues, and one that needs no node types in a
+  // front end that has none. What is checked is what is written — a string that
+  // never reaches a screen is exactly the kind that stays behind when a
+  // language moves.
+  const raw = import.meta.glob<string>("./**/*.{ts,vue}", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  });
+
+  const sources = (): [string, string][] =>
+    Object.entries(raw).filter(
+      ([path]) => !path.includes("/i18n/languages/") && !path.includes(".test."),
+    );
 
   /// Comments are the project's own prose and may say anything; what is checked
   /// is the code and the markup.
@@ -132,15 +129,16 @@ describe("the source", () => {
     // twice, a branch whose upstream is gone. Reading every file is the only
     // way that does not depend on somebody looking.
     const left: string[] = [];
-    for (const path of sources()) {
-      const text = withoutComments(readFileSync(path, "utf8"));
-      text.split("\n").forEach((line, at) => {
-        if (FRENCH.test(line)) left.push(`${path.split("/src/")[1]}:${at + 1}: ${line.trim()}`);
-      });
+    for (const [path, text] of sources()) {
+      withoutComments(text)
+        .split("\n")
+        .forEach((line, at) => {
+          if (FRENCH.test(line)) left.push(`${path}:${at + 1}: ${line.trim()}`);
+        });
     }
     // `backend.fake.ts` is a test double: what it throws stands in for `git`'s
     // own words, which are never translated.
-    expect(left.filter((one) => !one.startsWith("backend.fake.ts"))).toEqual([]);
+    expect(left.filter((one) => !one.startsWith("./backend.fake.ts"))).toEqual([]);
   });
 
   it("keeps the reference catalogue in English", () => {

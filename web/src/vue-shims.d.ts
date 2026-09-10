@@ -14,4 +14,10 @@ declare module "*.vue" {
 /// if it did.
 interface ImportMeta {
   glob<T>(pattern: string, options: { eager: true }): Record<string, T>;
+  /// The `?raw` form: the files as text. Used by the test that reads the source
+  /// tree looking for words left in the wrong language.
+  glob<T>(
+    pattern: string,
+    options: { eager: true; query: "?raw"; import: "default" },
+  ): Record<string, T>;
 }
