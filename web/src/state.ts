@@ -1522,7 +1522,7 @@ export function mergeBranch(branch: string, noFastForward = false): void {
       verb: t("ask.merge.verb"),
     },
     () =>
-      void write(`Fusionner ${branch}`, async () => {
+      void write(t("do.merge", { branch }), async () => {
         await api.merge(path, branch, noFastForward, false);
       }),
   );
@@ -1540,7 +1540,7 @@ export function rebaseOnto(onto: string): void {
       verb: t("ask.rebase.verb"),
     },
     () =>
-      void write(`Rebaser sur ${onto}`, async () => {
+      void write(t("do.rebase", { onto }), async () => {
         await api.rebase(path, onto);
       }),
   );
@@ -1558,7 +1558,7 @@ export function abortOperation(): void {
       verb: t("ask.abort.verb"),
     },
     () =>
-      void write(`Abandonner ${operation}`, async () => {
+      void write(t("do.abort", { operation }), async () => {
         await api.abortOperation(path);
       }),
   );
@@ -1612,7 +1612,7 @@ export function isCollapsed(name: string): boolean {
 export function checkoutBranch(name: string): void {
   const path = state.open;
   if (!path) return;
-  void write(`Basculer sur ${name}`, () => api.checkout(path, name, false));
+  void write(t("do.checkout", { name }), () => api.checkout(path, name, false));
 }
 
 export function createBranch(name: string, start: string, andSwitch: boolean): void {
@@ -1696,7 +1696,7 @@ export function continueOperation(): void {
   const path = state.open;
   const operation = state.summary?.operation;
   if (!path || !operation) return;
-  void write(`Poursuivre ${operation}`, async () => {
+  void write(t("do.continue", { operation }), async () => {
     state.notes = await api.continueOperation(path);
   });
 }
@@ -1777,7 +1777,7 @@ export function openInEditor(): void {
   const file = state.resolving?.file;
   if (!path || !file) return;
   state.resolving = null;
-  void write(`Ouvrir ${file}`, async () => {
+  void write(t("do.openFile", { file }), async () => {
     // What was launched, which is not always what was configured: a terminal
     // editor started from a window with no terminal is a process nobody sees.
     state.notes = worded(await api.openInEditor(path, file));
@@ -1906,7 +1906,7 @@ export function stashChanges(): void {
   if (!path || !form) return;
   const { message: text, untracked } = form;
   state.stashing = null;
-  void write("Remiser", async () => {
+  void write(t("do.stash"), async () => {
     const said = await api.stashPush(path, text, untracked);
     // The one case where `git`'s own line is the whole answer: "No local
     // changes to save" is what happened, and no sentence of ours improves it.
@@ -1927,7 +1927,7 @@ export function restoreStash(row: StashRow, keep: boolean): void {
   const path = state.open;
   if (!path) return;
   const where = address(row);
-  void write(keep ? `Appliquer ${where}` : `Appliquer et retirer ${where}`, async () => {
+  void write(keep ? t("do.stashApply", { where }) : t("do.stashPop", { where }), async () => {
     const said = await api.stashRestore(path, row.id.full, keep);
     // What `git stash apply` prints is a status — "On branch main" — which
     // answers a question nobody asked and looks, on a screen where the shelf
@@ -2662,7 +2662,7 @@ export function commit(): void {
   const { message: text, amend, signOff, noVerify } = state;
 
   const run = (): void => {
-    void write(amend ? "Corriger le commit" : "Commiter", async () => {
+    void write(amend ? t("do.amend") : t("do.commit"), async () => {
       const made = await api.commit(path, text, amend, signOff, noVerify);
       state.message = "";
       state.amend = false;

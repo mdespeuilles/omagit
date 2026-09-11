@@ -236,6 +236,32 @@ describe("the source", () => {
     expect(left).toEqual([]);
   });
 
+  it("names no busy state in its own words", () => {
+    // The third place a literal hides, after a template's text and its
+    // attributes: `write(label, …)` puts `label` straight into the status bar,
+    // and eleven of them were French sentences built with a template literal —
+    // `Fusionner ${branch}`, `Corriger le commit`. Neither older guard could
+    // see them: no accents, and one French function word apiece.
+    //
+    // Every label goes through `t` or `count`. The shape again, not the
+    // vocabulary: an English literal here would be exactly as wrong.
+    const source = sources().find(([path]) => path.endsWith("/state.ts"))?.[1] ?? "";
+    expect(source, "state.ts is read").not.toBe("");
+
+    const left: string[] = [];
+    for (const match of withoutComments(source).matchAll(/\bwrite\(\s*([^\n]*)/g)) {
+      const start = match[1] ?? "";
+      // The declaration itself, and any call whose first argument is already a
+      // catalogue call — on its own, or either arm of a ternary choosing one.
+      if (start.startsWith("label:")) continue;
+      if (/\b(?:t|count)\(/.test(start)) continue;
+      // Broken across lines: the label is on the next one.
+      if (start.trim() === "") continue;
+      left.push(start.trim());
+    }
+    expect(left).toEqual([]);
+  });
+
   it("keeps the reference catalogue in English", () => {
     // A French string left in `en.ts` compiles, translates, and reads as a bug
     // — the other catalogues are typed against it, not proof-read against it.

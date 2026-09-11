@@ -2189,6 +2189,15 @@ would still pass this one. Both were widened as well: backticks are read now,
 and `de` joined the function words — without it `Largeur de la colonne` scored
 one and stayed invisible.
 
+**A fourth place, found while building §2.66.** `write(label, …)` puts its first
+argument straight into the status bar, and eleven of those labels were French
+sentences assembled with a template literal — `Fusionner ${branch}`,
+`Basculer sur ${name}`, `Corriger le commit`. Every one of them had been on
+screen since M5 or M7. None of the three guards could see them: no accents, one
+French function word apiece, and not a literal in a template. The fourth checks
+the same shape as the third — every busy label goes through `t` or `count` — and
+an English literal there would be exactly as wrong.
+
 ### 2.66 The commit-message agent, and the key that is not stored
 
 Asked for as "the user types an Anthropic, OpenAI, Mistral or Gemini key into
