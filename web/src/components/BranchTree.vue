@@ -232,7 +232,7 @@ function stop(name: string): 0 | -1 {
               :key="row.name"
               class="row branch-row nested"
               :class="{ selected: showing(row.name) }"
-              :title="`${row.name} — clic : son historique, double-clic : basculer dessus`"
+              :title="t('branches.row', { branch: row.name })"
               @click="showBranchHistory(row.name)"
               @dblclick="checkoutBranch(row.name)"
             >

@@ -99,7 +99,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
 <template>
   <div v-if="app.palette" class="overlay top" @click.self="closePalette()">
-    <section class="palette" role="dialog" aria-modal="true" aria-label="Palette de commandes">
+    <section class="palette" role="dialog" aria-modal="true" :aria-label="t('palette.title')">
       <header class="palette-head">
         <input
           ref="box"

@@ -20,6 +20,7 @@
 // write succeeds, and it points at the journal, where the exact command line is.
 
 import { app, dismissWriteError, toggleJournal } from "../state";
+import { t } from "../i18n";
 </script>
 
 <template>
@@ -29,7 +30,14 @@ import { app, dismissWriteError, toggleJournal } from "../state";
       <span class="notice-what">{{ app.writeError.what }}</span>
       <span class="notice-said mono">{{ app.writeError.said }}</span>
     </span>
-    <button class="link" @click="toggleJournal()">Journal</button>
-    <button class="icon" title="Fermer" aria-label="Fermer" @click="dismissWriteError()">✕</button>
+    <button class="link" @click="toggleJournal()">{{ t("notice.journal") }}</button>
+    <button
+      class="icon"
+      :title="t('notice.dismiss')"
+      :aria-label="t('notice.dismiss')"
+      @click="dismissWriteError()"
+    >
+      ✕
+    </button>
   </aside>
 </template>

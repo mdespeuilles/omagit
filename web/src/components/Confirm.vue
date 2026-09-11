@@ -7,6 +7,7 @@
 
 import { onMounted, onBeforeUnmount, ref } from "vue";
 import { answer, answerAlternative, app } from "../state";
+import { t } from "../i18n";
 
 const cancel = ref<HTMLButtonElement | null>(null);
 
@@ -30,7 +31,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       <h2 class="dialog-title">{{ app.question?.title }}</h2>
       <p class="dialog-detail">{{ app.question?.detail }}</p>
       <div class="dialog-actions">
-        <button ref="cancel" @click="answer(false)">Annuler</button>
+        <button ref="cancel" @click="answer(false)">{{ t("ask.cancel") }}</button>
         <!-- A second way of doing it, for the question that is a choice rather
              than a warning: neither merging nor rebasing is the dangerous one,
              so neither wears `danger`. -->

@@ -128,8 +128,11 @@ describe("the source", () => {
   /// whole conversion. Two of these words in one string, with a space in it, is
   /// a sentence: none of them is an English word, so a match is not a
   /// coincidence.
+  ///
+  /// `de` was added after `Largeur de la colonne ${pane}` was found by eye in
+  /// `Splitter.vue`, where it had sat since M6b. It scored one word without it.
   const FRENCH_WORDS = new RegExp(
-    String.raw`\b(le|la|les|des|du|une|dans|sur|pas|aucun|aucune|est|sont|avec` +
+    String.raw`\b(le|la|les|de|des|du|une|dans|sur|pas|aucun|aucune|est|sont|avec` +
       String.raw`|pour|par|cette|ces|qui|que|sans|plus|tout|toute|comme|mais|au|aux)\b`,
     "gi",
   );
@@ -159,7 +162,10 @@ describe("the source", () => {
       withoutComments(text)
         .split("\n")
         .forEach((line, at) => {
-          for (const match of line.matchAll(/"([^"\n]{6,160})"/g)) {
+          // Backticks as well as quotes: `Largeur de la colonne ${pane}` sat in
+          // `Splitter.vue` from M6b, and a check that read only `"…"` could not
+          // see it.
+          for (const match of line.matchAll(/["`]([^"`\n]{6,160})["`]/g)) {
             const quoted = match[1] ?? "";
             if (!quoted.includes(" ")) continue;
             if ((quoted.match(FRENCH_WORDS) ?? []).length >= 2) {
@@ -167,6 +173,62 @@ describe("the source", () => {
             }
           }
         });
+    }
+    expect(left).toEqual([]);
+  });
+
+  it("draws no word of its own in a template", () => {
+    // The check the two above could not be: neither "Raccourcis" nor
+    // "Commandes" nor "Journal" carries an accent or a French function word,
+    // and all three were printed by the `?` sheet and the error band for as
+    // long as the catalogues have existed. What is wrong with them is not that
+    // they are French — it is that they are *literal*: a string a template
+    // prints from itself is a string no language can reach.
+    //
+    // So the rule is the shape rather than the vocabulary. Every word a
+    // template shows comes through `t`, `count` or a binding, or it is on the
+    // short list below.
+    //
+    // Git's own vocabulary stays untranslated — the catalogue's own preamble
+    // says so — and `omagit` is a name. The rest of what passes here has no
+    // letters in it at all.
+    const KEPT = new Set([
+      "omagit",
+      "Fetch",
+      "Pull",
+      "Push",
+      "HEAD",
+      "Esc",
+      "--depth 1",
+      // An example URL. It reads the same in every language, and translating
+      // the shape of a Git remote would be translating Git.
+      "git@github.com:owner/repo.git",
+    ]);
+    const left: string[] = [];
+    for (const [path, text] of sources()) {
+      if (!path.endsWith(".vue")) continue;
+      const template = /<template>([\s\S]*)<\/template>/.exec(text)?.[1];
+      if (!template) continue;
+      const markup = template.replace(/<!--[\s\S]*?-->/g, "");
+
+      // Text between two tags, with no interpolation in it.
+      for (const match of markup.matchAll(/>([^<>{}]+)</g)) {
+        const said = (match[1] ?? "").trim();
+        if (said === "" || KEPT.has(said)) continue;
+        // Punctuation, arrows, box drawing: a glyph is not a word.
+        if (!/[A-Za-zÀ-ÿ]{2,}/.test(said)) continue;
+        left.push(`${path}: ${said}`);
+      }
+
+      // An attribute a person reads, written as a literal rather than bound.
+      // The negative class is what keeps `:title` and `@title` out of it.
+      for (const match of markup.matchAll(
+        /(?<![:@\w-])(title|aria-label|placeholder|aria-description)="([^"]+)"/g,
+      )) {
+        const said = match[2] ?? "";
+        if (KEPT.has(said) || !/[A-Za-zÀ-ÿ]{2,}/.test(said)) continue;
+        left.push(`${path}: ${match[1]}="${said}"`);
+      }
     }
     expect(left).toEqual([]);
   });

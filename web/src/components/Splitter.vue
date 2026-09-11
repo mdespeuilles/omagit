@@ -14,6 +14,7 @@
 
 import { onBeforeUnmount, ref } from "vue";
 import { resizePane, settlePane } from "../state";
+import { t } from "../i18n";
 
 const props = defineProps<{
   /// Which column this edge belongs to, as the settings file names it.
@@ -92,7 +93,7 @@ onBeforeUnmount(() => window.removeEventListener("pointermove", move));
     role="separator"
     tabindex="0"
     aria-orientation="vertical"
-    :aria-label="`Largeur de la colonne ${pane}`"
+    :aria-label="t('panes.width', { pane })"
     :aria-valuenow="Math.round(width)"
     @pointerdown.prevent="down"
     @dblclick="nudge(0)"

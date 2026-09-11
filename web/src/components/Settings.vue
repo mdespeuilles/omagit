@@ -323,10 +323,7 @@ function on(source: string, name = ""): boolean {
 
       <section class="settings-block">
         <h2 class="settings-title">{{ t("settings.keyboard") }}</h2>
-        <p class="settings-note">
-          Une seule table, lue par quatre choses : le clavier, la palette, la feuille des raccourcis
-          et la barre de menus. Changer une liaison ici les change toutes les quatre.
-        </p>
+        <p class="settings-note">{{ t("settings.keyboardNote") }}</p>
         <button class="row settings-row" @click="toggleShortcuts()">
           <span>{{ t("settings.seeShortcuts") }}</span>
           <span class="settings-detail">?</span>

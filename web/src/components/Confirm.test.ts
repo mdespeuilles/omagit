@@ -68,7 +68,7 @@ describe("the confirmation", () => {
   it("opens with Cancel focused, so Enter is never the destructive answer", async () => {
     const { app } = await asking();
     const cancel = app.find(".dialog-actions").findAll("button")[0]!;
-    expect(cancel.text()).toBe("Annuler");
+    expect(cancel.text()).toBe("Cancel");
     expect(document.activeElement).toBe(cancel.element);
   });
 

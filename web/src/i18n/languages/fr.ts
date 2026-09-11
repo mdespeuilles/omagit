@@ -103,6 +103,8 @@ export const strings: Record<keyof typeof reference, string> = {
   "diff.clear": "Effacer",
 
   // ── Le journal et les bandes ────────────────────────────────────────────
+  "notice.journal": "Commandes",
+  "notice.dismiss": "Fermer",
   "journal.title": "Journal",
   "journal.close": "Fermer",
   "journal.empty":
@@ -307,6 +309,8 @@ export const strings: Record<keyof typeof reference, string> = {
   "diff.goneFromComparison": "ce fichier n'est pas dans cette comparaison",
   "diff.goneFromStash": "ce fichier n'est plus dans cette remise",
   "clone.slashInName": "Le nom du dossier ne peut pas contenir de /",
+  "panes.width": "Largeur de la colonne {pane}",
+  "palette.title": "Palette de commandes",
   "palette.actions": "Actions",
   "palette.repositories": "Dépôts",
   "palette.branches": "Branches",
@@ -326,6 +330,7 @@ export const strings: Record<keyof typeof reference, string> = {
     "Aucune de ces touches ne se déclenche pendant que le curseur est dans un champ : c'est ce qui rend une lettre seule utilisable comme raccourci.",
 
   // ── Les questions (SPEC §3 règle 7) ─────────────────────────────────────
+  "ask.cancel": "Annuler",
   "ask.forget.title": "Retirer {name} de la liste ?",
   "ask.forget.detail":
     "Le dépôt reste sur le disque : seule son entrée dans cette liste disparaît, et il peut être rajouté.",

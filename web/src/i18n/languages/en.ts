@@ -118,6 +118,8 @@ export const strings = {
   "diff.clear": "Clear",
 
   // ── The journal and the bands ───────────────────────────────────────────
+  "notice.journal": "Commands",
+  "notice.dismiss": "Dismiss",
   "journal.title": "Command log",
   "journal.close": "Close",
   "journal.empty":
@@ -325,6 +327,9 @@ export const strings = {
   "diff.goneFromComparison": "this file is not in this comparison",
   "diff.goneFromStash": "this file is no longer in this stash",
   "clone.slashInName": "The folder name cannot contain a /",
+  /// `{pane}` is the column's own name, which is not shown anywhere else.
+  "panes.width": "Width of the {pane} column",
+  "palette.title": "Command palette",
   "palette.actions": "Actions",
   "palette.repositories": "Repositories",
   "palette.branches": "Branches",
@@ -348,6 +353,7 @@ export const strings = {
   // Every one of these is asked before something that cannot be undone, so the
   // detail says what is lost and where it can still be found. The verb on the
   // button is the act, never "OK".
+  "ask.cancel": "Cancel",
   "ask.forget.title": "Remove {name} from the list?",
   "ask.forget.detail":
     "The repository stays on the disk: only its entry in this list goes, and it can be added again.",

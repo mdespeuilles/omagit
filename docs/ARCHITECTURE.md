@@ -2135,6 +2135,37 @@ box came out with the browser's own white ground in the middle of a dark
 window. The codebase's other twenty-one inputs all name their type; this one
 now does too.
 
+### 2.65 Eight words the window still said in French, and the guard that could not see them
+
+You reported one of these at the time: "le terme journal reste en français en
+bas et quand on l'ouvre". The status bar's was fixed. The error band's was not,
+and nor were seven others — `Raccourcis`, `Commandes` and `Raccourcis clavier`
+on the `?` sheet, `Annuler` in every confirmation, `Palette de commandes`,
+`Largeur de la colonne` on each splitter, and a whole paragraph of French on the
+Preferences screen whose catalogue key **already existed and was called by
+nobody**. The same is true of `sheet.title`, `sheet.commands` and
+`branches.row`: translated, typed, unreachable.
+
+Two guards were supposed to make that impossible and neither could see it. The
+first looks for accented letters; not one of those eight has one. The second
+looks for two French function words inside a double-quoted string;
+`Raccourcis` is one word, and `Largeur de la colonne ${pane}` was in backticks,
+which it did not read at all.
+
+The lesson is that **the vocabulary was the wrong thing to check**. What is
+wrong with `Commandes` is not that it is French — it is that it is *literal*: a
+word a template prints from itself is a word no language can reach, and it would
+have been just as wrong in English. So the third guard checks the shape. Every
+text node and every `title`, `aria-label` or `placeholder` written as a literal
+rather than bound is a failure, against a list of eight exceptions: `omagit`, a
+Git verb the catalogue's own preamble keeps untranslated, `Esc`, and an example
+remote URL. Anything with no letters in it passes — a glyph is not a word.
+
+The two older guards keep their jobs, since a French string reached through `t`
+would still pass this one. Both were widened as well: backticks are read now,
+and `de` joined the function words — without it `Largeur de la colonne` scored
+one and stayed invisible.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

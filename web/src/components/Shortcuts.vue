@@ -28,16 +28,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
 <template>
   <div v-if="app.shortcuts" class="overlay" @click.self="closeShortcuts()">
-    <section class="dialog sheet" role="dialog" aria-modal="true" aria-label="Raccourcis clavier">
+    <section class="dialog sheet" role="dialog" aria-modal="true" :aria-label="t('sheet.title')">
       <header class="dialog-head">
-        <span class="dialog-title">Raccourcis</span>
+        <span class="dialog-title">{{ t("sheet.title") }}</span>
         <span class="pane-head-spacer" />
-        <button class="link" @click="closeShortcuts()">Esc</button>
+        <button class="link" @click="closeShortcuts()">{{ t("palette.close") }}</button>
       </header>
 
       <div class="sheet-body">
         <section class="sheet-block">
-          <h3 class="settings-subtitle">Commandes</h3>
+          <h3 class="settings-subtitle">{{ t("sheet.commands") }}</h3>
           <dl class="sheet-list">
             <template v-for="entry in ACTIONS" :key="entry.id">
               <dt class="sheet-key mono">{{ hint(binding(entry), modifier) }}</dt>
