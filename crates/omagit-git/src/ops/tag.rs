@@ -20,7 +20,7 @@
 use crate::cli::Git;
 use crate::{Cancel, Repository, Result};
 
-use super::network::NETWORK_TIMEOUT;
+use super::network::{NETWORK_TIMEOUT, PROBE_TIMEOUT};
 
 /// Create a tag at `at`, or at `HEAD` when it is `None`.
 ///
@@ -99,6 +99,49 @@ pub fn push(
         .arg(format!("refs/tags/{name}"))
         .run(cancel)?;
     Ok(output.stderr)
+}
+
+/// Which tags `remote` has.
+///
+/// **Only the remote can answer this.** A tag fetched from somewhere lands in
+/// `refs/tags/` exactly where a local one does — there is no `refs/remotes/`
+/// for tags the way there is for branches — so nothing in the repository
+/// distinguishes "I made this" from "this is published". Asking is the whole
+/// of it.
+///
+/// `ls-remote` and not `ls-remote --tags`: the flag exists, and what it
+/// actually filters on is a prefix match that would also let through a ref
+/// somebody named `refs/tagsomething`. The refs are filtered here instead,
+/// where the rule is one line and can be read.
+///
+/// A short deadline, because this runs while somebody looks at a sidebar. An
+/// annotated tag answers twice — once for the tag object and once for the
+/// commit it peels to, as `v1.0.0^{}` — and both name the same tag, so the
+/// peeled line is dropped rather than counted.
+pub fn on_remote(
+    git: &Git,
+    repo: &Repository,
+    remote: &str,
+    cancel: &Cancel,
+) -> Result<Vec<String>> {
+    let output = super::at(git, repo)?
+        .args(["ls-remote", "--refs"])
+        .timeout(PROBE_TIMEOUT)
+        .arg("--")
+        .arg(remote)
+        .run(cancel)?;
+
+    let mut names: Vec<String> = output
+        .text()
+        .lines()
+        .filter_map(|line| line.split_once('\t').map(|(_, reference)| reference))
+        .filter_map(|reference| reference.strip_prefix("refs/tags/"))
+        .filter(|name| !name.ends_with("^{}"))
+        .map(ToOwned::to_owned)
+        .collect();
+    names.sort();
+    names.dedup();
+    Ok(names)
 }
 
 /// Remove a tag from `remote`, leaving the local one alone.

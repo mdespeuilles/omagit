@@ -735,6 +735,22 @@ pub fn delete_tag(state: State<'_, AppState>, path: String, name: String) -> Ans
     omagit_git::ops::tag::delete(&git, &open.repo, &name, &state.cancel()).map_err(say)
 }
 
+/// Which tags the remote has.
+///
+/// A network call, so it is never made on omagit's own initiative: the window
+/// asks when somebody asks, and again after a fetch, a pull or a push — where
+/// the remote has just been spoken to anyway.
+#[tauri::command(async)]
+pub fn remote_tags(
+    state: State<'_, AppState>,
+    path: String,
+    remote: String,
+) -> Answer<Vec<String>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    omagit_git::ops::tag::on_remote(&git, &open.repo, &remote, &state.cancel()).map_err(say)
+}
+
 /// Publish one, or take it back off the remote.
 #[tauri::command(async)]
 pub fn push_tag(

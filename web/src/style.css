@@ -1679,6 +1679,47 @@ select:focus {
   height: 16px;
   opacity: 0;
 }
+.tag-head .row-action .glyph {
+  width: 11px;
+  height: 11px;
+  display: block;
+}
+/* Pendant qu'on interroge le distant, le bouton reste visible même si le
+   pointeur a quitté l'en-tête, et il balaie comme les autres attentes. */
+.tag-head .row-action.working {
+  opacity: 1;
+  position: relative;
+  overflow: hidden;
+  color: var(--text);
+  border-color: var(--text);
+}
+.tag-head .row-action.working::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40%;
+  height: 2px;
+  background: var(--accent);
+  animation: sweep 1.1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag-head .row-action.working::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
+/* « elle est sur le distant ». Discret : c'est un fait sur la ligne, pas une
+   action — et un glyphe plutôt que les mots, parce que la colonne est étroite
+   et que le message de l'étiquette a plus besoin de la place. */
+.tag-there {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--text-dim);
+}
 .tag-head:hover .row-action,
 .tag-head .row-action:focus-visible {
   opacity: 1;
@@ -1690,15 +1731,13 @@ select:focus {
 }
 .tag-row .row-action {
   height: 16px;
-  opacity: 0;
 }
-.tag-row:hover .row-action,
-.tag-row .row-action:focus-visible,
-/* Pendant l'envoi et juste après : la réponse ne doit pas disparaître parce
-   que le pointeur a bougé. */
-.tag-row .tag-push.working,
-.tag-row .tag-push.done {
+/* Pendant l'envoi et juste après, le conteneur reste là : la réponse ne doit
+   pas disparaître parce que le pointeur a bougé. */
+.tag-row .row-actions:has(.tag-push.working),
+.tag-row .row-actions:has(.tag-push.done) {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* L'envoi, et sa confirmation. La barre balaie au lieu de se remplir : un push
@@ -1765,6 +1804,33 @@ select:focus {
 }
 .tag-row .branch-name {
   flex: none;
+}
+/* Le conteneur des actions couvre la fin de la ligne : il lui faut le fond de
+   la ligne pour cacher ce qui passe dessous. */
+.tag-row .row-actions {
+  --row-bg: var(--surface);
+}
+.tag-row.selected .row-actions {
+  --row-bg: var(--surface-raised);
+}
+/* Les boutons à droite, avec ou sans message, et sans espaceur.
+   `pane-head-spacer` grandit, et il prenait la moitié de la place libre avant
+   que le message n'en voie la couleur : sur une colonne de 300px le message
+   sortait à « P. ». Une marge automatique ne prend que ce qui *reste* — donc
+   rien quand le message occupe la ligne, et tout quand il n'y en a pas. */
+.tag-row .row-action:not(.danger) {
+  margin-left: auto;
+}
+.tag-row .row-action.danger:first-of-type {
+  margin-left: auto;
+}
+/* Le message cède la place aux boutons, qui n'apparaissent qu'au survol. Il
+   n'y a pas de place pour les deux dans une colonne de 300px : tronqué, il
+   sortait à « P. », ce qui ne vaut rien. Au repos il a toute la ligne, et
+   l'infobulle le porte en entier dans les deux cas. */
+.tag-row:hover .tag-said,
+.tag-row:focus-within .tag-said {
+  display: none;
 }
 
 /* The dialog's one extra line: the offer to move a tag whose name is taken.

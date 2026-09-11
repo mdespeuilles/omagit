@@ -2412,6 +2412,38 @@ not know.
 The status bar's line is a sentence now — "v0.1.0 envoyée vers origin" — and not
 the first line of whatever `git` printed.
 
+**"And how do I know whether a tag has already been pushed?"** You could not,
+and it is not an oversight: **nothing in the repository can answer it.** A tag
+fetched from a remote lands in `refs/tags/` exactly where a local one does —
+there is no `refs/remotes/` for tags the way there is for branches. Git itself
+does not track it. The only way is to ask the remote, and that is a network
+call.
+
+So the rule is the user's own: **on demand, and again after a fetch, a pull or a
+push.** `overNetwork` is the one door all three go through, so the refresh is
+one line there — and at that moment the remote has just been spoken to anyway,
+which makes an `ls-remote` beside it free in every sense that matters. The
+sidebar's own control is for the rest of the time. omagit never asks on its own
+initiative, and `null` means *unknown* rather than *none*: an unmarked row says
+nothing until somebody has asked.
+
+Three details. `ls-remote --refs` rather than `--tags`, because that flag
+filters on a prefix that would also admit a ref somebody named
+`refs/tagsomething`; the filtering is one readable line here instead. An
+annotated tag answers twice — once for its object and once for the commit it
+peels to, as `v1.0.0^{}` — so the peeled line is dropped rather than counted
+as a second tag. And a tag *we* just pushed is added to the list in place: a
+second round trip to learn what we did ourselves would be waste.
+
+The row says it with the cloud glyph and not the words "sur origin". The sidebar
+is 300px and the words took seventy of them, which pushed the tag's own message
+off the line; the tooltip carries the sentence. The same measurement moved the
+row's two buttons into a `.row-actions` container, which is what every other row
+in the window already uses: at `opacity: 0` a button still takes its width, and
+these two took a hundred and fifty pixels of a three-hundred-pixel column even
+while invisible — the message came out as "P…". Laid over the row instead, they
+cost nothing until they are shown.
+
 The section is drawn now even when it is empty, which it was not: a repository
 with no tags had no way to get its first.
 

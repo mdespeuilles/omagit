@@ -299,6 +299,18 @@ type State = {
   /// undo it and this window would not know.
   pushingTag: string | null;
   pushedTag: string | null;
+  /// Which tags the remote has, or `null` while nobody has asked.
+  ///
+  /// It cannot be read from the repository. A tag fetched from a remote lands
+  /// in `refs/tags/` exactly where a local one does — there is no
+  /// `refs/remotes/` for tags the way there is for branches — so the only way
+  /// to know is to ask the remote, which is a network call.
+  ///
+  /// omagit therefore never asks on its own initiative: once when somebody
+  /// asks, and again after a fetch, a pull or a push, where the remote has just
+  /// been spoken to anyway.
+  remoteTags: string[] | null;
+  askingRemoteTags: boolean;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
@@ -435,6 +447,8 @@ const state = reactive<State>({
   tagging: null,
   pushingTag: null,
   pushedTag: null,
+  remoteTags: null,
+  askingRemoteTags: false,
   libraryFilter: "",
   renamingGroup: null,
   draggedRepository: null,
@@ -769,6 +783,10 @@ export async function openRepository(path: string): Promise<void> {
     state.tabs.push({ path, name: nameOf(path) });
   }
   void api.touchRepository(path);
+  // What another repository's remote holds says nothing about this one, and
+  // asking costs a network call: it stays unknown until somebody asks.
+  state.remoteTags = null;
+  state.pushedTag = null;
   state.selected = null;
   state.diff = idle();
   state.picked.clear();
@@ -1269,6 +1287,10 @@ async function overNetwork(what: string, run: () => Promise<string>): Promise<vo
   }
   // Refs move, and so does the divergence every branch row shows.
   await settle();
+  // One door for fetch, pull and push, so one place to refresh what the remote
+  // holds: the call just made was to that remote, and this one is a `ls-remote`
+  // beside it.
+  void readRemoteTags();
 }
 
 export function fetchRemote(remote = ""): void {
@@ -1788,6 +1810,13 @@ export function publishTag(name: string, remote: string, remove: boolean): void 
       state.pushingTag = null;
       if (state.writeError) return;
       state.pushedTag = name;
+      // We have just been told what happened to it, so the list is updated in
+      // place rather than asked for again — a second round trip to learn
+      // something we did ourselves.
+      if (state.remoteTags) {
+        const held = state.remoteTags.filter((one) => one !== name);
+        state.remoteTags = remove ? held : [...held, name].sort();
+      }
       window.setTimeout(() => {
         if (state.pushedTag === name) state.pushedTag = null;
       }, 4000);
@@ -1805,6 +1834,38 @@ export function publishTag(name: string, remote: string, remove: boolean): void 
     },
     go,
   );
+}
+
+/// The remote a tag is pushed to, and asked about.
+///
+/// The first by name. The same rule the push button follows, and the same
+/// limitation: with two remotes there is no way to mean the other one.
+export function firstRemote(): string {
+  if (state.refs.status !== "ready") return "";
+  return (
+    [...state.refs.value.remotes]
+      .map((one) => one.name)
+      .sort()
+      .at(0) ?? ""
+  );
+}
+
+/// Ask the remote which tags it has.
+///
+/// A network call, so nothing calls it by itself: the sidebar's own control,
+/// and `overNetwork` after a fetch, a pull or a push.
+export async function readRemoteTags(): Promise<void> {
+  const path = state.open;
+  const remote = firstRemote();
+  if (!path || remote === "" || state.askingRemoteTags) return;
+  state.askingRemoteTags = true;
+  try {
+    state.remoteTags = await api.remoteTags(path, remote);
+  } catch (error) {
+    state.writeError = { what: t("tag.asking", { remote }), said: message(error) };
+  } finally {
+    state.askingRemoteTags = false;
+  }
 }
 
 // ── Conflicts (M8) ──────────────────────────────────────────────────────────

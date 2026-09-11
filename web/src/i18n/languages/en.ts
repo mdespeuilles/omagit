@@ -598,6 +598,10 @@ export const strings = {
   "tag.pushed": "Sent ✓",
   "tag.pushedTo": "{name} sent to {remote}",
   "tag.removedFrom": "{name} removed from {remote}",
+  "tag.onRemoteTitle": "This tag is on {remote}",
+  "tag.check": "Ask {remote} which tags it has",
+  "tag.asking": "Asking {remote}",
+  "tag.alreadyThere": "Already on {remote} — pushing again changes nothing",
   "tag.publish": "Push",
   "tag.publishTitle": "Push this tag to {remote}",
   /// The row's tooltip when the tagger wrote something.

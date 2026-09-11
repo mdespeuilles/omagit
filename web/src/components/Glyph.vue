@@ -66,6 +66,11 @@ const PATHS = {
   generate:
     '<path d="M6.5 1.75l1.2 3.55 3.55 1.2-3.55 1.2-1.2 3.55-1.2-3.55-3.55-1.2 3.55-1.2z"/>' +
     '<path d="M12.25 9.5l.6 1.65 1.65.6-1.65.6-.6 1.65-.6-1.65-1.65-.6 1.65-.6z"/>',
+  /// The remote, for asking it what it holds: a cloud. Borrowed rather than
+  /// invented, like the chevrons — everything else on a network is drawn this
+  /// way, and a shape nobody recognises would be worse than a familiar one.
+  cloud:
+    '<path d="M4.6 12.5h7a2.75 2.75 0 0 0 .35-5.48 3.8 3.8 0 0 0-7.2-.6 2.75 2.75 0 0 0-.15 6.08z"/>',
   /// A tag: the label shape, with its hole.
   tag: '<path d="M8.5 2.5h4.5v4.5l-6 6-4.5-4.5z"/><circle cx="10.75" cy="5.25" r="0.9"/>',
   /// Disclosure, both ways.

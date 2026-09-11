@@ -162,6 +162,9 @@ export class Repository {
   /// say that a write which moved no ref did not pay for one.
   historyWalks = 0;
   remoteBranches: RemoteBranchRow[] = [];
+  /// Les distants déclarés. Vide par défaut : un dépôt sans distant est un cas
+  /// que la fenêtre doit dessiner, pas une exception.
+  remotes: { name: string; url: string }[] = [];
   /// Held open so a test can watch the overlay while an operation runs.
   holdNetwork: Promise<void> | null = null;
   /// The same, for a write: held open so a test can see the window while one is
@@ -342,6 +345,14 @@ export class Repository {
       case "delete_tag":
         this.tags = this.tags.filter((row) => row.name !== args["name"]);
         return undefined;
+      case "remote_tags":
+        if (this.holdNetwork) await this.holdNetwork;
+        if (this.failNetwork) {
+          const failure = this.failNetwork;
+          this.failNetwork = null;
+          throw new Error(failure);
+        }
+        return [...this.published].sort();
       case "push_tag": {
         if (this.holdNetwork) await this.holdNetwork;
         if (this.failNetwork) {
@@ -608,7 +619,7 @@ export class Repository {
           branches: this.branches.map((row) => ({ ...row })),
           remote_branches: this.remoteBranches.map((row) => ({ ...row })),
           tags: this.tags.map((row) => ({ ...row })),
-          remotes: [],
+          remotes: this.remotes.map((row) => ({ ...row })),
         } satisfies Refs;
       case "checkout": {
         const name = args["name"] as string;

@@ -427,6 +427,9 @@ export const api = {
   deleteTag: (path: string, name: string) => invoke<void>("delete_tag", { path, name }),
   pushTag: (path: string, remote: string, name: string, remove: boolean) =>
     invoke<string>("push_tag", { path, remote, name, remove }),
+  /// Which tags the remote has. Nothing in the repository can answer this: a
+  /// tag fetched from a remote sits where a local one does.
+  remoteTags: (path: string, remote: string) => invoke<string[]>("remote_tags", { path, remote }),
 
   agents: () => invoke<Agents>("agents"),
   /// Only which one is chosen, which costs a string rather than three

@@ -16,7 +16,9 @@ import {
   isCollapsed,
   mergeBranch,
   openTag,
+  firstRemote,
   publishTag,
+  readRemoteTags,
   rebaseOnto,
   showBranchHistory,
   shown,
@@ -67,6 +69,14 @@ const grouped = computed(() => {
       .map(([prefix, rows]): Group => ({ prefix, rows: [...rows].sort(byName) })),
   };
 });
+
+/// Le distant qu'on interroge et vers lequel on pousse : le premier par nom.
+const remoteName = computed(() => firstRemote());
+
+/// Vrai seulement quand on a demandé *et* que le distant l'a nommée.
+function onRemote(name: string): boolean {
+  return app.remoteTags?.includes(name) ?? false;
+}
 
 const remotes = computed(() => {
   const groups = new Map<string, { remote: string; name: string }[]>();
@@ -292,6 +302,18 @@ function stop(name: string): 0 | -1 {
           <Glyph name="tag" class="branch-glyph" /><span>{{ t("branches.tags") }}</span>
         </button>
         <span class="pane-head-count">{{ refs.tags.length }}</span>
+        <!-- Demander au distant ce qu'il a. Un appel réseau, donc jamais fait
+             de lui-même : ici, et après un fetch, un pull ou un push. -->
+        <button
+          v-if="remoteName"
+          class="row-action"
+          :class="{ working: app.askingRemoteTags }"
+          :disabled="app.askingRemoteTags"
+          :title="t('tag.check', { remote: remoteName })"
+          @click="readRemoteTags()"
+        >
+          <Glyph name="cloud" />
+        </button>
         <button class="row-action" :title="t('tag.newTitle')" @click="openTag('', t('tag.head'))">
           <span class="mono">+</span>
         </button>
@@ -318,38 +340,57 @@ function stop(name: string): 0 | -1 {
                vocabulary about Git and not about the repository. The message is
                the part somebody actually chose. -->
           <span v-if="tag.message" class="tag-said">{{ tag.message.split("\n")[0] }}</span>
-          <span class="pane-head-spacer" />
-          <!-- Il reste visible pendant l'envoi et juste après, même si le
-               pointeur a quitté la ligne : les actions d'une ligne ne
-               s'affichent qu'au survol, donc sans ça la réponse disparaissait
-               en même temps que la question. -->
-          <button
-            v-if="remotes.length > 0"
-            class="row-action tag-push"
-            :class="{ working: app.pushingTag === tag.name, done: app.pushedTag === tag.name }"
-            :disabled="!!app.busy"
-            :title="t('tag.publishTitle', { remote: remotes[0]![0] })"
-            @click.stop="publishTag(tag.name, remotes[0]![0], false)"
-          >
-            {{
-              app.pushingTag === tag.name
-                ? t("tag.pushing")
-                : app.pushedTag === tag.name
-                  ? t("tag.pushed")
-                  : t("tag.publish")
-            }}
-          </button>
-          <!-- Grisés pendant qu'une écriture tourne. Sans ça ils gardaient
-               l'air cliquable et ne faisaient rien : l'action refuse quand une
-               autre est en cours, et ce refus était silencieux. -->
-          <button
-            class="row-action danger"
-            :disabled="!!app.busy"
-            :title="t('tag.deleteTitle')"
-            @click.stop="deleteTag(tag.name)"
-          >
-            {{ t("tag.delete") }}
-          </button>
+          <!-- Le nuage, et non « sur origin » en toutes lettres : la colonne
+               fait 300px et les mots en mangeaient soixante-dix, ce qui
+               chassait le message. L'infobulle le dit. Seulement une fois qu'on
+               a demandé — sans réponse, l'absence de marque ne voudrait rien
+               dire. -->
+          <Glyph
+            v-if="onRemote(tag.name)"
+            name="cloud"
+            class="tag-there"
+            :title="t('tag.onRemoteTitle', { remote: remoteName })"
+          />
+          <!-- Dans un conteneur posé par-dessus la ligne, comme les lignes de
+               fichier et de branche. À `opacity: 0` un bouton garde sa place, et
+               les deux en prenaient cent cinquante pixels sur une colonne qui
+               en fait trois cents : le message sortait tronqué à « P… ». -->
+          <span class="row-actions">
+            <!-- Le bouton reste visible pendant l'envoi et juste après, même si
+                 le pointeur a quitté la ligne : sans ça la réponse
+                 disparaissait en même temps que la question. -->
+            <button
+              v-if="remotes.length > 0"
+              class="row-action tag-push"
+              :class="{ working: app.pushingTag === tag.name, done: app.pushedTag === tag.name }"
+              :disabled="!!app.busy"
+              :title="
+                onRemote(tag.name)
+                  ? t('tag.alreadyThere', { remote: remoteName })
+                  : t('tag.publishTitle', { remote: remotes[0]![0] })
+              "
+              @click.stop="publishTag(tag.name, remotes[0]![0], false)"
+            >
+              {{
+                app.pushingTag === tag.name
+                  ? t("tag.pushing")
+                  : app.pushedTag === tag.name
+                    ? t("tag.pushed")
+                    : t("tag.publish")
+              }}
+            </button>
+            <!-- Grisés pendant qu'une écriture tourne. Sans ça ils gardaient
+                 l'air cliquable et ne faisaient rien : l'action refuse quand une
+                 autre est en cours, et ce refus était silencieux. -->
+            <button
+              class="row-action danger"
+              :disabled="!!app.busy"
+              :title="t('tag.deleteTitle')"
+              @click.stop="deleteTag(tag.name)"
+            >
+              {{ t("tag.delete") }}
+            </button>
+          </span>
         </div>
       </template>
 

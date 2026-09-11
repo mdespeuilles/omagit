@@ -391,6 +391,84 @@ describe("deleting one, with the history open", () => {
   });
 });
 
+describe("knowing what the remote has", () => {
+  async function withRemote() {
+    return opened((fake) => {
+      fake.remoteBranches = [
+        { remote: "origin", name: "main", commit: { full: "o".repeat(40), short: "ooooooo" } },
+      ];
+      fake.remotes = [{ name: "origin", url: "git@example.test:one/two.git" }];
+    });
+  }
+
+  it("asks nothing until somebody asks", async () => {
+    // It is a network call, so nothing sets it off on its own.
+    const state = await withRemote();
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1");
+    await state.createTag();
+    await settled(state);
+
+    expect(state.app.remoteTags, 'unknown, and not "none"').toBeNull();
+    const BranchTree = (await import("./components/BranchTree.vue")).default;
+    expect(mount(BranchTree).find(".tag-there").exists()).toBe(false);
+  });
+
+  it("marks the tags the remote names, and no others", async () => {
+    const state = await withRemote();
+    for (const name of ["ici", "la-bas"]) {
+      state.openTag("", "the current commit");
+      state.setTagField("name", name);
+      await state.createTag();
+    }
+    state.publishTag("la-bas", "origin", false);
+    await settled(state);
+
+    await state.readRemoteTags();
+    expect(state.app.remoteTags).toEqual(["la-bas"]);
+
+    const BranchTree = (await import("./components/BranchTree.vue")).default;
+    const rows = mount(BranchTree).findAll(".tag-row");
+    const marked = rows.filter((one) => one.find(".tag-there").exists());
+    expect(marked).toHaveLength(1);
+    expect(marked[0]!.text()).toContain("la-bas");
+    // A glyph, not the words: the column is 300px and the tag's own message
+    // needs the room. The tooltip says it in words.
+    expect(marked[0]!.find(".tag-there").attributes("title")).toContain("on origin");
+  });
+
+  it("updates the list after a push, without asking the remote again", async () => {
+    const state = await withRemote();
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1");
+    await state.createTag();
+    await state.readRemoteTags();
+    expect(state.app.remoteTags).toEqual([]);
+
+    state.publishTag("v1", "origin", false);
+    await settled(state);
+
+    // We have just been told what happened to it: a second round trip to
+    // learn what we did ourselves would be waste.
+    expect(state.app.remoteTags).toEqual(["v1"]);
+  });
+
+  it("asks again after a fetch", async () => {
+    const state = await withRemote();
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1");
+    await state.createTag();
+    // Somebody else pushed it in the meantime.
+    backend.current.published = ["v1"];
+
+    state.fetchRemote("origin");
+    await settled(state);
+    await until(() => state.app.remoteTags !== null);
+
+    expect(state.app.remoteTags).toEqual(["v1"]);
+  });
+});
+
 describe("the sidebar", () => {
   it("draws the section even with nothing in it, so there is a way to make one", async () => {
     // It was drawn only when there were tags already, which meant a repository

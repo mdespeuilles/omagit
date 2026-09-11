@@ -38,7 +38,7 @@ pub(crate) const NETWORK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 ///
 /// It runs while somebody watches a dialog. A probe that takes thirty minutes
 /// to say "unreachable" has answered nothing.
-const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
+pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// What a push is allowed to do to the remote.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

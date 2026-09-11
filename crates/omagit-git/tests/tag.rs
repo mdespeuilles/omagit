@@ -257,6 +257,54 @@ fn a_history_can_be_scoped_to_a_tag_of_either_kind() {
 }
 
 #[test]
+fn asking_the_remote_names_the_tags_it_has_and_no_others() {
+    // Nothing in the repository can answer this: a tag fetched from a remote
+    // sits in `refs/tags/` exactly where a local one does.
+    let remote = tempfile::tempdir().expect("a temporary directory");
+    std::process::Command::new("git")
+        .args(["init", "--bare", "--initial-branch=main"])
+        .arg(remote.path())
+        .output()
+        .expect("git is installed");
+
+    let repo = repository();
+    repo.git(&[
+        "remote",
+        "add",
+        "origin",
+        &remote.path().display().to_string(),
+    ]);
+    repo.git(&["push", "--set-upstream", "origin", "main"]);
+
+    let git = git();
+    let opened = repo.open();
+    assert!(
+        tag::on_remote(&git, &opened, "origin", &never())
+            .expect("it answers")
+            .is_empty(),
+        "nothing published yet"
+    );
+
+    // One of each kind, and only the annotated one is published — the peeled
+    // line it answers with names the same tag and must not be counted twice.
+    tag::create(&git, &opened, "light", None, None, false, &never()).expect("created");
+    tag::create(
+        &git,
+        &opened,
+        "heavy",
+        None,
+        Some("a message"),
+        false,
+        &never(),
+    )
+    .expect("created");
+    tag::push(&git, &opened, "origin", "heavy", &never()).expect("pushed");
+
+    let there = tag::on_remote(&git, &opened, "origin", &never()).expect("it answers");
+    assert_eq!(there, vec!["heavy"], "once, and without the local one");
+}
+
+#[test]
 fn publishing_puts_one_tag_on_the_remote_and_unpublishing_takes_it_back() {
     let remote = tempfile::tempdir().expect("a temporary directory");
     std::process::Command::new("git")
