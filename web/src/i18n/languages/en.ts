@@ -593,6 +593,7 @@ export const strings = {
   "tag.newTitle": "Tag the current commit",
   "tag.tagThis": "Tag",
   "tag.tagThisTitle": "Tag this commit",
+  "tag.row": "{name} — click: the history up to it",
   "tag.delete": "Delete",
   "tag.deleteTitle": "Delete this tag — only here, not on any remote",
   "tag.publish": "Push",

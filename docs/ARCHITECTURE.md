@@ -2379,6 +2379,37 @@ trying something out. Naming it is the gesture.
 The section is drawn now even when it is empty, which it was not: a repository
 with no tags had no way to get its first.
 
+**Three things the first use found**, and the smallest of the three is the one
+that had been wrong the longest.
+
+Clicking a tag said "the branch v1.0.0 not found in this repository". True, and
+about the wrong kind of thing: `refs::tip_of` looked in `refs/heads/` and
+`refs/remotes/` only, because when it was written a history was scoped to a
+branch and nothing else. It looks in `refs/tags/` too now, and **peels** — an
+annotated tag's ref points at the tag object, so an unpeeled id would ask the
+walk to start from something that is not a commit. Branches still win over tags
+of the same name, which is `git`'s own order.
+
+The row's tooltip was a branch's, promising that a double-click switches to it.
+Nothing is bound to a double-click here, and a tag is not a thing you switch to
+without detaching `HEAD`. It says only what happens.
+
+And **`Push` looked disabled**, which is how it was reported. It was not: its
+text is `--text`, at full contrast. Two things made it read that way. Its border
+is `--border`, the faintest line in the palette, next to a `danger` action
+bordered in red — so the neutral one reads as the disabled half of a pair. And
+`button:hover` lifts the background to `--surface-raised`, which is exactly what
+a **selected** row is painted with: on the row you have just clicked, hovering a
+control changed nothing whatsoever. `.row-action` had no hover rule of its own
+at all, and has not had one since these actions existed — on branches, files,
+stashes and repositories alike.
+
+The answer is the border, because a border does not depend on what is behind it:
+stronger at rest, `--text` on hover, and a destructive one fills red instead —
+the same signal, and the same reasoning, as the window's own close button. These
+buttons are only ever drawn while their row is hovered, so a stronger line costs
+no quiet.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

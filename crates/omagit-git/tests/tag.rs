@@ -211,6 +211,52 @@ fn the_refs_the_sidebar_reads_carry_the_annotation() {
 }
 
 #[test]
+fn a_history_can_be_scoped_to_a_tag_of_either_kind() {
+    // A tag row in the sidebar answers a click now. Before this, the click
+    // asked for a *branch* by that name and was told "the branch v1.0.0 not
+    // found in this repository" — true, unhelpful, and about the wrong kind of
+    // thing. The annotated case is the one that would still have been wrong
+    // after a naive fix: its ref points at the tag object, not at a commit.
+    let repo = repository();
+    let git = git();
+    let first = repo.git(&["rev-parse", "HEAD~1"]);
+    tag::create(
+        &git,
+        &repo.open(),
+        "light",
+        Some("HEAD~1"),
+        None,
+        false,
+        &never(),
+    )
+    .expect("created");
+    tag::create(
+        &git,
+        &repo.open(),
+        "heavy",
+        Some("HEAD~1"),
+        Some("a message"),
+        false,
+        &never(),
+    )
+    .expect("created");
+
+    let opened = repo.open();
+    let light = omagit_git::refs::tip_of(&opened, "light").expect("a lightweight tag resolves");
+    let heavy = omagit_git::refs::tip_of(&opened, "heavy").expect("an annotated one too");
+
+    assert_eq!(light.to_string(), first);
+    assert_eq!(
+        heavy.to_string(),
+        first,
+        "peeled to the commit, not the object"
+    );
+    // And a branch still wins over a tag of the same name, which is the order
+    // `git` itself resolves in.
+    assert!(omagit_git::refs::tip_of(&opened, "nothing").is_err());
+}
+
+#[test]
 fn publishing_puts_one_tag_on_the_remote_and_unpublishing_takes_it_back() {
     let remote = tempfile::tempdir().expect("a temporary directory");
     std::process::Command::new("git")

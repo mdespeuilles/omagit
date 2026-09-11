@@ -562,6 +562,7 @@ export const strings: Record<keyof typeof reference, string> = {
   "tag.newTitle": "Étiqueter le commit courant",
   "tag.tagThis": "Étiqueter",
   "tag.tagThisTitle": "Étiqueter ce commit",
+  "tag.row": "{name} — clic : l'historique jusqu'à elle",
   "tag.delete": "Supprimer",
   "tag.deleteTitle": "Supprimer cette étiquette — ici seulement, pas sur un distant",
   "tag.publish": "Pousser",

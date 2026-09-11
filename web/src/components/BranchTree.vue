@@ -304,7 +304,7 @@ function stop(name: string): 0 | -1 {
           :key="tag.name"
           class="row branch-row tag-row"
           :class="{ selected: showing(tag.name) }"
-          :title="t('branches.row', { branch: tag.name })"
+          :title="t('tag.row', { name: tag.name })"
           @click="showBranchHistory(tag.name)"
         >
           <Glyph name="tag" class="branch-glyph" />

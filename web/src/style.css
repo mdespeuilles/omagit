@@ -1175,10 +1175,40 @@ button.link.ok {
   height: 16px;
   padding: 0 4px;
   font-size: var(--text-meta);
+  /* Stronger than `--border`, the faintest line in the palette: see the hover
+     rule below for why that mattered. These are only ever drawn while their row
+     is hovered, so a stronger line costs no quiet. */
+  border-color: color-mix(in srgb, var(--border) 60%, var(--text));
 }
 .row-action.danger {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/* A row action answered the pointer with nothing, and was reported as "why is
+   Push greyed out?".
+ 
+   Two causes, and the second is the one worth writing down. Its border is
+   `--border`, the faintest line in the palette, beside a `danger` action whose
+   border is red — so the neutral one reads as the disabled half of a pair. And
+   `button:hover` lifts the background to `--surface-raised`, which is exactly
+   what a **selected** row is already painted with: on the row you have just
+   clicked, which is the row you are most likely to act on, hovering a control
+   changed nothing at all.
+ 
+   The answer is the border, because a border does not depend on what is behind
+   it. These buttons are only ever drawn while their row is hovered, so a
+   stronger line at rest costs no quiet: it is not on screen the rest of the
+   time. A destructive one fills instead — the same signal, and the same
+   reasoning, as the window's own close button. */
+.row-action:hover:not(:disabled) {
+  border-color: var(--text);
+  background: transparent;
+}
+.row-action.danger:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-danger);
 }
 
 .files-foot {

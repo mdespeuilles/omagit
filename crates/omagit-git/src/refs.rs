@@ -82,30 +82,42 @@ pub struct Annotation {
     pub tagger: Option<Signature>,
 }
 
-/// The commit a branch name points at.
+/// The commit a ref points at, for a history scoped to it.
 ///
-/// Local branches first, then remote-tracking ones, so `main` means the branch
-/// you are on rather than `origin/main` when both exist — which is the same
-/// order `git` resolves a name in, and the reason a history scoped to "main"
-/// shows your commits and not the ones you have not pulled yet.
+/// Local branches first, then remote-tracking ones, then tags. `main` therefore
+/// means the branch you are on rather than `origin/main` when both exist —
+/// the same order `git` resolves a name in, and the reason a history scoped to
+/// "main" shows your commits and not the ones you have not pulled yet.
 ///
-/// Deliberately not `rev_parse`: a history is scoped to a *branch* here, not to
+/// **Tags are here because the sidebar draws them and they answer a click.**
+/// They did not used to: a tag row was inert, and the moment one became
+/// clickable it asked this function for `v1.0.0` and was told "the branch
+/// v1.0.0 not found in this repository" — true, unhelpful, and about the wrong
+/// kind of thing. `peel_to_id` rather than `target().try_id()`, because an
+/// annotated tag's ref points at the *tag object*: unpeeled, the history would
+/// be asked to walk from something that is not a commit.
+///
+/// Deliberately still not `rev_parse`: what scopes a history here is a ref, not
 /// an arbitrary revision, and accepting `HEAD~3` would be a second feature
 /// nobody asked for with its own error cases.
 pub fn tip_of(repo: &Repository, name: &str) -> Result<ObjectId> {
     assert_off_render_thread();
     let gix = repo.gix();
-    for full in [format!("refs/heads/{name}"), format!("refs/remotes/{name}")] {
+    for full in [
+        format!("refs/heads/{name}"),
+        format!("refs/remotes/{name}"),
+        format!("refs/tags/{name}"),
+    ] {
         let found = gix
             .try_find_reference(full.as_str())
-            .map_err(|error| GitError::backend("looking a branch up", error))?;
-        if let Some(reference) = found
-            && let Some(id) = reference.target().try_id().map(ToOwned::to_owned)
+            .map_err(|error| GitError::backend("looking a ref up", error))?;
+        if let Some(mut reference) = found
+            && let Ok(peeled) = reference.peel_to_id()
         {
-            return Ok(id);
+            return Ok(peeled.detach());
         }
     }
-    Err(GitError::NotFound(format!("the branch {name}")))
+    Err(GitError::NotFound(format!("the ref {name}")))
 }
 
 impl Refs {
