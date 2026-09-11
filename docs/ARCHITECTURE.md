@@ -2447,6 +2447,26 @@ go through `settle()`, because it keeps its own busy state so a name `git`
 refuses can leave the dialog open. The very defect being fixed came back on its
 own first attempt. `readRefsAndHistory` is what both call now.
 
+**And a second time, in a better disguise.** Reported on the next run of the
+recette: a tag deleted vanished from the sidebar and stayed on its commit row,
+with the history still following it. `deleteTag` re-read the refs *itself*,
+inside its own write body — so by the time `settle` took the "before" mark, the
+deletion was already in it and nothing looked as though it had moved.
+
+Deleting that one line would have worked and would have been the wrong fix: the
+next caller adds it back. The mark is taken in `write()` now, before `run()`,
+which is the honest baseline for the question being asked — "did *this write*
+move a ref?" — and makes a caller that refreshes on its own harmless. The test
+proves it the same way: with the line restored but the mark taken early, it
+passes.
+
+The scope falls back too. The history is scoped to a ref *by name*, and a
+deletion can be what removed it — the walk would then answer "the ref … not
+found", an error about a state nobody asked for. `scopeStands` checks the name
+against the refs just read, and a scope that no longer stands is dropped back to
+the current branch, which is what deleting it meant. That closes what §2.68's
+own test plan had listed as an expected failure.
+
 The answer is the border, because a border does not depend on what is behind it:
 stronger at rest, `--text` on hover, and a destructive one fills red instead —
 the same signal, and the same reasoning, as the window's own close button. These

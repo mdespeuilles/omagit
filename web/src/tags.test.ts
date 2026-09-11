@@ -260,6 +260,58 @@ describe("the history underneath", () => {
   });
 });
 
+describe("deleting one, with the history open", () => {
+  it("takes the tag off the commit row too", async () => {
+    // Reported from use, on T17: the tag was gone from the sidebar and still
+    // on its commit. `deleteTag` re-read the refs inside its own write, so the
+    // baseline `settle` compares against already held the deletion — and
+    // nothing looked like it had moved.
+    const state = await opened((fake) => {
+      fake.log = [{ id: "a".repeat(40), summary: "le dernier", parents: [] }];
+    });
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1.1");
+    await state.createTag();
+    state.showScreen("history");
+    await settled(state);
+    await until(() => {
+      const held = state.app.history;
+      return held.status === "ready" && (held.value[0]?.labels.length ?? 0) > 0;
+    });
+
+    state.deleteTag("v1.1");
+    state.answer(true);
+    await settled(state);
+
+    await until(() => {
+      const held = state.app.history;
+      return held.status === "ready" && (held.value[0]?.labels.length ?? 0) === 0;
+    });
+  });
+
+  it("stops following a tag it has just removed", async () => {
+    // T18, which the plan expected to fail. The history is scoped to a ref by
+    // name; deleting that ref leaves a query naming nothing, and the walk would
+    // answer "the ref … not found" — an error about a state nobody asked for.
+    const state = await opened((fake) => {
+      fake.log = [{ id: "a".repeat(40), summary: "le dernier", parents: [] }];
+    });
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1.1");
+    await state.createTag();
+    state.showBranchHistory("v1.1");
+    await settled(state);
+    expect(state.app.query.branch).toBe("v1.1");
+
+    state.deleteTag("v1.1");
+    state.answer(true);
+    await settled(state);
+
+    await until(() => state.app.query.branch === "");
+    expect(state.app.history.status, "and it loaded rather than failing").toBe("ready");
+  });
+});
+
 describe("the sidebar", () => {
   it("draws the section even with nothing in it, so there is a way to make one", async () => {
     // It was drawn only when there were tags already, which meant a repository

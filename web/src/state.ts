@@ -1747,11 +1747,7 @@ export function deleteTag(name: string): void {
       detail: t("ask.deleteTag.detail"),
       verb: t("ask.deleteTag.verb"),
     },
-    () =>
-      void write(t("do.deleteTag", { name }), async () => {
-        await api.deleteTag(path, name);
-        await readRefs();
-      }),
+    () => void write(t("do.deleteTag", { name }), () => api.deleteTag(path, name)),
   );
 }
 
@@ -2496,6 +2492,13 @@ async function write(label: string, run: () => Promise<void>): Promise<void> {
   if (state.busy) return;
   state.busy = label;
   state.writeError = null;
+  // Taken *before* the write, and that is not a detail. `settle` decides
+  // whether to walk the history again by asking whether any ref moved, and a
+  // caller that re-read the refs itself would hand it a baseline that already
+  // held its own change — so nothing would look like it had moved.
+  // `deleteTag` did exactly that: a tag deleted while the history was
+  // following it left both the scope and the row's chip standing.
+  const marked = refsMark();
   try {
     await run();
   } catch (error) {
@@ -2503,7 +2506,7 @@ async function write(label: string, run: () => Promise<void>): Promise<void> {
   } finally {
     state.busy = null;
   }
-  await settle();
+  await settle(marked);
 }
 
 /// A compact reading of every ref, for telling whether a write moved one.
@@ -2527,8 +2530,7 @@ function refsMark(): string {
 /// its own busy state so that a name `git` refuses can keep the dialog open.
 /// That is exactly how the defect below arrived: the re-walk was added where
 /// the writes go and the tag dialog was not one of them.
-async function readRefsAndHistory(): Promise<void> {
-  const marked = refsMark();
+async function readRefsAndHistory(marked = refsMark()): Promise<void> {
   await readRefs();
   if (refsMark() !== marked) await rewalkHistory();
 }
@@ -2545,8 +2547,29 @@ async function readRefsAndHistory(): Promise<void> {
 /// having moved, and that covers every case that can change the history: a tag,
 /// a branch, a checkout, a merge, and a plain commit too. Staging a file moves
 /// none of them and costs nothing here.
+/// Whether what the history is scoped to still exists.
+///
+/// The scope is a ref by name — a branch, a remote-tracking branch, or a tag —
+/// and a write can be what removed it.
+function scopeStands(name: string): boolean {
+  if (name === "") return true;
+  // Nothing read yet is nothing to contradict.
+  if (state.refs.status !== "ready") return true;
+  const held = state.refs.value;
+  return (
+    held.branches.some((one) => one.name === name) ||
+    held.remote_branches.some((one) => `${one.remote}/${one.name}` === name) ||
+    held.tags.some((one) => one.name === name)
+  );
+}
+
 async function rewalkHistory(): Promise<void> {
   if (state.history.status === "idle") return;
+  // The write may have been what removed the scope: a tag deleted while the
+  // history was following it leaves a query naming nothing, and the walk would
+  // answer "the ref … not found" — an error about a state the reader did not
+  // ask for. Back to the current branch, which is what deleting it meant.
+  if (!scopeStands(state.query.branch)) state.query = { ...state.query, branch: "" };
   // `loadHistory` clears the detail pane and any comparison, because the walk
   // that produced them is being replaced. Here the *query* has not changed —
   // only the repository under it — so the commits are still there, and closing
@@ -2565,7 +2588,7 @@ async function rewalkHistory(): Promise<void> {
   }
 }
 
-async function settle(): Promise<void> {
+async function settle(marked = refsMark()): Promise<void> {
   const path = state.open;
   if (!path) return;
   // The picked lines index a diff that has just stopped being true.
@@ -2581,7 +2604,7 @@ async function settle(): Promise<void> {
     // A checkout, a branch created or deleted: the tree is what changed.
     //
     // Awaited, and compared before and after, because the history has to know.
-    void readRefsAndHistory();
+    void readRefsAndHistory(marked);
     // Only once it has been looked at: a write on the Working Copy screen
     // cannot change the shelf, and reading it on every stage would be a reflog
     // walk per checkbox. Popping and dropping do change it, and they happen on
