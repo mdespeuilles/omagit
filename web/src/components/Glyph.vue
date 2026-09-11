@@ -26,8 +26,15 @@ const PATHS = {
   stashes:
     '<path d="M2.75 4.25h10.5v2.5h-10.5z"/><path d="M3.75 6.75v6.5h8.5v-6.5"/>' +
     '<path d="M6.5 9.5h3"/>',
-  /// Preferences: sliders. A gear at 16px with a 1.5px stroke is a blob.
-  settings: '<path d="M3 5.5h10M3 10.5h10"/><path d="M6.25 4v3M10.25 9v3"/>',
+  /// Preferences: a gear, which is what everybody looks for. Eight teeth
+  /// radiating past the rim rather than cut into it — a gear drawn as a
+  /// silhouette needs a fill, and this is the one set in the window where
+  /// everything is stroked. It was two sliders, on the theory that a gear at
+  /// 16px with a 1.5px stroke is a blob; a probe at 16, 20 and 32 says it is
+  /// not, as long as the teeth stand outside the circle.
+  settings:
+    '<circle cx="8" cy="8" r="4.2"/><circle cx="8" cy="8" r="1.7"/>' +
+    '<path d="M12.20 8.00L14.30 8.00M10.97 10.97L12.45 12.45M8.00 12.20L8.00 14.30M5.03 10.97L3.55 12.45M3.80 8.00L1.70 8.00M5.03 5.03L3.55 3.55M8.00 3.80L8.00 1.70M10.97 5.03L12.45 3.55"/>',
   /// A branch: the trunk, and one leaving it. The dots are round on purpose —
   /// they are commits, and a square commit reads as a stop.
   branch:

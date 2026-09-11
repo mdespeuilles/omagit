@@ -26,9 +26,13 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
   <!-- The whole sidebar is one stop, and `j` `k` walk the branches inside it
        (board 09, stop 5). The three screen buttons above them keep their own
        stops: nothing else reaches them, and `⌘1` `⌘2` `⌘3` is a shortcut, not a
-       path for someone crossing the window with Tab. -->
+       path for someone crossing the window with Tab.
+
+       Preferences are not among them. They belong to the application rather
+       than to a repository, and this column is only drawn once one is open — so
+       the door is in the topbar, where it is reachable from every screen. -->
   <nav class="sidebar" tabindex="0" data-zone="1" @focus="goToZone(1)">
-    <!-- It folds, because it draws a chevron. Four rows is not much to gain —
+    <!-- It folds, because it draws a chevron. Three rows is not much to gain —
          but a repository with forty branches under them makes it worth having,
          and a triangle that answers nothing is worse than no triangle. -->
     <button class="group-head as-button" @click="toggleBranchGroup('workspace')">
@@ -67,15 +71,6 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
         <span>{{ t("sidebar.stashes") }}</span>
         <span class="pane-head-spacer" />
         <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
-      </button>
-
-      <button
-        class="row sidebar-row"
-        :class="{ selected: app.screen === 'settings' }"
-        @click="showScreen('settings')"
-      >
-        <Glyph name="settings" class="sidebar-glyph" />
-        <span>{{ t("sidebar.settings") }}</span>
       </button>
     </template>
 

@@ -103,7 +103,7 @@ const reduced = computed(() => !inRepository.value && (app.platform?.reserve.lea
 
 /// What the bar says you are looking at, when it is not a repository.
 const crumb = computed(() =>
-  app.screen === "settings" ? t("sidebar.settings") : t("topbar.repositories"),
+  app.screen === "settings" ? t("settings.title") : t("topbar.repositories"),
 );
 
 /// Whether the window is looking *into* a repository, which is what decides the
@@ -227,8 +227,8 @@ const where = computed(() => {
     <button
       class="icon"
       :class="{ on: app.screen === 'settings' }"
-      :title="titled(t('sidebar.settings'), 'settings.open')"
-      :aria-label="t('sidebar.settings')"
+      :title="titled(t('settings.title'), 'settings.open')"
+      :aria-label="t('settings.title')"
       @click="showScreen('settings')"
     >
       <Glyph name="settings" />

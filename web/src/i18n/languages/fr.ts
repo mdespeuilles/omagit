@@ -29,7 +29,6 @@ export const strings: Record<keyof typeof reference, string> = {
   "sidebar.workingCopy": "Copie de travail",
   "sidebar.history": "Historique",
   "sidebar.stashes": "Remises",
-  "sidebar.settings": "Réglages",
   "sidebar.allRepositories": "Tous les dépôts",
 
   // ── La barre d'état ─────────────────────────────────────────────────────

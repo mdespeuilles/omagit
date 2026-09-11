@@ -43,7 +43,6 @@ export const strings = {
   "sidebar.workingCopy": "Working Copy",
   "sidebar.history": "History",
   "sidebar.stashes": "Stashes",
-  "sidebar.settings": "Settings",
   "sidebar.allRepositories": "All repositories",
 
   // ── The status bar ──────────────────────────────────────────────────────
