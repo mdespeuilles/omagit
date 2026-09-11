@@ -1,0 +1,24 @@
+<!-- omagit's mark: the sidebar's own branch glyph, at icon size.
+
+     The geometry is `Glyph.vue`'s `branch`, unit for unit — the icon and the
+     tree say the same thing, and a change to one has to be a change to both.
+     Two colours because the graph has lanes: the trunk in the accent, the
+     branch leaving it in the green a merged branch wears.
+
+     Square corners, like everything else (DESIGN §1). `icon.png` is rendered
+     from this file, and `npx tauri icon` makes the rest of the set from that. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="72" y="72" width="880" height="880" fill="#1a1b26"/>
+  <rect x="76" y="76" width="872" height="872" fill="none" stroke="#414868" stroke-width="8"/>
+  <g transform="translate(512 512) scale(48) translate(-8 -8)" stroke-width="1.5">
+    <g stroke="#7aa2f7" fill="#7aa2f7">
+      <circle cx="5" cy="3.25" r="1.25"/>
+      <circle cx="5" cy="12.75" r="1.25"/>
+      <path d="M5 4.5v7" fill="none"/>
+    </g>
+    <g stroke="#9ece6a" fill="#9ece6a">
+      <circle cx="11" cy="3.25" r="1.25"/>
+      <path d="M11 4.5v2.5h-6" fill="none"/>
+    </g>
+  </g>
+</svg>

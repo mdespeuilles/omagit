@@ -1,3 +1,5 @@
+<img src="crates/omagit-app/icons/128x128.png" width="88" align="right" alt="">
+
 # omagit
 
 [![Licence: GPL v3](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
