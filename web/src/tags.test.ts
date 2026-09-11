@@ -200,6 +200,45 @@ describe("publishing one", () => {
     expect(state.app.notes).toBe("v1 sent to origin");
   });
 
+  it("ignores a second click while the first push is in flight", async () => {
+    let release = (): void => {};
+    const state = await opened((fake) => {
+      fake.remoteBranches = [
+        { remote: "origin", name: "main", commit: { full: "o".repeat(40), short: "ooooooo" } },
+      ];
+      fake.holdNetwork = new Promise((resume) => {
+        release = () => resume();
+      });
+    });
+    for (const name of ["v1", "v2"]) {
+      state.openTag("", "the current commit");
+      state.setTagField("name", name);
+      await state.createTag();
+    }
+
+    state.publishTag("v1", "origin", false);
+    await until(() => state.app.pushingTag === "v1");
+
+    // The same tag again, and then a different one.
+    state.publishTag("v1", "origin", false);
+    state.publishTag("v2", "origin", false);
+    expect(state.app.pushingTag, "still the first").toBe("v1");
+
+    // Et les boutons des autres lignes sont grisés pendant ce temps : refuser
+    // en silence un clic sur un bouton qui a l'air actif, c'est exactement le
+    // « bouton qui ne fait rien » qu'on vient de corriger.
+    const BranchTree = (await import("./components/BranchTree.vue")).default;
+    const buttons = mount(BranchTree).findAll(".tag-row .row-action");
+    expect(buttons.length).toBeGreaterThan(0);
+    expect(buttons.every((one) => one.attributes("disabled") !== undefined)).toBe(true);
+
+    release();
+    await settled(state);
+    await until(() => state.app.pushedTag === "v1");
+
+    expect(backend.current.published, "one push, not three").toEqual(["v1"]);
+  });
+
   it("asks before taking one off the remote", async () => {
     // The asymmetry is the point: one of the two can remove something other
     // people are already using.

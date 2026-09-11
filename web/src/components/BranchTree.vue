@@ -327,7 +327,7 @@ function stop(name: string): 0 | -1 {
             v-if="remotes.length > 0"
             class="row-action tag-push"
             :class="{ working: app.pushingTag === tag.name, done: app.pushedTag === tag.name }"
-            :disabled="app.pushingTag === tag.name"
+            :disabled="!!app.busy"
             :title="t('tag.publishTitle', { remote: remotes[0]![0] })"
             @click.stop="publishTag(tag.name, remotes[0]![0], false)"
           >
@@ -339,8 +339,12 @@ function stop(name: string): 0 | -1 {
                   : t("tag.publish")
             }}
           </button>
+          <!-- Grisés pendant qu'une écriture tourne. Sans ça ils gardaient
+               l'air cliquable et ne faisaient rien : l'action refuse quand une
+               autre est en cours, et ce refus était silencieux. -->
           <button
             class="row-action danger"
+            :disabled="!!app.busy"
             :title="t('tag.deleteTitle')"
             @click.stop="deleteTag(tag.name)"
           >
