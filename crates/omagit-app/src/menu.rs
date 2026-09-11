@@ -118,10 +118,15 @@ fn build<R: Runtime>(
     labels: &Labels,
 ) -> tauri::Result<Menu<R>> {
     let info = app.package_info();
+    // The licence is in the About box because that is where somebody looks for
+    // it, and because a paid macOS build of a GPL program has to say what it is
+    // — the source is the buyer's right, not a favour.
     let about = AboutMetadata {
         name: Some(info.name.clone()),
         version: Some(info.version.to_string()),
         copyright: app.config().bundle.copyright.clone(),
+        license: app.config().bundle.license.clone(),
+        website: Some("https://github.com/mdespeuilles/omagit".to_owned()),
         ..Default::default()
     };
 

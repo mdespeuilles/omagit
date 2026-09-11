@@ -165,3 +165,23 @@ checkout, and attaches them to a **draft** release — the notes are yours to
 write, and a tag pushed by mistake should not become an announcement.
 
 `scripts/release.sh` is what it runs, so the same build happens on a laptop.
+
+## Licence and distribution
+
+**GPL-3.0-only.** The whole of it is in `LICENSE`, and every crate carries the
+identifier. Nothing in the dependency graph is incompatible with it: every crate
+omagit links offers MIT, Apache-2.0 or another permissive licence, checked when
+the licence was chosen and re-checked by `cargo deny` at every gate.
+
+**Linux is free.** The `.deb` and the `.AppImage` are on the releases page, and
+building from source is four commands.
+
+**The macOS build is paid**, and that is a sale of the *build*, not of the right
+to use the program: signed, notarised, and updating itself, which is the part
+nobody can make for themselves without an Apple developer account. The GPL is
+what makes this honest — you may compile macOS yourself, you may pass your copy
+on, and nobody may take this code into a closed fork. It is the model Ardour has
+run on for fifteen years.
+
+The macOS build is not on this repository's releases page and never will be: it
+is sold, and what it costs pays for the account, the notarisation and the time.

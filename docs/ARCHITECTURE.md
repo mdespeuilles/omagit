@@ -2025,6 +2025,40 @@ blink the sidebar. `shown()` is what panes read now — the answer, or the one i
 is in the middle of replacing — so a re-read is invisible unless it changes
 something, and a pane is blank only when it has never had an answer.
 
+### 2.62 GPL-3.0, and why the licence was the decision
+
+The distribution model — open source, free on Linux, paid on macOS — turns on one
+line that was already in the repository and pointing the wrong way:
+`Cargo.toml` said `license = "MIT"`, with no `LICENSE` file to go with it. MIT
+lets anybody take this code, sign it with their own Apple account, and ship a
+**closed** fork; a version published under it stays under it for ever. So the
+licence had to be settled before the repository went public, not after.
+
+**GPL-3.0-only.** It permits exactly what the model needs and forbids exactly
+what it cannot survive: selling a build is legal and ordinary — Ardour has done
+it for fifteen years — while a proprietary fork is not. What is sold on macOS is
+the *build*: signed, notarised, self-updating, which is the one thing nobody can
+make for themselves without an Apple developer account. Compiling it yourself
+stays possible, and passing your copy on stays permitted. That is the deal, and
+it is the reason the model is honest rather than a paywall with a source mirror
+behind it.
+
+**Checked, not assumed**: nothing in the dependency graph is GPL-incompatible.
+Every crate offers MIT, Apache-2.0 or another permissive licence — and the
+original OpenSSL terms, which are the classic incompatibility, appear nowhere.
+`cargo deny` re-checks it at every gate; our own crates are skipped there
+(`private.ignore`), because that list is about what we redistribute from others.
+
+Two consequences worth writing down before somebody rediscovers them:
+
+* **The Mac App Store is out.** Its sandbox forbids spawning an external binary,
+  and SPEC §8 makes `git` the only thing that writes. Direct sale and
+  notarisation, then, with a merchant of record carrying the VAT.
+* **A licence check in the app is a convenience, not a lock.** The source is
+  public, so any check can be removed in ten minutes. What it is for is making
+  paying easy for people who want to; designing it as a defence would be
+  designing for the people who will never pay anyway.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

@@ -674,6 +674,24 @@ Un jalon à la fois, chacun terminé par `scripts/check.sh` vert et poussé sur 
 - **M8 — Stashes et conflits.** Résolution, poursuite ou abandon d'opération.
 - **M9 — Finition.** Command palette, keymap réassignable, préférences, densités, feuille de
   raccourcis, états vides et d'erreur partout, menus natifs macOS.
+> **Amendement (2026-09-11) — le modèle de distribution est arrêté.**
+>
+> omagit est **open source sous GPL-3.0-only**. La licence n'est pas un détail
+> administratif ici : le `Cargo.toml` annonçait MIT, qui autorise un fork fermé —
+> exactement ce qu'il ne faut pas quand une plateforme est vendue.
+>
+> - **Linux est gratuit** : `.deb` et `.AppImage` sur les releases GitHub,
+>   construits par `.github/workflows/release.yml`.
+> - **macOS est payant**, et ce qui est vendu est le *build* — signé, notarisé,
+>   qui se met à jour —, jamais le droit d'usage. La GPL le permet, et c'est ce
+>   qui rend l'offre honnête : compiler soi-même reste possible, redistribuer sa
+>   copie reste permis, et personne ne peut refermer le code.
+> - Le **Mac App Store est exclu** : son bac à sable interdit de lancer un binaire
+>   externe, et §8 fait de `git` le seul outil d'écriture. Vente directe et
+>   notarisation, donc, avec le *Merchant of Record* qui porte la TVA.
+> - Le build macOS n'est jamais attaché à une release publique. Les certificats
+>   vivent dans les secrets du dépôt, que GitHub ne donne pas aux forks.
+
 - **M10 — Distribution.** Bundle macOS signé et notarisé + DMG, archive Linux + PKGBUILD AUR,
   mise à jour in-app optionnelle, pipeline de release GitHub Actions avec attestation.
 

@@ -22,6 +22,12 @@ unmaintained = "workspace"
 
 [licenses]
 version = 2
+# omagit's own crates are GPL-3.0 and are never published: the allow-list below
+# is about what we *redistribute from others*, which is the question this check
+# exists to answer. Verified when the licence was chosen: nothing in the graph
+# is GPL-incompatible — every crate offers MIT, Apache-2.0 or another permissive
+# licence, and none carries the original OpenSSL terms.
+private = { ignore = true }
 # Everything omagit ships has to be redistributable under these.
 allow = [
     "MIT",
