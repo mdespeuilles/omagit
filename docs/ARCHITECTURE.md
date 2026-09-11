@@ -2128,6 +2128,29 @@ make room and stops being a folder, which is the half that carries the meaning.
 The same probe caught the rename pencil at the 10px a row's actions use — a
 diagonal at 10px is a slash — and the header's actions are set at 12.
 
+**Two things reported from use, once it was in front of somebody.** Dragging a
+repository highlighted every label the pointer crossed, and the rows were not
+indented under their folder.
+
+The selection is a WebKit matter and could not be reproduced here: a real drag
+across the real markup in Chrome, driven through the browser rather than by
+dispatching events, selects nothing — `user-select: none` on the body is
+honoured. WKWebView is what the window is on macOS, and WebKit's own selection
+code has always read `-webkit-user-select`, which the rule did not carry. Three
+defences now, each correct on its own: the prefixed property beside the standard
+one, `preventDefault` on the row's pointerdown — measured in that same real
+browser: the drag still produced exactly one `click`, because `click` is not one
+of the compatibility mouse events a prevented `pointerdown` suppresses — and any
+selection cleared at the moment a drag begins.
+
+The indentation was simply missing, and DESIGN §6 had already ruled on it while
+M3 was being built: "indentation is structure, and §1 puts structure on value,
+borders and position — so it applies everywhere or nowhere. Everywhere." The
+26px is the header's own 10px of padding plus its 10px chevron plus the 6px gap,
+so a repository's icon lands in the same column as its folder's and the chevron
+keeps a gutter to the left. That is what a tree looks like, and it is why the
+number is written as its parts rather than as 26.
+
 And one plain defect, found by the probe and not by the tests: the rename box
 was an `<input>` with no `type`. Every base rule in `style.css` is written
 `input[type="text"]`, which does not match an input that declares none, so the

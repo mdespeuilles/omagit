@@ -24,7 +24,14 @@ body {
   /* The window is the app; nothing scrolls but the panes that say they do. */
   overflow: hidden;
   /* Text selection is for content, not for chrome: dragging across a list
-     should move a selection, not highlight labels. */
+     should move a selection, not highlight labels.
+
+     Both spellings, and the prefixed one is not decoration. Chrome honours the
+     standard property here — measured: a drag across the repository list
+     selects nothing. WKWebView, which is what the window actually is on macOS,
+     highlighted every label the pointer crossed while a repository was being
+     filed, and WebKit's own selection code has always read this one. */
+  -webkit-user-select: none;
   user-select: none;
   cursor: default;
 }
@@ -1861,14 +1868,21 @@ select:focus {
   flex: none;
 }
 
-/* Two lines and 36 high: the name, and what the repository is now. */
+/* Two lines and 36 high: the name, and what the repository is now.
+
+   Indented under its folder, which DESIGN §6 asks for uniformly —
+   "indentation is structure, so it applies everywhere or nowhere". 26px is not
+   a number picked to look right: it is the header's own 10px of padding, plus
+   its 10px chevron, plus the 6px gap, so a repository's icon lands in the same
+   column as the folder's and the chevron keeps a gutter of its own to the
+   left. That is what a tree looks like. */
 .library-row {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   height: 36px;
-  padding: 0 10px;
+  padding: 0 10px 0 26px;
   border: 0;
   text-align: left;
   cursor: pointer;
@@ -2027,7 +2041,8 @@ select:focus {
    nothing else on screen does. */
 .group-empty {
   margin: 0;
-  padding: 2px 10px 6px 28px;
+  /* Where a row's name starts: 26 of indent, a 15px icon, an 8px gap. */
+  padding: 2px 10px 6px 49px;
   font-size: var(--text-meta);
   color: var(--text-muted);
 }

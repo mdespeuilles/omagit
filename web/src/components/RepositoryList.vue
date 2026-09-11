@@ -77,6 +77,18 @@ let places: Target[] = [];
 
 function press(event: PointerEvent, row: LibraryRow): void {
   if (event.button !== 0) return;
+  // The browser answers a press-and-drag by selecting the text under it, and
+  // there is no text here to select — a row is a control. `user-select: none`
+  // stops it in Chrome; in WKWebView it did not, and filing a repository left
+  // every label the pointer crossed highlighted. Preventing the default
+  // suppresses the compatibility mouse events that start a selection, and
+  // `click` is not one of them: it still fires, which is what keeps a press on
+  // a row selecting it. Measured in a real browser, not assumed.
+  //
+  // Not over a button, which would lose its focus ring for a pointer.
+  if (!(event.target instanceof HTMLElement) || !event.target.closest("button")) {
+    event.preventDefault();
+  }
   pressed = {
     path: row.path,
     x: event.clientX,
@@ -95,6 +107,9 @@ function drag(event: PointerEvent): void {
     if (!far) return;
     places = measure();
     pressed.on.setPointerCapture(event.pointerId);
+    // Anything a press managed to select before the threshold was crossed, or
+    // that an engine started in spite of the two rules above.
+    window.getSelection()?.removeAllRanges();
     dragRepository(pressed.path);
   }
   dropTarget(nearest(places, event.clientY));
