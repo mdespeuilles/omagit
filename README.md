@@ -5,7 +5,7 @@
 ![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS-lightgrey)
 
 A graphical Git client for **Linux** and **macOS**. Rust underneath, a web front
-end in a Tauri window. Inspired by Tower, deliberately simpler.
+end in a Tauri window.
 
 It reads with [`gitoxide`](https://github.com/GitoxideLabs/gitoxide) and writes
 by running `git` itself — so every write is a command you could have typed, and
