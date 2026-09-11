@@ -83,6 +83,34 @@ describe("the bindings", () => {
     expect(backend.current.calls.some((call) => call.command === "fetch")).toBe(false);
   });
 
+  it("stays quiet behind every dialog, and the list is named here", async () => {
+    // The list in `overlaid()` has to be remembered at each new dialog, and it
+    // was not: the tag dialog arrived without being added, and Preferences were
+    // a screen until they became one. Each is named here so the next omission
+    // fails a test rather than a keystroke.
+    const { state, keymap } = await opened();
+    const fires = (): boolean => keymap.dispatch(press("f", { ctrlKey: true }));
+
+    for (const open of [
+      () => state.openClone(),
+      () => state.openTag("", "HEAD"),
+      () => state.openSettings(),
+      () => state.openPalette(),
+      () => state.toggleShortcuts(),
+    ]) {
+      open();
+      expect(fires(), "a binding fired behind a dialog").toBe(false);
+      state.closeClone();
+      state.closeTag();
+      state.closeSettings();
+      state.closePalette();
+      if (state.app.shortcuts) state.toggleShortcuts();
+    }
+
+    // And it answers again once they are all shut.
+    expect(fires()).toBe(true);
+  });
+
   it("fires a shortcut while typing, but never a bare key", async () => {
     const { keymap } = await opened();
     const box = document.createElement("input");

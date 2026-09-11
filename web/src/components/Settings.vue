@@ -15,13 +15,14 @@
 // something else, and a screen showing the request rather than the answer would
 // be lying about what you are looking at.
 
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   app,
   chooseDensity,
   chooseScale,
   chooseTheme,
   chooseLanguage,
+  closeSettings,
   languagePreference,
   readPreferences,
   setAgent,
@@ -122,9 +123,22 @@ function stopCapture(): void {
   window.removeEventListener("keydown", onKey, true);
 }
 
-// A screen that vanished mid-capture would leave a handler on the window
+// A dialog that vanished mid-capture would leave a handler on the window
 // answering keys for a row nobody can see.
 onBeforeUnmount(stopCapture);
+
+/// `Esc` closes Preferences — but not while something in front of them wants
+/// it first: the shortcut sheet opens *from* here, and the capture box is
+/// already listening with its own handler.
+function onEscape(event: KeyboardEvent): void {
+  if (event.key !== "Escape") return;
+  if (app.shortcuts || capturing.value) return;
+  event.preventDefault();
+  closeSettings();
+}
+
+onMounted(() => window.addEventListener("keydown", onEscape));
+onBeforeUnmount(() => window.removeEventListener("keydown", onEscape));
 
 function onKey(event: KeyboardEvent): void {
   const id = capturing.value;
@@ -184,312 +198,326 @@ function on(source: string, name = ""): boolean {
 </script>
 
 <template>
-  <section class="settings">
-    <header class="pane-head">
-      <span>{{ t("settings.title") }}</span>
-      <span class="pane-head-spacer" />
-      <button class="link" @click="readPreferences()">{{ t("settings.reread") }}</button>
-    </header>
+  <div class="overlay" @click.self="closeSettings()">
+    <section
+      class="dialog settings"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('settings.title')"
+    >
+      <header class="dialog-head">
+        <span class="dialog-title">{{ t("settings.title") }}</span>
+        <span class="pane-head-spacer" />
+        <button class="link" @click="readPreferences()">{{ t("settings.reread") }}</button>
+        <button class="link" @click="closeSettings()">{{ t("palette.close") }}</button>
+      </header>
 
-    <p v-if="app.preferences.status === 'loading'" class="pane-empty">
-      {{ t("settings.reading") }}
-    </p>
-    <p v-else-if="app.preferences.status === 'failed'" class="pane-error mono">
-      {{ app.preferences.error }}
-    </p>
+      <p v-if="app.preferences.status === 'loading'" class="pane-empty">
+        {{ t("settings.reading") }}
+      </p>
+      <p v-else-if="app.preferences.status === 'failed'" class="pane-error mono">
+        {{ app.preferences.error }}
+      </p>
 
-    <div v-else-if="prefs" class="settings-body">
-      <section class="settings-block">
-        <h2 class="settings-title">{{ t("settings.theme") }}</h2>
-        <p class="settings-note">
-          {{ t("settings.onScreen", { theme: prefs.resolved }) }} {{ t("settings.themeNote") }}
-        </p>
+      <div v-else-if="prefs" class="settings-body">
+        <section class="settings-block">
+          <h2 class="settings-title">{{ t("settings.theme") }}</h2>
+          <p class="settings-note">
+            {{ t("settings.onScreen", { theme: prefs.resolved }) }} {{ t("settings.themeNote") }}
+          </p>
 
-        <!-- One question, one answer. The five sources and the eight themes set
+          <!-- One question, one answer. The five sources and the eight themes set
              the same setting, and drawing them as two lists let both look
              chosen at once. They are one radio group now: a mark on every
              option, exactly one of them filled, whichever half it is in. -->
-        <div class="settings-picks" role="radiogroup" :aria-label="t('settings.theme')">
-          <button
-            class="row settings-row"
-            role="radio"
-            :aria-checked="on('automatic')"
-            :class="{ selected: on('automatic') }"
-            @click="chooseTheme('automatic')"
-          >
-            <span class="pick" :class="{ on: on('automatic') }" aria-hidden="true" />
-            <span>{{ t("settings.automatic") }}</span>
-            <span class="settings-detail">{{ t("settings.automaticDetail") }}</span>
-          </button>
-
-          <button
-            class="row settings-row"
-            role="radio"
-            :aria-checked="on('omarchy')"
-            :class="{ selected: on('omarchy') }"
-            :disabled="!prefs.omarchy"
-            @click="chooseTheme('omarchy')"
-          >
-            <span class="pick" :class="{ on: on('omarchy') }" aria-hidden="true" />
-            <span>{{ t("settings.omarchy") }}</span>
-            <span class="settings-detail">
-              {{ prefs.omarchy ? t("settings.omarchyYes") : t("settings.omarchyNo") }}
-            </span>
-          </button>
-
-          <button
-            class="row settings-row"
-            role="radio"
-            :aria-checked="on('system-appearance')"
-            :class="{ selected: on('system-appearance') }"
-            :disabled="!prefs.system_appearance"
-            @click="chooseTheme('system-appearance')"
-          >
-            <span class="pick" :class="{ on: on('system-appearance') }" aria-hidden="true" />
-            <span>{{ t("settings.system") }}</span>
-            <span class="settings-detail">
-              {{ prefs.system_appearance ? t("settings.systemYes") : t("settings.systemNo") }}
-            </span>
-          </button>
-
-          <button
-            class="row settings-row"
-            role="radio"
-            :aria-checked="on('embedded-dark')"
-            :class="{ selected: on('embedded-dark') }"
-            @click="chooseTheme('embedded-dark')"
-          >
-            <span class="pick" :class="{ on: on('embedded-dark') }" aria-hidden="true" />
-            <span>{{ t("settings.embeddedDark") }}</span>
-            <span class="settings-detail">{{ t("settings.embeddedDarkDetail") }}</span>
-          </button>
-
-          <button
-            class="row settings-row"
-            role="radio"
-            :aria-checked="on('embedded-light')"
-            :class="{ selected: on('embedded-light') }"
-            @click="chooseTheme('embedded-light')"
-          >
-            <span class="pick" :class="{ on: on('embedded-light') }" aria-hidden="true" />
-            <span>{{ t("settings.embeddedLight") }}</span>
-            <span class="settings-detail">{{ t("settings.embeddedLightDetail") }}</span>
-          </button>
-
-          <h3 class="settings-subtitle">{{ t("settings.namedTheme") }}</h3>
-          <div class="settings-catalogue">
+          <div class="settings-picks" role="radiogroup" :aria-label="t('settings.theme')">
             <button
-              v-for="theme in prefs.catalogue"
-              :key="theme.name"
-              class="row settings-swatch"
+              class="row settings-row"
               role="radio"
-              :aria-checked="on('user-override', theme.name)"
-              :class="{ selected: on('user-override', theme.name) }"
-              @click="chooseTheme('user-override', theme.name)"
+              :aria-checked="on('automatic')"
+              :class="{ selected: on('automatic') }"
+              @click="chooseTheme('automatic')"
+            >
+              <span class="pick" :class="{ on: on('automatic') }" aria-hidden="true" />
+              <span>{{ t("settings.automatic") }}</span>
+              <span class="settings-detail">{{ t("settings.automaticDetail") }}</span>
+            </button>
+
+            <button
+              class="row settings-row"
+              role="radio"
+              :aria-checked="on('omarchy')"
+              :class="{ selected: on('omarchy') }"
+              :disabled="!prefs.omarchy"
+              @click="chooseTheme('omarchy')"
+            >
+              <span class="pick" :class="{ on: on('omarchy') }" aria-hidden="true" />
+              <span>{{ t("settings.omarchy") }}</span>
+              <span class="settings-detail">
+                {{ prefs.omarchy ? t("settings.omarchyYes") : t("settings.omarchyNo") }}
+              </span>
+            </button>
+
+            <button
+              class="row settings-row"
+              role="radio"
+              :aria-checked="on('system-appearance')"
+              :class="{ selected: on('system-appearance') }"
+              :disabled="!prefs.system_appearance"
+              @click="chooseTheme('system-appearance')"
+            >
+              <span class="pick" :class="{ on: on('system-appearance') }" aria-hidden="true" />
+              <span>{{ t("settings.system") }}</span>
+              <span class="settings-detail">
+                {{ prefs.system_appearance ? t("settings.systemYes") : t("settings.systemNo") }}
+              </span>
+            </button>
+
+            <button
+              class="row settings-row"
+              role="radio"
+              :aria-checked="on('embedded-dark')"
+              :class="{ selected: on('embedded-dark') }"
+              @click="chooseTheme('embedded-dark')"
+            >
+              <span class="pick" :class="{ on: on('embedded-dark') }" aria-hidden="true" />
+              <span>{{ t("settings.embeddedDark") }}</span>
+              <span class="settings-detail">{{ t("settings.embeddedDarkDetail") }}</span>
+            </button>
+
+            <button
+              class="row settings-row"
+              role="radio"
+              :aria-checked="on('embedded-light')"
+              :class="{ selected: on('embedded-light') }"
+              @click="chooseTheme('embedded-light')"
+            >
+              <span class="pick" :class="{ on: on('embedded-light') }" aria-hidden="true" />
+              <span>{{ t("settings.embeddedLight") }}</span>
+              <span class="settings-detail">{{ t("settings.embeddedLightDetail") }}</span>
+            </button>
+
+            <h3 class="settings-subtitle">{{ t("settings.namedTheme") }}</h3>
+            <div class="settings-catalogue">
+              <button
+                v-for="theme in prefs.catalogue"
+                :key="theme.name"
+                class="row settings-swatch"
+                role="radio"
+                :aria-checked="on('user-override', theme.name)"
+                :class="{ selected: on('user-override', theme.name) }"
+                @click="chooseTheme('user-override', theme.name)"
+              >
+                <span
+                  class="pick"
+                  :class="{ on: on('user-override', theme.name) }"
+                  aria-hidden="true"
+                />
+                <span>{{ theme.name }}</span>
+                <span class="pane-head-spacer" />
+                <span class="settings-detail">{{
+                  theme.mode === "light" ? t("settings.light") : t("settings.dark")
+                }}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-block">
+          <h2 class="settings-title">{{ t("settings.density") }}</h2>
+          <p class="settings-note">{{ t("settings.densityNote") }}</p>
+          <div class="settings-choice">
+            <button
+              class="row settings-row"
+              :class="{ selected: prefs.density === 'comfortable' }"
+              @click="chooseDensity('comfortable')"
+            >
+              <span>{{ t("settings.comfortable") }}</span>
+              <span class="settings-detail">{{ t("settings.comfortableDetail") }}</span>
+            </button>
+            <button
+              class="row settings-row"
+              :class="{ selected: prefs.density === 'compact' }"
+              @click="chooseDensity('compact')"
+            >
+              <span>{{ t("settings.compact") }}</span>
+              <span class="settings-detail">{{ t("settings.compactDetail") }}</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-block">
+          <h2 class="settings-title">{{ t("settings.scale") }}</h2>
+          <p class="settings-note">{{ t("settings.scaleNote") }}</p>
+          <div class="settings-scale">
+            <button :disabled="percent <= 80" @click="scaleBy(-0.05)">−</button>
+            <span class="settings-percent mono">{{ percent }} %</span>
+            <button :disabled="percent >= 200" @click="scaleBy(0.05)">+</button>
+            <button class="link" @click="chooseScale(1.15)">{{ t("settings.default") }}</button>
+          </div>
+        </section>
+
+        <section class="settings-block">
+          <h2 class="settings-title">{{ t("settings.language") }}</h2>
+          <p class="settings-note">{{ t("settings.languageNote") }}</p>
+          <div class="settings-picks" role="radiogroup" :aria-label="t('settings.language')">
+            <button
+              class="row settings-row"
+              role="radio"
+              :aria-checked="languagePreference() === null"
+              :class="{ selected: languagePreference() === null }"
+              @click="chooseLanguage(null)"
             >
               <span
                 class="pick"
-                :class="{ on: on('user-override', theme.name) }"
+                :class="{ on: languagePreference() === null }"
                 aria-hidden="true"
               />
-              <span>{{ theme.name }}</span>
-              <span class="pane-head-spacer" />
-              <span class="settings-detail">{{
-                theme.mode === "light" ? t("settings.light") : t("settings.dark")
-              }}</span>
+              <span>{{ t("settings.languageSystem") }}</span>
+              <span class="settings-detail">{{ named(systemLanguage()) }}</span>
+            </button>
+            <button
+              v-for="one in LANGUAGES"
+              :key="one.tag"
+              class="row settings-row"
+              role="radio"
+              :aria-checked="languagePreference() === one.tag"
+              :class="{ selected: languagePreference() === one.tag }"
+              @click="chooseLanguage(one.tag)"
+            >
+              <span
+                class="pick"
+                :class="{ on: languagePreference() === one.tag }"
+                aria-hidden="true"
+              />
+              <span>{{ one.name }}</span>
+              <span class="settings-detail mono">{{ one.tag }}</span>
             </button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="settings-block">
-        <h2 class="settings-title">{{ t("settings.density") }}</h2>
-        <p class="settings-note">{{ t("settings.densityNote") }}</p>
-        <div class="settings-choice">
-          <button
-            class="row settings-row"
-            :class="{ selected: prefs.density === 'comfortable' }"
-            @click="chooseDensity('comfortable')"
-          >
-            <span>{{ t("settings.comfortable") }}</span>
-            <span class="settings-detail">{{ t("settings.comfortableDetail") }}</span>
-          </button>
-          <button
-            class="row settings-row"
-            :class="{ selected: prefs.density === 'compact' }"
-            @click="chooseDensity('compact')"
-          >
-            <span>{{ t("settings.compact") }}</span>
-            <span class="settings-detail">{{ t("settings.compactDetail") }}</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="settings-block">
-        <h2 class="settings-title">{{ t("settings.scale") }}</h2>
-        <p class="settings-note">{{ t("settings.scaleNote") }}</p>
-        <div class="settings-scale">
-          <button :disabled="percent <= 80" @click="scaleBy(-0.05)">−</button>
-          <span class="settings-percent mono">{{ percent }} %</span>
-          <button :disabled="percent >= 200" @click="scaleBy(0.05)">+</button>
-          <button class="link" @click="chooseScale(1.15)">{{ t("settings.default") }}</button>
-        </div>
-      </section>
-
-      <section class="settings-block">
-        <h2 class="settings-title">{{ t("settings.language") }}</h2>
-        <p class="settings-note">{{ t("settings.languageNote") }}</p>
-        <div class="settings-picks" role="radiogroup" :aria-label="t('settings.language')">
-          <button
-            class="row settings-row"
-            role="radio"
-            :aria-checked="languagePreference() === null"
-            :class="{ selected: languagePreference() === null }"
-            @click="chooseLanguage(null)"
-          >
-            <span class="pick" :class="{ on: languagePreference() === null }" aria-hidden="true" />
-            <span>{{ t("settings.languageSystem") }}</span>
-            <span class="settings-detail">{{ named(systemLanguage()) }}</span>
-          </button>
-          <button
-            v-for="one in LANGUAGES"
-            :key="one.tag"
-            class="row settings-row"
-            role="radio"
-            :aria-checked="languagePreference() === one.tag"
-            :class="{ selected: languagePreference() === one.tag }"
-            @click="chooseLanguage(one.tag)"
-          >
-            <span
-              class="pick"
-              :class="{ on: languagePreference() === one.tag }"
-              aria-hidden="true"
-            />
-            <span>{{ one.name }}</span>
-            <span class="settings-detail mono">{{ one.tag }}</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- SPEC §11 lists this out of the MVP, and this amends it. What makes it
+        <!-- SPEC §11 lists this out of the MVP, and this amends it. What makes it
            cheap is the shape: no key is asked for, because the program the user
            already installed holds their credentials. -->
-      <section v-if="app.agents" class="settings-block">
-        <h2 class="settings-title">{{ t("agent.title") }}</h2>
-        <p class="settings-note">{{ t("agent.note") }}</p>
+        <section v-if="app.agents" class="settings-block">
+          <h2 class="settings-title">{{ t("agent.title") }}</h2>
+          <p class="settings-note">{{ t("agent.note") }}</p>
 
-        <div class="settings-row">
-          <span>{{ t("agent.which") }}</span>
-          <span class="pane-head-spacer" />
-          <select
-            class="settings-select"
-            :value="picked"
-            :aria-label="t('agent.which')"
-            @change="chooseAgent(($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">{{ t("agent.none") }}</option>
-            <option
-              v-for="one in app.agents.candidates"
-              :key="one.id"
-              :value="one.id"
-              :disabled="one.version === null"
+          <div class="settings-row">
+            <span>{{ t("agent.which") }}</span>
+            <span class="pane-head-spacer" />
+            <select
+              class="settings-select"
+              :value="picked"
+              :aria-label="t('agent.which')"
+              @change="chooseAgent(($event.target as HTMLSelectElement).value)"
             >
-              {{ one.label }}{{ one.version === null ? ` — ${t("agent.missing")}` : "" }}
-            </option>
-            <option :value="CUSTOM">{{ t("agent.custom") }}</option>
-          </select>
-        </div>
+              <option value="">{{ t("agent.none") }}</option>
+              <option
+                v-for="one in app.agents.candidates"
+                :key="one.id"
+                :value="one.id"
+                :disabled="one.version === null"
+              >
+                {{ one.label }}{{ one.version === null ? ` — ${t("agent.missing")}` : "" }}
+              </option>
+              <option :value="CUSTOM">{{ t("agent.custom") }}</option>
+            </select>
+          </div>
 
-        <!-- The version it printed, which is the only proof it answered: a
+          <!-- The version it printed, which is the only proof it answered: a
              program can be on the `PATH` and broken, and one of these was. -->
-        <p v-if="chosenVersion" class="settings-note mono">{{ chosenVersion }}</p>
+          <p v-if="chosenVersion" class="settings-note mono">{{ chosenVersion }}</p>
 
-        <template v-if="showCustom">
-          <label class="settings-field">
-            <span>{{ t("agent.customLabel") }}</span>
-            <input
-              type="text"
-              :value="typed"
-              :placeholder="t('agent.customPlaceholder')"
-              spellcheck="false"
-              @change="
-                typed = ($event.target as HTMLInputElement).value;
-                chooseAgent(CUSTOM);
-              "
-            />
-          </label>
-          <p class="settings-note">{{ t("agent.customNote") }}</p>
-        </template>
+          <template v-if="showCustom">
+            <label class="settings-field">
+              <span>{{ t("agent.customLabel") }}</span>
+              <input
+                type="text"
+                :value="typed"
+                :placeholder="t('agent.customPlaceholder')"
+                spellcheck="false"
+                @change="
+                  typed = ($event.target as HTMLInputElement).value;
+                  chooseAgent(CUSTOM);
+                "
+              />
+            </label>
+            <p class="settings-note">{{ t("agent.customNote") }}</p>
+          </template>
 
-        <template v-if="app.agents.command !== ''">
-          <label class="settings-field">
-            <span>{{ t("agent.guidelines") }}</span>
-            <textarea
-              rows="3"
-              :value="app.agents.guidelines"
-              :placeholder="t('agent.guidelinesPlaceholder')"
-              @change="setAgentGuidelines(($event.target as HTMLTextAreaElement).value)"
-            />
-          </label>
-          <p class="settings-note">{{ t("agent.guidelinesNote") }}</p>
-          <p class="settings-note">{{ t("agent.what") }}</p>
-        </template>
-      </section>
+          <template v-if="app.agents.command !== ''">
+            <label class="settings-field">
+              <span>{{ t("agent.guidelines") }}</span>
+              <textarea
+                rows="3"
+                :value="app.agents.guidelines"
+                :placeholder="t('agent.guidelinesPlaceholder')"
+                @change="setAgentGuidelines(($event.target as HTMLTextAreaElement).value)"
+              />
+            </label>
+            <p class="settings-note">{{ t("agent.guidelinesNote") }}</p>
+            <p class="settings-note">{{ t("agent.what") }}</p>
+          </template>
+        </section>
 
-      <section class="settings-block">
-        <h2 class="settings-title">{{ t("settings.keyboard") }}</h2>
-        <p class="settings-note">{{ t("settings.keyboardNote") }}</p>
-        <button class="row settings-row" @click="toggleShortcuts()">
-          <span>{{ t("settings.seeShortcuts") }}</span>
-          <span class="settings-detail">?</span>
-        </button>
+        <section class="settings-block">
+          <h2 class="settings-title">{{ t("settings.keyboard") }}</h2>
+          <p class="settings-note">{{ t("settings.keyboardNote") }}</p>
+          <button class="row settings-row" @click="toggleShortcuts()">
+            <span>{{ t("settings.seeShortcuts") }}</span>
+            <span class="settings-detail">?</span>
+          </button>
 
-        <ol class="keymap-list">
-          <li v-for="action in ACTIONS" :key="action.id" class="keymap-row">
-            <div class="row settings-row" :class="{ listening: capturing === action.id }">
-              <span>{{ t(action.label) }}</span>
-              <span class="pane-head-spacer" />
-              <span v-if="reassigned(action)" class="keymap-was mono">
-                {{ hint(action.binding, modifier) }}
-              </span>
-              <button
-                class="keymap-key mono"
-                :class="{ listening: capturing === action.id }"
-                @click="listenFor(action.id)"
-              >
-                {{
-                  capturing === action.id ? t("settings.pressIt") : hint(binding(action), modifier)
-                }}
-              </button>
-              <button
-                class="link"
-                :disabled="!reassigned(action)"
-                :title="t('settings.resetBinding')"
-                @click="reset(action.id)"
-              >
-                {{ t("settings.default") }}
-              </button>
-            </div>
-            <p v-if="capturing === action.id && refused" class="keymap-refused">{{ refused }}</p>
-            <p v-else-if="capturing === action.id" class="settings-note keymap-hint">
-              {{ t("settings.pressPrompt") }}
-            </p>
-          </li>
-        </ol>
-      </section>
+          <ol class="keymap-list">
+            <li v-for="action in ACTIONS" :key="action.id" class="keymap-row">
+              <div class="row settings-row" :class="{ listening: capturing === action.id }">
+                <span>{{ t(action.label) }}</span>
+                <span class="pane-head-spacer" />
+                <span v-if="reassigned(action)" class="keymap-was mono">
+                  {{ hint(action.binding, modifier) }}
+                </span>
+                <button
+                  class="keymap-key mono"
+                  :class="{ listening: capturing === action.id }"
+                  @click="listenFor(action.id)"
+                >
+                  {{
+                    capturing === action.id
+                      ? t("settings.pressIt")
+                      : hint(binding(action), modifier)
+                  }}
+                </button>
+                <button
+                  class="link"
+                  :disabled="!reassigned(action)"
+                  :title="t('settings.resetBinding')"
+                  @click="reset(action.id)"
+                >
+                  {{ t("settings.default") }}
+                </button>
+              </div>
+              <p v-if="capturing === action.id && refused" class="keymap-refused">{{ refused }}</p>
+              <p v-else-if="capturing === action.id" class="settings-note keymap-hint">
+                {{ t("settings.pressPrompt") }}
+              </p>
+            </li>
+          </ol>
+        </section>
 
-      <section class="settings-block">
-        <h2 class="settings-title">{{ t("settings.git") }}</h2>
-        <p class="settings-note">{{ t("settings.gitNote") }}</p>
-        <dl class="settings-facts">
-          <dt>{{ t("settings.binary") }}</dt>
-          <dd class="mono">{{ prefs.git }}</dd>
-          <dt>{{ t("settings.editor") }}</dt>
-          <dd class="mono">{{ editor(prefs.editor) }}</dd>
-          <dt>{{ t("settings.credentials") }}</dt>
-          <dd class="mono">{{ prefs.credential_helper }}</dd>
-        </dl>
-      </section>
-    </div>
-  </section>
+        <section class="settings-block">
+          <h2 class="settings-title">{{ t("settings.git") }}</h2>
+          <p class="settings-note">{{ t("settings.gitNote") }}</p>
+          <dl class="settings-facts">
+            <dt>{{ t("settings.binary") }}</dt>
+            <dd class="mono">{{ prefs.git }}</dd>
+            <dt>{{ t("settings.editor") }}</dt>
+            <dd class="mono">{{ editor(prefs.editor) }}</dd>
+            <dt>{{ t("settings.credentials") }}</dt>
+            <dd class="mono">{{ prefs.credential_helper }}</dd>
+          </dl>
+        </section>
+      </div>
+    </section>
+  </div>
 </template>

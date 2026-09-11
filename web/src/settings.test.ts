@@ -26,7 +26,7 @@ async function opened(keymap: Record<string, string> = {}) {
   vi.resetModules();
   const state = await import("./state");
   await state.boot();
-  state.showScreen("settings");
+  state.openSettings();
   await settled(state);
   const Settings = (await import("./components/Settings.vue")).default;
   return { state, screen: mount(Settings) };
@@ -44,14 +44,27 @@ beforeEach(() => {
   backend.current = new Repository([]);
 });
 
-describe("the preferences screen", () => {
+describe("preferences", () => {
   it("opens without a repository, because that is when you may need it", async () => {
     // The theme is unreadable, or `git` is missing: both are reasons to come
     // here before opening anything.
     const { state } = await opened();
     expect(state.app.open).toBeNull();
-    expect(state.app.screen).toBe("settings");
+    expect(state.app.showSettings).toBe(true);
     expect(state.app.preferences.status).toBe("ready");
+  });
+
+  it("opens over the window without changing which screen it is", async () => {
+    // They used to be a screen, which put them beside a sidebar still counting
+    // a repository's branches — reported as confusing. They belong to the
+    // application, so they sit over it rather than replacing a view of the
+    // repository.
+    const { state } = await opened();
+    expect(state.app.screen, "the screen underneath is untouched").toBe("repositories");
+
+    state.closeSettings();
+    expect(state.app.showSettings).toBe(false);
+    expect(state.app.screen).toBe("repositories");
   });
 
   it("names the theme that is on screen, not the one that was asked for", async () => {

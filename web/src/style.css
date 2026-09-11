@@ -3233,13 +3233,20 @@ select:focus {
 /* One column, because it is a form rather than a browse: the panes of the other
    screens exist to hold a list beside what it opens, and there is nothing here
    to open. */
+/* Les réglages sont un dialogue depuis qu'ils ont cessé d'être un écran : à
+   droite, la barre latérale continuait de compter les branches d'un dépôt à
+   côté d'eux, ce qui les faisait lire comme appartenant à ce dépôt.
+
+   Large et haut, parce que le contenu est long — un catalogue de thèmes et la
+   table entière des raccourcis — mais borné par la fenêtre : c'est le corps
+   qui défile, jamais la page. */
 .settings {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  width: min(760px, 92vw);
+  height: min(760px, 88vh);
   min-height: 0;
   overflow: hidden;
-  background: var(--surface);
 }
 .settings-body {
   flex: 1;

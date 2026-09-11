@@ -170,7 +170,7 @@ describe("the Preferences block", () => {
     // The same rule as the theme sources: "Codex is not here" is an answer, and
     // an option that vanishes is one nobody can ask about.
     const state = await opened();
-    state.showScreen("settings");
+    state.openSettings();
     await settled(state);
     await state.readAgents();
 

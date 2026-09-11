@@ -75,7 +75,14 @@ export function again<T>(state: Async<T>): Async<T> {
   return previous === null ? { status: "loading" } : { status: "loading", previous };
 }
 
-export type Screen = "repositories" | "working-copy" | "history" | "stashes" | "settings";
+/// The screens a repository can be looked at through.
+///
+/// Preferences are not among them, and used to be. They took the whole right
+/// side while the sidebar went on counting a repository's branches beside
+/// them, which reads as though the settings belonged to that repository —
+/// reported as confusing. They are the application's, they are a form rather
+/// than a browse, and a form over the window is a dialog.
+export type Screen = "repositories" | "working-copy" | "history" | "stashes";
 
 /// A write that did not happen: what was asked, and what came back.
 export type Failure = { what: string; said: string };
@@ -272,6 +279,8 @@ type State = {
   /// draws no drop target, so the window says it another way: the empty state
   /// and the list edge answer the pointer rather than staying silent.
   dragging: boolean;
+  /// Whether Preferences are open over the window.
+  showSettings: boolean;
   /// The tag being made, or `null`. `at` is what `git` will resolve — a hash, a
   /// branch, or empty for `HEAD` — and `where` is what the dialog *says* it is
   /// tagging, which is not the same thing: "HEAD" is a word, `a7fd50c` is a
@@ -444,6 +453,7 @@ const state = reactive<State>({
   keymap: {},
   zone: 1,
   branchCursor: null,
+  showSettings: false,
   tagging: null,
   pushingTag: null,
   pushedTag: null,
@@ -925,23 +935,37 @@ export async function selectFile(file: string, staged: boolean): Promise<void> {
 /// Switch screens. The shell — topbar, sidebar, status bar — does not move:
 /// it belongs to `App.vue`, not to a screen, which is the fix for the GPUI bug
 /// where opening History left a window with no way out of it.
+/// Open Preferences, over whatever is on screen.
+///
+/// Over, and not instead of: they belong to the application and not to the
+/// repository, and a screen of their own put them beside a sidebar still
+/// counting that repository's branches.
+///
+/// The two reads it needs are made here and once. A preference nobody looked
+/// at is a file nobody read, and the agent list costs a process per candidate.
+export function openSettings(): void {
+  state.showSettings = true;
+  if (state.preferences.status === "idle") void readPreferences();
+  if (state.agents === null) void readAgents();
+}
+
+export function closeSettings(): void {
+  state.showSettings = false;
+}
+
 export function showScreen(screen: Screen): void {
   // Working Copy and History are views *of a repository*. With none open they
   // would draw a shell around nothing — a sidebar counting a working copy that
   // does not exist, a history that cannot load. Reachable only through the
   // sidebar, which is only drawn when one is open; the guard makes that a
   // property of the state rather than of the routing.
-  // Preferences belong to the application rather than to a repository, like
-  // the Repositories screen itself: they are the one thing you may need before
-  // you have opened anything — the theme is unreadable, or `git` is missing.
-  if (screen !== "repositories" && screen !== "settings" && !state.open) {
+  if (screen !== "repositories" && !state.open) {
     state.screen = "repositories";
     return;
   }
-  if (screen === "settings" && state.preferences.status === "idle") void readPreferences();
-  // Once, and only on this screen: finding out costs a process per candidate.
-  if (screen === "settings" && state.agents === null) void readAgents();
+
   state.screen = screen;
+
   // History is read when it is first looked at rather than when a repository
   // opens: a walk of a hundred thousand commits is not what someone who wanted
   // to stage a file asked for.

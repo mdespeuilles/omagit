@@ -127,10 +127,10 @@ describe("the way to Preferences", () => {
     await settings.trigger("click");
     await app.vm.$nextTick();
 
-    expect(state.app.screen).toBe("settings");
-    // And the bar says where you are rather than "Repositories", which is what
-    // it said while showing another screen.
-    expect(topbar(app)).toContain("Settings");
+    expect(state.app.showSettings, "open, over the window").toBe(true);
+    // And the screen under them has not moved: they are the application's, not
+    // a view of a repository.
+    expect(state.app.screen).toBe("repositories");
   });
 });
 

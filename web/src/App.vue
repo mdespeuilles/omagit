@@ -111,12 +111,6 @@ const widths = {
         </section>
       </template>
 
-      <!-- Preferences: one column, because it is a form and not a browse. The
-           sidebar stays, so the way back is where it always is. -->
-      <template v-else-if="app.screen === 'settings'">
-        <Settings />
-      </template>
-
       <!-- The shelf, in the shape History already has: the list in the middle
            column, and what one entry holds stacked above its diff. A stash is a
            commit, so the right-hand side is the same two panes. -->
@@ -148,6 +142,9 @@ const widths = {
   <Progress />
   <Notice />
   <StatusBar />
+  <!-- Par-dessus la fenêtre, et non à la place d'un écran : les réglages sont
+       ceux de l'application, pas ceux du dépôt. -->
+  <Settings v-if="app.showSettings" />
   <TagDialog v-if="app.tagging" />
   <Confirm v-if="app.question" />
   <CloneDialog v-if="app.clone" />

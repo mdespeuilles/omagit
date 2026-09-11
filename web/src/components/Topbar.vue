@@ -41,6 +41,7 @@ import {
   pullRemote,
   pushBranch,
   openPalette,
+  openSettings,
   showScreen,
 } from "../state";
 import { tildify } from "../format";
@@ -102,9 +103,7 @@ const cannotPush = computed(() => {
 const reduced = computed(() => !inRepository.value && (app.platform?.reserve.leading ?? 0) === 0);
 
 /// What the bar says you are looking at, when it is not a repository.
-const crumb = computed(() =>
-  app.screen === "settings" ? t("settings.title") : t("topbar.repositories"),
-);
+const crumb = computed(() => t("topbar.repositories"));
 
 /// Whether the window is looking *into* a repository, which is what decides the
 /// topbar's whole shape.
@@ -226,10 +225,10 @@ const where = computed(() => {
          repository is open, or a shortcut you had to know. -->
     <button
       class="icon"
-      :class="{ on: app.screen === 'settings' }"
+      :class="{ on: app.showSettings }"
       :title="titled(t('settings.title'), 'settings.open')"
       :aria-label="t('settings.title')"
-      @click="showScreen('settings')"
+      @click="openSettings()"
     >
       <Glyph name="settings" />
     </button>

@@ -266,7 +266,7 @@ export const ACTIONS: Action[] = [
     where: "always",
     menu: "app",
     enabled: () => true,
-    run: () => store.showScreen("settings"),
+    run: () => store.openSettings(),
   },
   {
     id: "journal.toggle",
@@ -408,8 +408,23 @@ function typing(target: EventTarget | null): boolean {
 
 /// Whether a dialog is up. Dialogs answer their own keys — `Esc`, `⌘⏎`, `n` —
 /// and a global binding firing behind one would act on a screen nobody can see.
+///
+/// Every dialog belongs here, and two did not: the tag dialog, which arrived
+/// without being added, and Preferences, which used to be a screen. A list that
+/// has to be remembered at each new dialog is a list that will be forgotten
+/// again — but the alternative, asking the DOM whether an overlay is mounted,
+/// makes the keyboard depend on rendering. This stays a list, and the tests
+/// name it.
 function overlaid(): boolean {
-  return !!app.question || !!app.clone || !!app.resolving || !!app.palette || app.shortcuts;
+  return (
+    !!app.question ||
+    !!app.clone ||
+    !!app.resolving ||
+    !!app.palette ||
+    !!app.tagging ||
+    app.shortcuts ||
+    app.showSettings
+  );
 }
 
 /// Run whichever action the event names, and say whether one did.

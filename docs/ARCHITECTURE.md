@@ -2525,6 +2525,33 @@ the same signal, and the same reasoning, as the window's own close button. These
 buttons are only ever drawn while their row is hovered, so a stronger line costs
 no quiet.
 
+### 2.69 Preferences stopped being a screen
+
+Reported plainly: "dans le panneau de droite c'est confusing". It was. They took
+the right-hand side while the sidebar went on counting a repository's branches
+beside them — which reads as though the settings belonged to *that repository*.
+They do not. They are the application's, and they are the one thing you may need
+before opening anything at all.
+
+A form over the window is a dialog, and the window already has four. So
+`Screen` lost its fifth member, `showSettings` took its place, and `Settings.vue`
+gained the `.overlay` / `.dialog` wrapper every other one wears. What it cost is
+small and what it settles is the reading: the sidebar is dimmed behind them
+rather than standing beside them as a peer.
+
+`Esc` closes them, but stands down twice — the shortcut sheet opens *from* here
+and wants it first, and the keymap's capture box is already listening with a
+handler of its own.
+
+**And it uncovered a list that had been forgotten twice.** `overlaid()` in
+`keymap.ts` names the dialogs the global bindings stand down behind, and it was
+missing the tag dialog — which arrived in §2.68 without being added, so `⌘F` and
+`j`/`k` were still firing at the screen behind it. Preferences would have been
+the second omission. A list that must be remembered at every new dialog is a
+list that will be forgotten again; the alternative, asking the DOM whether an
+overlay is mounted, makes the keyboard depend on rendering. It stays a list, and
+a test now names every member and fails when one is dropped.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
