@@ -2332,6 +2332,53 @@ and not at the element. Every one of `Splitter.test.ts`'s assertions went to the
 fallback value at once — no handler had fired, and nothing said so. The comment
 moved into the script, and a test now holds the root to being one element.
 
+### 2.68 Tags, which had only ever been read
+
+SPEC §11 asks for them beside branches — "Tags légers et annotés" under
+"créer, basculer, renommer, supprimer" — and they were half built without
+anybody noticing: `refs.rs` has peeled annotated tags since M5, the sidebar has
+drawn them since, and nothing could make one. The rows answered no click and
+carried no action. §5 did not record it as a gap either, which is the part worth
+noting: a feature that is *visible* is easy to mistake for a feature that is
+there.
+
+**The kind is not a switch.** A lightweight tag is a ref and an annotated one is
+an object with a tagger, a date and a message, and `git` decides which by
+whether there is a message — `-m` implies `-a`. Offering an "annotated"
+checkbox beside the message field would let the two disagree: annotated with no
+message is a prompt for an editor that never opens here, and lightweight with a
+message throws the message away. So the message decides, and the dialog says
+which one is about to be made, under the field that decides it.
+
+**The message goes on standard input.** It is a paragraph somebody typed, and a
+paragraph in an argument is a paragraph a quoting mistake truncates. `--file -`
+is what `git` offers for exactly this, and it is the door the commit message
+already goes through.
+
+**A name already taken is not pre-empted.** `git` refuses it and names the tag
+in the way — SPEC §3 rule 3 wants its words shown — and the refusal is what
+*offers* to move it, in the dialog that stays open. "Move it" is not a question
+anybody can answer before being told there is something to move, so a "force"
+checkbox visible from the start would be a checkbox about nothing. Changing the
+name takes the offer away again.
+
+**Three destructive acts, and they are not the same one.** Deleting a tag leaves
+nothing at all — a branch keeps its tip in the reflog and a tag does not — but
+it touches no remote, so a published tag comes back with the next fetch. The
+confirmation says both halves, because "delete" reading as "unpublish" is how
+somebody deletes the same tag three times. Removing it from a remote is a
+separate command and a separate question: it takes something away from everyone
+who fetches from there, and a client that did both from one button would do that
+for somebody who only wanted their own copy tidied. Publishing asks nothing,
+because it takes nothing away.
+
+**One tag is pushed, never `--tags`.** Publishing everything local publishes
+whatever happens to be lying around, including the ones somebody made while
+trying something out. Naming it is the gesture.
+
+The section is drawn now even when it is empty, which it was not: a repository
+with no tags had no way to get its first.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -2510,6 +2557,8 @@ window:
 - **The Repositories screen** (§2.27): the grouped list with a summary per row,
   the card of board 06, adding through the platform's folder picker, and
   removing an entry without touching the disk.
+- **Tags** (§2.68): lightweight and annotated, made from the sidebar or from a
+  commit, deleted with the question a tag deserves, and published one at a time.
 - **The right-hand panel resized** (§2.67): the commit, its files and its diff
   are three stacked zones with both boundaries draggable and remembered, by the
   same splitter the columns use.

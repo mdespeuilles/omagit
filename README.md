@@ -41,6 +41,11 @@ exact command appears in the journal like every other.
 into it — or pick the folder from the card, which is the route that does not
 need a pointer. Removing a folder keeps what was filed in it.
 
+**Tags.** Lightweight or annotated — the message is what decides, the way `git`
+decides it — made on the current commit or on the one you are reading. Deleting
+one says what it does *not* take: the commit stays, and a tag already pushed
+stays on the remote. Published one at a time, never all at once.
+
 **Branches, remotes, tags, stashes.** Grouped on `/`, ahead/behind kept fresh,
 "merged" read from `git` rather than guessed. Fetch, pull (merge or rebase),
 push — `--force-with-lease` only, never a bare `--force`. Cloning with a

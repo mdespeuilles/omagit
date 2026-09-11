@@ -369,6 +369,17 @@ export const strings = {
   "ask.removeGroup.detail":
     "The {n} it holds move to {into}. Nothing leaves the list, and nothing " + "leaves the disk.",
   "ask.removeGroup.verb": "Remove the folder",
+  "ask.deleteTag.title": "Delete the tag {name}?",
+  "ask.deleteTag.detail":
+    "It leaves nothing behind: a branch keeps its tip in the reflog and a tag does not. " +
+    "The commit it named is untouched, and a tag that was pushed stays on the remote — " +
+    "it comes back with the next fetch.",
+  "ask.deleteTag.verb": "Delete the tag",
+  "ask.unpublishTag.title": "Remove {name} from {remote}?",
+  "ask.unpublishTag.detail":
+    "It disappears for everybody who fetches from there. Your own copy stays: removing " +
+    "a tag here and removing it there are two decisions.",
+  "ask.unpublishTag.verb": "Remove from the remote",
   "ask.reconcile.title": "Merge or rebase?",
   "ask.reconcile.detail":
     "{branch} has {ahead} that {upstream} does not, and {upstream} has {behind} of its own. Nothing in the configuration says how to reconcile them, and git refuses to choose. Merging keeps both histories and adds a merge commit; rebasing replays your commits on top of theirs, which rewrites them. This choice holds for this pull only: nothing is stored.",
@@ -446,6 +457,10 @@ export const strings = {
   "do.stashPop": "Apply and drop {where}",
   "do.commit": "Commit",
   "do.amend": "Amend the commit",
+  "do.createTag": "Tag {name}",
+  "do.deleteTag": "Delete the tag {name}",
+  "do.publishTag": "Push {name} to {remote}",
+  "do.unpublishTag": "Remove {name} from {remote}",
   "do.createBranch": "Create {name}",
   "do.binding": "Shortcut: {binding}",
   "do.bindingDefault": "Default shortcut",
@@ -558,6 +573,31 @@ export const strings = {
   "agent.guidelinesNote":
     "Optional, and for what the project does not already say: the agent reads its " +
     "CLAUDE.md or AGENTS.md before answering.",
+  // ── Tags ────────────────────────────────────────────────────────────────
+  //
+  // "Tag" and not "label": it is Git's own word, and the catalogue's preamble
+  // keeps Git's vocabulary.
+  "tag.title": "New tag",
+  "tag.name": "Name",
+  "tag.namePlaceholder": "v1.0.0",
+  "tag.at": "On",
+  "tag.head": "the current commit",
+  "tag.message": "Message",
+  "tag.messagePlaceholder": "What this release is. Leave empty for a lightweight tag.",
+  "tag.kindAnnotated": "Annotated — an object with a tagger, a date and this message.",
+  "tag.kindLightweight": "Lightweight — a name pointing at the commit, and nothing else.",
+  "tag.create": "Create",
+  "tag.cancel": "Cancel",
+  "tag.force": "Move it to this commit",
+  "tag.new": "New tag",
+  "tag.newTitle": "Tag the current commit",
+  "tag.tagThis": "Tag",
+  "tag.tagThisTitle": "Tag this commit",
+  "tag.delete": "Delete",
+  "tag.deleteTitle": "Delete this tag — only here, not on any remote",
+  "tag.publish": "Push",
+  "tag.publishTitle": "Push this tag to {remote}",
+  "tag.annotated": "annotated",
   "settings.keyboard": "Keyboard",
   "settings.keyboardNote":
     "One table, read by four things: the keyboard, the palette, the shortcut sheet and the menu bar. Changing a binding here changes all four.",

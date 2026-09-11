@@ -32,7 +32,7 @@ use crate::{Cancel, GitError, Repository, Result};
 /// repository over a slow link is legitimately minutes. It is still bounded —
 /// a `git` that has stopped making progress has to end eventually, and
 /// cancellation is the user's answer for everything shorter than this.
-const NETWORK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+pub(crate) const NETWORK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 
 /// Asking a remote whether it is there gets a much shorter one.
 ///

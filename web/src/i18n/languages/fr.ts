@@ -347,6 +347,17 @@ export const strings: Record<keyof typeof reference, string> = {
     "Les {n} qu'il contient passent dans {into}. Rien ne quitte la liste, " +
     "rien ne quitte le disque.",
   "ask.removeGroup.verb": "Supprimer le dossier",
+  "ask.deleteTag.title": "Supprimer l'étiquette {name} ?",
+  "ask.deleteTag.detail":
+    "Elle ne laisse rien : une branche garde sa pointe dans le reflog, une étiquette non. " +
+    "Le commit qu'elle désignait n'est pas touché, et une étiquette déjà poussée reste sur " +
+    "le distant — elle revient au prochain fetch.",
+  "ask.deleteTag.verb": "Supprimer l'étiquette",
+  "ask.unpublishTag.title": "Retirer {name} de {remote} ?",
+  "ask.unpublishTag.detail":
+    "Elle disparaît pour tous ceux qui récupèrent depuis là. Votre copie reste : supprimer " +
+    "une étiquette ici et la retirer là-bas sont deux décisions.",
+  "ask.unpublishTag.verb": "Retirer du distant",
   "ask.reconcile.title": "Fusionner ou rebaser ?",
   "ask.reconcile.detail":
     "{branch} a {ahead} que {upstream} n'a pas, et {upstream} en a {behind} de son côté. Rien dans la configuration ne dit comment les réconcilier, et git refuse de choisir. Fusionner garde les deux histoires et ajoute un commit de fusion ; rebaser rejoue tes commits par-dessus les siens, donc les réécrit. Ce choix ne vaut que pour ce pull : rien n'est enregistré.",
@@ -425,6 +436,10 @@ export const strings: Record<keyof typeof reference, string> = {
   "do.stashPop": "Appliquer et retirer {where}",
   "do.commit": "Commiter",
   "do.amend": "Corriger le commit",
+  "do.createTag": "Poser l'étiquette {name}",
+  "do.deleteTag": "Supprimer l'étiquette {name}",
+  "do.publishTag": "Pousser {name} vers {remote}",
+  "do.unpublishTag": "Retirer {name} de {remote}",
   "do.createBranch": "Créer {name}",
   "do.binding": "Raccourci : {binding}",
   "do.bindingDefault": "Raccourci par défaut",
@@ -530,6 +545,28 @@ export const strings: Record<keyof typeof reference, string> = {
   "agent.guidelinesNote":
     "Facultatif, et pour ce que le projet ne dit pas déjà : l'agent lit son CLAUDE.md ou " +
     "son AGENTS.md avant de répondre.",
+  // ── Les étiquettes ──────────────────────────────────────────────────────
+  "tag.title": "Nouvelle étiquette",
+  "tag.name": "Nom",
+  "tag.namePlaceholder": "v1.0.0",
+  "tag.at": "Sur",
+  "tag.head": "le commit courant",
+  "tag.message": "Message",
+  "tag.messagePlaceholder": "Ce qu'est cette version. Laisser vide pour une étiquette légère.",
+  "tag.kindAnnotated": "Annotée — un objet avec un auteur, une date et ce message.",
+  "tag.kindLightweight": "Légère — un nom qui désigne le commit, et rien d'autre.",
+  "tag.create": "Créer",
+  "tag.cancel": "Annuler",
+  "tag.force": "La déplacer sur ce commit",
+  "tag.new": "Nouvelle étiquette",
+  "tag.newTitle": "Étiqueter le commit courant",
+  "tag.tagThis": "Étiqueter",
+  "tag.tagThisTitle": "Étiqueter ce commit",
+  "tag.delete": "Supprimer",
+  "tag.deleteTitle": "Supprimer cette étiquette — ici seulement, pas sur un distant",
+  "tag.publish": "Pousser",
+  "tag.publishTitle": "Pousser cette étiquette vers {remote}",
+  "tag.annotated": "annotée",
   "settings.keyboard": "Clavier",
   "settings.keyboardNote":
     "Une seule table, lue par quatre choses : le clavier, la palette, la feuille des raccourcis et la barre de menus. Changer une liaison ici les change toutes les quatre.",

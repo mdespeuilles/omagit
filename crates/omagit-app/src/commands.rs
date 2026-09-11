@@ -690,6 +690,71 @@ pub fn delete_branch(
     omagit_git::ops::delete(&git, &open.repo, &name, force, &state.cancel()).map_err(say)
 }
 
+// ── Tags ────────────────────────────────────────────────────────────────────
+//
+// SPEC §11 asks for "tags légers et annotés" beside branches. They have been
+// read since M5 — `refs.rs` peels them, the sidebar draws them — and nothing
+// could make one.
+
+/// Make a tag. A message makes it annotated; none makes it a bare ref.
+#[tauri::command(async)]
+pub fn create_tag(
+    state: State<'_, AppState>,
+    path: String,
+    name: String,
+    at: String,
+    message: String,
+    force: bool,
+) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let at = at.trim();
+    let message = message.trim();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::tag::create(
+        &git,
+        &open.repo,
+        name.trim(),
+        (!at.is_empty()).then_some(at),
+        (!message.is_empty()).then_some(message),
+        force,
+        &state.cancel(),
+    )
+    .map_err(say)
+}
+
+/// Take one out of this repository. Not off any remote — see `ops::tag`.
+#[tauri::command(async)]
+pub fn delete_tag(state: State<'_, AppState>, path: String, name: String) -> Answer<()> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    omagit_git::ops::tag::delete(&git, &open.repo, &name, &state.cancel()).map_err(say)
+}
+
+/// Publish one, or take it back off the remote.
+#[tauri::command(async)]
+pub fn push_tag(
+    state: State<'_, AppState>,
+    path: String,
+    remote: String,
+    name: String,
+    remove: bool,
+) -> Answer<String> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+
+    let _serialised = open.write_lock.lock();
+    let cancel = state.cancel();
+    if remove {
+        omagit_git::ops::tag::unpublish(&git, &open.repo, &remote, &name, &cancel).map_err(say)
+    } else {
+        omagit_git::ops::tag::push(&git, &open.repo, &remote, &name, &cancel).map_err(say)
+    }
+}
+
 // ── Preferences (M9) ────────────────────────────────────────────────────────
 //
 // The screen that replaces editing `settings.toml` by hand. Everything here

@@ -272,6 +272,20 @@ type State = {
   /// draws no drop target, so the window says it another way: the empty state
   /// and the list edge answer the pointer rather than staying silent.
   dragging: boolean;
+  /// The tag being made, or `null`. `at` is what `git` will resolve — a hash, a
+  /// branch, or empty for `HEAD` — and `where` is what the dialog *says* it is
+  /// tagging, which is not the same thing: "HEAD" is a word, `a7fd50c` is a
+  /// commit you can recognise.
+  tagging: {
+    name: string;
+    message: string;
+    at: string;
+    where: string;
+    /// Only offered once `git` has refused the name, which is the only moment
+    /// anybody can honestly be asked "move it?".
+    force: boolean;
+    refused: string | null;
+  } | null;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
@@ -405,6 +419,7 @@ const state = reactive<State>({
   keymap: {},
   zone: 1,
   branchCursor: null,
+  tagging: null,
   libraryFilter: "",
   renamingGroup: null,
   draggedRepository: null,
@@ -1656,6 +1671,116 @@ export function deleteBranch(row: { name: string; merged: boolean }): void {
       void write(t("ask.deleteBranch.verb") + ` ${row.name}`, () =>
         api.deleteBranch(path, row.name, force),
       ),
+  );
+}
+
+// ── Tags ────────────────────────────────────────────────────────────────────
+//
+// SPEC §11 asks for them beside branches — "tags légers et annotés" — and they
+// had only ever been read.
+
+/// Open the dialog. `at` is empty for `HEAD`.
+export function openTag(at: string, where: string): void {
+  state.tagging = { name: "", message: "", at, where, force: false, refused: null };
+}
+
+export function closeTag(): void {
+  state.tagging = null;
+}
+
+/// Whether a name already taken should be moved. Only reachable once `git` has
+/// refused, which is the only moment the question means anything.
+export function setTagForce(on: boolean): void {
+  if (state.tagging) state.tagging.force = on;
+}
+
+export function setTagField(field: "name" | "message", value: string): void {
+  if (!state.tagging) return;
+  state.tagging[field] = value;
+  // A name that was refused is a different name now.
+  if (field === "name") {
+    state.tagging.refused = null;
+    state.tagging.force = false;
+  }
+}
+
+/// Make it.
+///
+/// A name already taken is not pre-empted: `git` refuses it and says which tag
+/// is in the way, which is better than anything composed here (SPEC §3 rule 3).
+/// What the refusal does is *offer the force*, in the dialog that is still
+/// open — because "move it" is a question nobody can answer before being told
+/// there is something to move.
+export async function createTag(): Promise<void> {
+  const path = state.open;
+  const form = state.tagging;
+  if (!path || !form || form.name.trim() === "") return;
+  const name = form.name.trim();
+  state.busy = t("do.createTag", { name });
+  state.writeError = null;
+  try {
+    await api.createTag(path, name, form.at, form.message, form.force);
+    state.tagging = null;
+    await readRefs();
+  } catch (error) {
+    const said = message(error);
+    // `git tag` says "already exists" and nothing else does, so the offer to
+    // move it is made only on the answer that means it.
+    if (!form.force && /already exists/i.test(said)) {
+      form.refused = said;
+    } else {
+      state.writeError = { what: t("do.createTag", { name }), said };
+      state.tagging = null;
+    }
+  } finally {
+    state.busy = null;
+  }
+}
+
+/// Take one out of this repository. Not off any remote.
+export function deleteTag(name: string): void {
+  const path = state.open;
+  if (!path) return;
+  ask(
+    {
+      title: t("ask.deleteTag.title", { name }),
+      detail: t("ask.deleteTag.detail"),
+      verb: t("ask.deleteTag.verb"),
+    },
+    () =>
+      void write(t("do.deleteTag", { name }), async () => {
+        await api.deleteTag(path, name);
+        await readRefs();
+      }),
+  );
+}
+
+/// Publish one, or take it back off the remote.
+///
+/// Removing it there is asked about and publishing is not: one of the two can
+/// take away something other people are already using.
+export function publishTag(name: string, remote: string, remove: boolean): void {
+  const path = state.open;
+  if (!path) return;
+  const go = (): void => {
+    void write(
+      remove ? t("do.unpublishTag", { name, remote }) : t("do.publishTag", { name, remote }),
+      async () => {
+        state.notes = worded(await api.pushTag(path, remote, name, remove));
+      },
+    );
+  };
+  if (!remove) {
+    go();
+    return;
+  }
+  ask(
+    {
+      title: t("ask.unpublishTag.title", { name, remote }),
+      detail: t("ask.unpublishTag.detail"),
+      verb: t("ask.unpublishTag.verb"),
+    },
+    go,
   );
 }
 

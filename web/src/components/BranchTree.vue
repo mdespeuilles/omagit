@@ -12,8 +12,11 @@ import {
   checkoutBranch,
   createBranch,
   deleteBranch,
+  deleteTag,
   isCollapsed,
   mergeBranch,
+  openTag,
+  publishTag,
   rebaseOnto,
   showBranchHistory,
   shown,
@@ -279,19 +282,51 @@ function stop(name: string): 0 | -1 {
         </template>
       </template>
 
-      <template v-if="refs.tags.length > 0">
-        <button class="group-head as-button" @click="toggleBranchGroup('tags')">
+      <!-- Tags were drawn here from M5 and did nothing: no row answered a
+           click, and nothing could make one. SPEC §11 asks for them beside
+           branches, so they get what a branch row has — a way in, a way out,
+           and a way to publish. -->
+      <div class="group-head tag-head">
+        <button class="as-button group-fold" @click="toggleBranchGroup('tags')">
           <Glyph :name="isCollapsed('tags') ? 'chevron-right' : 'chevron-down'" class="chevron" />
           <Glyph name="tag" class="branch-glyph" /><span>{{ t("branches.tags") }}</span>
-          <span class="pane-head-spacer" />
-          <span class="pane-head-count">{{ refs.tags.length }}</span>
         </button>
-        <template v-if="!isCollapsed('tags')">
-          <span v-for="tag in refs.tags" :key="tag.name" class="row branch-row">
-            <Glyph name="tag" class="branch-glyph" />
-            <span class="branch-name">{{ tag.name }}</span>
-          </span>
-        </template>
+        <span class="pane-head-count">{{ refs.tags.length }}</span>
+        <button class="row-action" :title="t('tag.newTitle')" @click="openTag('', t('tag.head'))">
+          <span class="mono">+</span>
+        </button>
+      </div>
+      <template v-if="!isCollapsed('tags')">
+        <!-- A `<div>`, not a `<button>`: the row carries buttons of its own,
+             and a button inside a button is markup a parser undoes. -->
+        <div
+          v-for="tag in refs.tags"
+          :key="tag.name"
+          class="row branch-row tag-row"
+          :class="{ selected: showing(tag.name) }"
+          :title="t('branches.row', { branch: tag.name })"
+          @click="showBranchHistory(tag.name)"
+        >
+          <Glyph name="tag" class="branch-glyph" />
+          <span class="branch-name">{{ tag.name }}</span>
+          <span v-if="tag.annotated" class="ref">{{ t("tag.annotated") }}</span>
+          <span class="pane-head-spacer" />
+          <button
+            v-if="remotes.length > 0"
+            class="row-action"
+            :title="t('tag.publishTitle', { remote: remotes[0]![0] })"
+            @click.stop="publishTag(tag.name, remotes[0]![0], false)"
+          >
+            {{ t("tag.publish") }}
+          </button>
+          <button
+            class="row-action danger"
+            :title="t('tag.deleteTitle')"
+            @click.stop="deleteTag(tag.name)"
+          >
+            {{ t("tag.delete") }}
+          </button>
+        </div>
       </template>
 
       <template v-if="remotes.length > 0">

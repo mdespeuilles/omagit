@@ -1618,6 +1618,73 @@ select:focus {
   flex: 1;
 }
 
+/* ── Tags ────────────────────────────────────────────────────────────────── */
+
+/* A section head that is also the way to make one. The same shape the
+   repository list's folders take: the fold takes the width, the count and the
+   actions sit at the end. */
+.tag-head {
+  gap: 4px;
+}
+.tag-head .group-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+.tag-head .group-fold:hover {
+  color: var(--text);
+}
+.tag-head .row-action {
+  height: 16px;
+  opacity: 0;
+}
+.tag-head:hover .row-action,
+.tag-head .row-action:focus-visible {
+  opacity: 1;
+}
+
+/* A tag row answers a click now, so it takes the cursor a branch row takes. */
+.tag-row {
+  cursor: pointer;
+}
+.tag-row .row-action {
+  height: 16px;
+  opacity: 0;
+}
+.tag-row:hover .row-action,
+.tag-row .row-action:focus-visible {
+  opacity: 1;
+}
+/* "annotated" beside the name: the one thing about a tag that is invisible
+   from it, and the difference between a release and a bookmark. */
+.tag-row .ref {
+  color: var(--text-muted);
+}
+
+/* The dialog's own two lines: which kind of tag the message is about to make,
+   and the offer to move one that already exists. */
+.tag-kind,
+.tag-force {
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+.tag-force {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ── The sidebar ─────────────────────────────────────────────────────────── */
 
 .sidebar-glyph {

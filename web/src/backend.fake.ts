@@ -154,6 +154,10 @@ export class Repository {
     },
   ];
   tags: TagRow[] = [];
+  /// Which of them have been pushed, so a test can see that one was and the
+  /// others were not — `--tags` publishing everything is the mistake worth
+  /// catching.
+  published: string[] = [];
   remoteBranches: RemoteBranchRow[] = [];
   /// Held open so a test can watch the overlay while an operation runs.
   holdNetwork: Promise<void> | null = null;
@@ -311,6 +315,45 @@ export class Repository {
       }
       case "git_status":
         return null;
+
+      // Tags. The fake refuses a name it already holds the way `git` does —
+      // "already exists" is the exact phrase the dialog watches for to offer
+      // moving it, so a fake that said anything else would test nothing.
+      case "create_tag": {
+        const name = (args["name"] as string).trim();
+        const force = args["force"] as boolean;
+        const message = (args["message"] as string).trim();
+        const held = this.tags.findIndex((row) => row.name === name);
+        if (held >= 0 && !force) {
+          throw new Error(`fatal: tag '${name}' already exists`);
+        }
+        const row = {
+          name,
+          commit: { full: "t".repeat(40), short: "ttttttt" },
+          annotated: message !== "",
+        };
+        if (held >= 0) this.tags[held] = row;
+        else this.tags.push(row);
+        return undefined;
+      }
+      case "delete_tag":
+        this.tags = this.tags.filter((row) => row.name !== args["name"]);
+        return undefined;
+      case "push_tag": {
+        if (this.failNetwork) {
+          const failure = this.failNetwork;
+          this.failNetwork = null;
+          throw new Error(failure);
+        }
+        const name = args["name"] as string;
+        const remote = args["remote"] as string;
+        if (args["remove"] as boolean) {
+          this.published = this.published.filter((one) => one !== name);
+          return `To ${remote}\n - [deleted]         ${name}`;
+        }
+        this.published.push(name);
+        return `To ${remote}\n * [new tag]         ${name} -> ${name}`;
+      }
 
       // The commit-message agent. The fake never runs one — what a test is
       // about here is which button is drawn and what lands in the box, not

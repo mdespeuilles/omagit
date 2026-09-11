@@ -413,6 +413,14 @@ export const api = {
   //
   // `agents` starts a process per candidate, so it is asked when the block is
   // looked at and not with the rest of the preferences.
+  // Tags (SPEC §11). A message is what makes one annotated rather than a bare
+  // ref, so there is no separate flag to disagree with it.
+  createTag: (path: string, name: string, at: string, message: string, force: boolean) =>
+    invoke<void>("create_tag", { path, name, at, message, force }),
+  deleteTag: (path: string, name: string) => invoke<void>("delete_tag", { path, name }),
+  pushTag: (path: string, remote: string, name: string, remove: boolean) =>
+    invoke<string>("push_tag", { path, remote, name, remove }),
+
   agents: () => invoke<Agents>("agents"),
   /// Only which one is chosen, which costs a string rather than three
   /// processes. What start-up asks.

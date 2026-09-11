@@ -23,6 +23,7 @@ import Settings from "./components/Settings.vue";
 import Shortcuts from "./components/Shortcuts.vue";
 import Sidebar from "./components/Sidebar.vue";
 import Splitter from "./components/Splitter.vue";
+import TagDialog from "./components/TagDialog.vue";
 import StashDetail from "./components/StashDetail.vue";
 import StashList from "./components/StashList.vue";
 import StatusBar from "./components/StatusBar.vue";
@@ -147,6 +148,7 @@ const widths = {
   <Progress />
   <Notice />
   <StatusBar />
+  <TagDialog v-if="app.tagging" />
   <Confirm v-if="app.question" />
   <CloneDialog v-if="app.clone" />
   <Palette v-if="app.palette" />

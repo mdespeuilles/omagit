@@ -6,6 +6,7 @@ import { authored, exact, when } from "../format";
 import {
   app,
   goToZone,
+  openTag,
   paneArranged,
   paneWidth,
   selectCommitFile,
@@ -57,6 +58,18 @@ const panelStyle = computed(() =>
         {{ comparison.from.short }} ↔ {{ comparison.to.short }}
       </span>
       <span v-else-if="detail" class="pane-head-title mono">{{ detail.id.short }}</span>
+      <span class="pane-head-spacer" />
+      <!-- The other way in. The sidebar's `+` means the current commit; this
+           one means the commit you are reading, which is the gesture somebody
+           has when they find the one they meant to tag. -->
+      <button
+        v-if="detail && !comparing"
+        class="link"
+        :title="t('tag.tagThisTitle')"
+        @click="openTag(detail.id.full, detail.id.short)"
+      >
+        {{ t("tag.tagThis") }}
+      </button>
     </header>
 
     <template v-if="comparing">

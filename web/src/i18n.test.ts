@@ -76,6 +76,10 @@ describe("the catalogues", () => {
           "settings.editorPlain",
           "settings.git",
           "sidebar.workspace",
+          // "Message" is the same word in both, and `v1.0.0` is an example of
+          // a tag name rather than a sentence.
+          "tag.message",
+          "tag.namePlaceholder",
         ].sort(),
       );
     }
