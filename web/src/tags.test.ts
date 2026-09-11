@@ -38,6 +38,17 @@ async function settled(state: typeof import("./state")): Promise<void> {
   throw new Error("l'écran ne s'est jamais stabilisé");
 }
 
+/// The re-walk is started and not awaited — a walk of a hundred thousand
+/// commits must not hold the window — so what a test waits on is the answer,
+/// not the busy flag.
+async function until(what: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (what()) return;
+    await new Promise((resume) => setTimeout(resume, 0));
+  }
+  throw new Error("la condition n'est jamais devenue vraie");
+}
+
 beforeEach(() => {
   backend.current = new Repository([]);
 });
@@ -163,6 +174,85 @@ describe("publishing one", () => {
     expect(backend.current.published).toEqual([]);
     const refs = state.app.refs;
     expect(refs.status === "ready" ? refs.value.tags : []).toHaveLength(1);
+  });
+});
+
+describe("the history underneath", () => {
+  it("carries the new tag on its commit row, with nothing refreshed by hand", async () => {
+    // Reported from use, on T06 of the test plan: "j'ai dû refresh pour voir
+    // l'étiquette sur le commit". The rows carry their own ref badges and are
+    // walked once — `settle()` re-read the status, the summary, the journal,
+    // the refs and the shelf, and never the history.
+    const state = await opened((fake) => {
+      fake.log = [
+        { id: "a".repeat(40), summary: "le dernier", parents: [] },
+        { id: "b".repeat(40), summary: "celui d'avant", parents: ["a".repeat(40)] },
+      ];
+    });
+    state.showScreen("history");
+    await settled(state);
+    const before = state.app.history;
+    expect(before.status === "ready" ? before.value[0]?.labels : null).toEqual([]);
+
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1.0.0");
+    await state.createTag();
+    await settled(state);
+
+    await until(() => {
+      const held = state.app.history;
+      return held.status === "ready" && (held.value[0]?.labels.length ?? 0) > 0;
+    });
+    const after = state.app.history;
+    expect(after.status === "ready" ? after.value[0]?.labels : null).toEqual([
+      { kind: "tag", name: "v1.0.0" },
+    ]);
+  });
+
+  it("leaves the commit being read open across the re-walk", async () => {
+    // `loadHistory` clears the detail pane, because a *query* change replaces
+    // the walk that produced it. Here the query has not changed, and closing
+    // what somebody is reading would be a worse answer than a stale badge.
+    const state = await opened((fake) => {
+      fake.log = [{ id: "a".repeat(40), summary: "le dernier", parents: [] }];
+    });
+    state.showScreen("history");
+    await settled(state);
+    await state.selectCommit("a".repeat(40));
+    await settled(state);
+    expect(state.app.commit.status).toBe("ready");
+
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1.0.0");
+    await state.createTag();
+    await settled(state);
+
+    await until(() => state.app.commit.status === "ready");
+    expect(state.app.commit.status, "still open").toBe("ready");
+    const held = state.app.commit;
+    expect(held.status === "ready" ? held.value.id.full : "").toBe("a".repeat(40));
+  });
+
+  it("does not re-walk when nothing about the refs moved", async () => {
+    // The cost the shelf above is careful about: a walk per checkbox. Staging a
+    // file moves no ref, so it must not pay for one.
+    const state = await opened((fake) => {
+      fake.files = [{ path: "a.txt", staged: null, unstaged: "modified", hunks: 1 }];
+      fake.log = [{ id: "a".repeat(40), summary: "le dernier", parents: [] }];
+    });
+    state.showScreen("history");
+    await settled(state);
+    const walks = backend.current.historyWalks;
+
+    state.showScreen("working-copy");
+    await settled(state);
+    const row = state.app.status.status === "ready" ? state.app.status.value[0]! : null;
+    state.stageFile(row!, false);
+    await settled(state);
+    // And a beat more, in case one was started late.
+    await new Promise((resume) => setTimeout(resume, 0));
+
+    expect(backend.current.historyWalks).toBe(walks);
   });
 });
 

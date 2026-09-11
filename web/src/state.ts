@@ -1721,7 +1721,7 @@ export async function createTag(): Promise<void> {
   try {
     await api.createTag(path, name, form.at, form.message, form.force);
     state.tagging = null;
-    await readRefs();
+    await readRefsAndHistory();
   } catch (error) {
     const said = message(error);
     // `git tag` says "already exists" and nothing else does, so the offer to
@@ -2506,6 +2506,65 @@ async function write(label: string, run: () => Promise<void>): Promise<void> {
   await settle();
 }
 
+/// A compact reading of every ref, for telling whether a write moved one.
+///
+/// Name *and* commit: a tag appearing changes the list, and a commit moves the
+/// tip it sits on without changing it.
+function refsMark(): string {
+  if (state.refs.status !== "ready") return "";
+  const held = state.refs.value;
+  return [
+    ...held.branches.map((one) => `b ${one.name} ${one.commit.full} ${one.head}`),
+    ...held.remote_branches.map((one) => `r ${one.remote}/${one.name} ${one.commit.full}`),
+    ...held.tags.map((one) => `t ${one.name} ${one.commit.full}`),
+  ].join("\n");
+}
+
+/// Re-read the refs, and walk the history again if any of them moved.
+///
+/// One door, because two callers need it and a third will: `settle()` after
+/// every write, and `createTag`, which does not go through `settle()` — it has
+/// its own busy state so that a name `git` refuses can keep the dialog open.
+/// That is exactly how the defect below arrived: the re-walk was added where
+/// the writes go and the tag dialog was not one of them.
+async function readRefsAndHistory(): Promise<void> {
+  const marked = refsMark();
+  await readRefs();
+  if (refsMark() !== marked) await rewalkHistory();
+}
+
+/// Walk the history again, and put back what was open in front of it.
+///
+/// Its rows carry their own ref badges and their own commits, and until now
+/// nothing ever re-walked them: a tag put on a commit was invisible on its row
+/// until a manual refresh — reported from use — and a commit just made did not
+/// appear at all if the screen had been looked at once before.
+///
+/// Re-walking after *every* write would be a walk per checkbox, which is the
+/// cost the shelf above is careful about. What says one is needed is the refs
+/// having moved, and that covers every case that can change the history: a tag,
+/// a branch, a checkout, a merge, and a plain commit too. Staging a file moves
+/// none of them and costs nothing here.
+async function rewalkHistory(): Promise<void> {
+  if (state.history.status === "idle") return;
+  // `loadHistory` clears the detail pane and any comparison, because the walk
+  // that produced them is being replaced. Here the *query* has not changed —
+  // only the repository under it — so the commits are still there, and closing
+  // what somebody is reading would be a worse answer than a stale badge.
+  const commit = state.commit.status === "ready" ? state.commit.value.id.full : null;
+  const from = state.compareFrom;
+  const to = state.compare.status === "ready" ? state.compare.value.to.full : null;
+
+  await loadHistory();
+  if (state.history.status !== "ready") return;
+  if (from && to) {
+    state.compareFrom = from;
+    await compareWith(to);
+  } else if (commit) {
+    await selectCommit(commit);
+  }
+}
+
 async function settle(): Promise<void> {
   const path = state.open;
   if (!path) return;
@@ -2520,7 +2579,9 @@ async function settle(): Promise<void> {
     void readSides(summary.operation);
     void refreshJournal();
     // A checkout, a branch created or deleted: the tree is what changed.
-    void readRefs();
+    //
+    // Awaited, and compared before and after, because the history has to know.
+    void readRefsAndHistory();
     // Only once it has been looked at: a write on the Working Copy screen
     // cannot change the shelf, and reading it on every stage would be a reflog
     // walk per checkbox. Popping and dropping do change it, and they happen on

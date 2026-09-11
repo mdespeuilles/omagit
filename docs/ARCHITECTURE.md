@@ -2404,6 +2404,33 @@ control changed nothing whatsoever. `.row-action` had no hover rule of its own
 at all, and has not had one since these actions existed — on branches, files,
 stashes and repositories alike.
 
+**And a fourth, from the recette: the history never re-walked.** Reported as
+"j'ai dû refresh pour voir l'étiquette sur le commit" — a tag made from a commit
+row did not appear on that row. Its cause is much older than tags. The history's
+rows carry their own ref badges and their own commits, computed by the walk, and
+`settle()` re-read the status, the summary, the journal, the refs and the shelf
+after every write — and never the history. So a branch created, a checkout, a
+merge, and a plain commit were all invisible in a history that had been looked at
+once, because it is walked when first shown and never again.
+
+What decides is the refs *moving*: a compact mark over every ref's name and
+commit, taken before the re-read and compared after. It covers every case that
+can change the history — a tag appears in the list, a commit moves the tip it
+sits on — and it stays silent for the writes that cannot, which is the point:
+re-walking after every write would be a walk per checkbox, the cost the shelf
+beside it is already careful about.
+
+The re-walk puts back what was open in front of it. `loadHistory` clears the
+detail pane and any comparison, and rightly so when the *query* changes and the
+walk that produced them is replaced; here the query has not changed, and closing
+what somebody is reading is a worse answer than a stale badge.
+
+One door for two callers, and the reason is a mistake made while fixing this:
+the re-walk went into `settle()`, where the writes go — and `createTag` does not
+go through `settle()`, because it keeps its own busy state so a name `git`
+refuses can leave the dialog open. The very defect being fixed came back on its
+own first attempt. `readRefsAndHistory` is what both call now.
+
 The answer is the border, because a border does not depend on what is behind it:
 stronger at rest, `--text` on hover, and a destructive one fills red instead —
 the same signal, and the same reasoning, as the window's own close button. These

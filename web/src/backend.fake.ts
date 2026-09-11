@@ -158,6 +158,9 @@ export class Repository {
   /// others were not — `--tags` publishing everything is the mistake worth
   /// catching.
   published: string[] = [];
+  /// How many times the history has been walked from the start, so a test can
+  /// say that a write which moved no ref did not pay for one.
+  historyWalks = 0;
   remoteBranches: RemoteBranchRow[] = [];
   /// Held open so a test can watch the overlay while an operation runs.
   holdNetwork: Promise<void> | null = null;
@@ -327,9 +330,13 @@ export class Repository {
         if (held >= 0 && !force) {
           throw new Error(`fatal: tag '${name}' already exists`);
         }
+        // On a real commit from the log, not an invented hash: the history's
+        // rows carry their own ref badges, and a tag that names nothing in the
+        // walk could never appear on one.
+        const at = (args["at"] as string).trim() || (this.log[0]?.id ?? "");
         const row = {
           name,
-          commit: { full: "t".repeat(40), short: "ttttttt" },
+          commit: { full: at, short: at.slice(0, 7) },
           annotated: message !== "",
         };
         if (held >= 0) this.tags[held] = row;
@@ -647,6 +654,7 @@ export class Repository {
         this.panes[args["name"] as string] = args["width"] as number;
         return undefined;
       case "history": {
+        this.historyWalks += 1;
         this.cursor = 0;
         this.handedOut = [];
         const query = (args["query"] ?? {}) as Partial<HistoryQuery>;
@@ -831,7 +839,11 @@ export class Repository {
         author: "Test Author",
         when: 1_767_225_600 + at,
         merge: commit.parents.length > 1,
-        labels: [],
+        // Derived, the way the real walk derives them — so a tag made while the
+        // screen is open is invisible until something re-walks.
+        labels: this.tags
+          .filter((tag) => tag.commit.full === commit.id)
+          .map((tag) => ({ kind: "tag", name: tag.name })),
         lane: commit.lane ?? 0,
         passing: [],
         incoming: [],
