@@ -83,7 +83,7 @@ const widths = {
     <template v-if="app.screen === 'repositories'">
       <section class="pane" :style="{ width: `${paneWidth('library', widths.library)}px` }">
         <RepositoryList />
-        <Splitter pane="library" :width="paneWidth('library', widths.library)" :min="240" />
+        <Splitter pane="library" :size="paneWidth('library', widths.library)" :min="240" />
       </section>
       <RepositoryCard />
     </template>
@@ -91,13 +91,13 @@ const widths = {
     <template v-else>
       <section class="pane" :style="{ width: `${paneWidth('sidebar', widths.sidebar)}px` }">
         <Sidebar />
-        <Splitter pane="sidebar" :width="paneWidth('sidebar', widths.sidebar)" :min="200" />
+        <Splitter pane="sidebar" :size="paneWidth('sidebar', widths.sidebar)" :min="200" />
       </section>
 
       <template v-if="app.screen === 'history'">
         <section class="pane" :style="{ width: `${paneWidth('history', widths.history)}px` }">
           <HistoryList />
-          <Splitter pane="history" :width="paneWidth('history', widths.history)" :min="360" />
+          <Splitter pane="history" :size="paneWidth('history', widths.history)" :min="360" />
         </section>
         <!-- The commit and its diff, stacked. Side by side they were two
              narrow columns fighting for the same width, and the diff — which
@@ -122,7 +122,7 @@ const widths = {
       <template v-else-if="app.screen === 'stashes'">
         <section class="pane" :style="{ width: `${paneWidth('middle', widths.middle)}px` }">
           <StashList />
-          <Splitter pane="middle" :width="paneWidth('middle', widths.middle)" :min="280" />
+          <Splitter pane="middle" :size="paneWidth('middle', widths.middle)" :min="280" />
         </section>
         <section class="stack">
           <StashDetail />
@@ -136,7 +136,7 @@ const widths = {
             <CommitBox />
             <StatusList />
           </div>
-          <Splitter pane="middle" :width="paneWidth('middle', widths.middle)" :min="280" />
+          <Splitter pane="middle" :size="paneWidth('middle', widths.middle)" :min="280" />
         </section>
       </template>
 

@@ -334,6 +334,7 @@ export const strings = {
   "diff.goneFromStash": "this file is no longer in this stash",
   "clone.slashInName": "The folder name cannot contain a /",
   /// `{pane}` is the column's own name, which is not shown anywhere else.
+  "panes.height": "Height of the {pane} pane",
   "panes.width": "Width of the {pane} column",
   "palette.title": "Command palette",
   "palette.actions": "Actions",

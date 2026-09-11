@@ -2293,6 +2293,45 @@ go through `write()`: that one calls `settle()`, which clears the lines picked
 in the diff, and a draft is not a write. It has no business undoing a selection
 somebody made by hand.
 
+### 2.67 The right-hand panel's three zones, dragged
+
+The commit, its files and its diff are stacked, and which of them deserves the
+room depends entirely on what you are looking at: a merge with a paragraph of
+message, a rename across forty files, one line changed in one. Both boundaries
+move now.
+
+**One splitter, two axes.** Everything hard about `Splitter.vue` — dividing the
+travel by `--scale`, settling once at the end rather than a hundred times
+through a drag, the keyboard fallback — is the same in both directions, and the
+only difference is which coordinate is read and which property is written. So
+`width` became `size` and `sizes: "width" | "height"` says which. `side` became
+`leading`/`trailing` for the same reason: "left" means nothing on an edge that
+runs along the bottom of a row.
+
+**A row's edge is in the flow; a column's is absolute.** That is the one real
+difference, and it is not a preference. A column's edge lives inside a pane that
+does not scroll. A row's edge sits between two stacked boxes and at least one of
+them *does* — the commit message scrolls — and an edge positioned absolutely
+inside a scroller is positioned against its content, so it slides out of reach
+on the first scroll. A 5px strip with a matching negative margin sits over the
+border and belongs to neither box.
+
+**The stylesheet keeps the answer until somebody disagrees with it.** A column
+has a width either way; these panes size themselves to their content, and a
+one-line commit message should not reserve half the panel. So `paneArranged`
+says whether this pane has ever been dragged, and only then is a height pinned.
+`max-height` stays a *percentage* even then: a stored 600px would crush the diff
+to nothing on a short window, which is the complaint the branch list already
+made once (§5). The cap rises from 45% to 70% only once somebody has said they
+want the room.
+
+**And a defect that hid itself.** Writing the note about `aria-orientation` as
+an HTML comment above the root `<div>` made the component a fragment; Vue keeps
+a comment as a node in development, so `mount(…).element` pointed at the comment
+and not at the element. Every one of `Splitter.test.ts`'s assertions went to the
+fallback value at once — no handler had fired, and nothing said so. The comment
+moved into the script, and a test now holds the root to being one element.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -2471,6 +2510,9 @@ window:
 - **The Repositories screen** (§2.27): the grouped list with a summary per row,
   the card of board 06, adding through the platform's folder picker, and
   removing an entry without touching the disk.
+- **The right-hand panel resized** (§2.67): the commit, its files and its diff
+  are three stacked zones with both boundaries draggable and remembered, by the
+  same splitter the columns use.
 - **Commit messages drafted by an agent** (§2.66): a coding agent already
   installed on the machine — `claude`, `codex`, `gemini`, or a command of the
   user's own — asked in the repository, with no key stored anywhere and no HTTP

@@ -7,9 +7,18 @@
 // were never tracked starts to.
 
 import { computed } from "vue";
-import { app, goToZone, selectStashFile, shown, zoneActive } from "../state";
+import {
+  app,
+  goToZone,
+  paneArranged,
+  paneWidth,
+  selectStashFile,
+  shown,
+  zoneActive,
+} from "../state";
 import { t } from "../i18n";
 import { when } from "../format";
+import Splitter from "./Splitter.vue";
 
 const entry = computed(() => shown(app.stashes)?.find((row) => row.id.full === app.stash) ?? null);
 const files = computed(() => (app.stashFiles.status === "ready" ? app.stashFiles.value : []));
@@ -17,10 +26,30 @@ const files = computed(() => (app.stashFiles.status === "ready" ? app.stashFiles
 function sign(row: { added: number; removed: number; reason: string | null }): string {
   return row.reason ?? `+${row.added} −${row.removed}`;
 }
+
+// ── The two edges this panel can be dragged by ─────────────────────────────
+//
+// Board 06's right-hand side is three stacked zones — the commit, its files,
+// and the diff — and which of them deserves the room depends entirely on the
+// commit you are looking at: a merge with a paragraph of message, a rename
+// across forty files, one line changed in one file. So both boundaries move.
+//
+// Sized by the stylesheet until somebody drags one, and from then on by what
+// they dragged it to. `max-height` stays a percentage in the CSS, so a stored
+// height cannot crush the pane below it on a shorter window — which is the
+// complaint the branch list already made once.
+const messageHeight = computed(() => paneWidth("detail-message", 0));
+const panelHeight = computed(() => paneWidth("detail", 0));
+const messageStyle = computed(() =>
+  paneArranged("detail-message") ? { flex: "none", height: `${messageHeight.value}px` } : {},
+);
+const panelStyle = computed(() =>
+  paneArranged("detail") ? { flex: "none", height: `${panelHeight.value}px` } : {},
+);
 </script>
 
 <template>
-  <section class="detail">
+  <section class="detail" :class="{ arranged: paneArranged('detail') }" :style="panelStyle">
     <header class="pane-head">
       <span>{{ t("stash.one") }}</span>
       <span v-if="entry" class="pane-head-title mono">{{ entry.id.short }}</span>
@@ -29,7 +58,11 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
     <p v-if="!entry" class="pane-empty">{{ t("stash.none") }}</p>
 
     <template v-else>
-      <div class="detail-head">
+      <div
+        class="detail-head"
+        :class="{ arranged: paneArranged('detail-message') }"
+        :style="messageStyle"
+      >
         <p class="detail-summary">{{ entry.message }}</p>
         <p class="detail-who">
           <span class="dim">{{ t("stash.from") }}</span>
@@ -44,6 +77,13 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
           <span class="dim">{{ t("stash.holdsUntracked") }}</span>
         </p>
       </div>
+      <Splitter
+        pane="detail-message"
+        sizes="height"
+        :size="messageHeight || 120"
+        :min="48"
+        :max="600"
+      />
 
       <header class="pane-head">
         <span>{{ t("stash.files") }}</span>
@@ -80,5 +120,6 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
         </li>
       </ol>
     </template>
+    <Splitter pane="detail" sizes="height" :size="panelHeight || 240" :min="80" :max="900" />
   </section>
 </template>

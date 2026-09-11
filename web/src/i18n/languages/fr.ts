@@ -315,6 +315,7 @@ export const strings: Record<keyof typeof reference, string> = {
   "diff.goneFromComparison": "ce fichier n'est pas dans cette comparaison",
   "diff.goneFromStash": "ce fichier n'est plus dans cette remise",
   "clone.slashInName": "Le nom du dossier ne peut pas contenir de /",
+  "panes.height": "Hauteur du panneau {pane}",
   "panes.width": "Largeur de la colonne {pane}",
   "palette.title": "Palette de commandes",
   "palette.actions": "Actions",

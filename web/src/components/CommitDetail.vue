@@ -6,12 +6,15 @@ import { authored, exact, when } from "../format";
 import {
   app,
   goToZone,
+  paneArranged,
+  paneWidth,
   selectCommitFile,
   selectCompareFile,
   stopComparing,
   zoneActive,
 } from "../state";
 import { count, t } from "../i18n";
+import Splitter from "./Splitter.vue";
 
 const detail = computed(() => (app.commit.status === "ready" ? app.commit.value : null));
 const comparison = computed(() => (app.compare.status === "ready" ? app.compare.value : null));
@@ -24,10 +27,30 @@ const comparing = computed(() => app.compare.status !== "idle");
 function sign(row: { added: number; removed: number; reason: string | null }): string {
   return row.reason ?? `+${row.added} −${row.removed}`;
 }
+
+// ── The two edges this panel can be dragged by ─────────────────────────────
+//
+// Board 06's right-hand side is three stacked zones — the commit, its files,
+// and the diff — and which of them deserves the room depends entirely on the
+// commit you are looking at: a merge with a paragraph of message, a rename
+// across forty files, one line changed in one file. So both boundaries move.
+//
+// Sized by the stylesheet until somebody drags one, and from then on by what
+// they dragged it to. `max-height` stays a percentage in the CSS, so a stored
+// height cannot crush the pane below it on a shorter window — which is the
+// complaint the branch list already made once.
+const messageHeight = computed(() => paneWidth("detail-message", 0));
+const panelHeight = computed(() => paneWidth("detail", 0));
+const messageStyle = computed(() =>
+  paneArranged("detail-message") ? { flex: "none", height: `${messageHeight.value}px` } : {},
+);
+const panelStyle = computed(() =>
+  paneArranged("detail") ? { flex: "none", height: `${panelHeight.value}px` } : {},
+);
 </script>
 
 <template>
-  <section class="detail">
+  <section class="detail" :class="{ arranged: paneArranged('detail') }" :style="panelStyle">
     <header class="pane-head">
       <span>{{ comparing ? t("commitDetail.comparison") : t("commitDetail.title") }}</span>
       <span v-if="comparing && comparison" class="pane-head-title mono">
@@ -44,7 +67,11 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
         {{ app.compare.error }}
       </p>
       <template v-else-if="comparison">
-        <div class="detail-head">
+        <div
+          class="detail-head"
+          :class="{ arranged: paneArranged('detail-message') }"
+          :style="messageStyle"
+        >
           <p class="detail-summary mono">{{ comparison.from.short }} ↔ {{ comparison.to.short }}</p>
           <p class="detail-who">
             <span class="dim">
@@ -55,6 +82,13 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
             </button>
           </p>
         </div>
+        <Splitter
+          pane="detail-message"
+          sizes="height"
+          :size="messageHeight || 120"
+          :min="48"
+          :max="600"
+        />
 
         <header class="pane-head">
           <span>{{ t("commitDetail.files") }}</span>
@@ -95,7 +129,11 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
     <p v-else-if="app.commit.status === 'failed'" class="pane-error mono">{{ app.commit.error }}</p>
 
     <template v-else-if="detail">
-      <div class="detail-head">
+      <div
+        class="detail-head"
+        :class="{ arranged: paneArranged('detail-message') }"
+        :style="messageStyle"
+      >
         <p class="detail-summary">{{ detail.summary }}</p>
         <pre v-if="detail.body" class="detail-body mono">{{ detail.body }}</pre>
 
@@ -124,6 +162,13 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
           <span v-for="parent in detail.parents" :key="parent.full">{{ parent.short }}</span>
         </p>
       </div>
+      <Splitter
+        pane="detail-message"
+        sizes="height"
+        :size="messageHeight || 120"
+        :min="48"
+        :max="600"
+      />
 
       <header class="pane-head">
         <span>{{ t("commitDetail.files") }}</span>
@@ -153,5 +198,6 @@ function sign(row: { added: number; removed: number; reason: string | null }): s
         </li>
       </ol>
     </template>
+    <Splitter pane="detail" sizes="height" :size="panelHeight || 240" :min="80" :max="900" />
   </section>
 </template>

@@ -462,6 +462,24 @@ button.icon.on {
   z-index: 2;
   cursor: col-resize;
 }
+/* The same edge, turned: along the bottom of a row rather than the side of a
+   column.
+
+   In the flow rather than absolutely positioned, which is the one real
+   difference. A column's edge lives inside a pane that does not scroll, so
+   absolute works; a row's edge sits between two stacked boxes and at least one
+   of them *does* scroll — an absolute edge inside it is positioned against the
+   content and slides out of reach on the first scroll. A 5px strip with a
+   matching negative margin sits over the border and belongs to neither box. */
+.splitter.down {
+  position: relative;
+  inset: auto;
+  flex: none;
+  width: auto;
+  height: 5px;
+  margin-top: -5px;
+  cursor: row-resize;
+}
 .splitter:hover,
 .splitter.dragging,
 .splitter:focus-visible {
@@ -1733,7 +1751,16 @@ select:focus {
    the screen. Inside, the message and the file list each scroll on their own —
    the message shrinks first, because a file list of one row that has to be
    scrolled to is worse than a long message that has to be. */
+/* The commit above its diff, and both of the edges between the three stacked
+   zones are draggable (`CommitDetail.vue`).
+
+   `position: relative` because the splitter is absolutely positioned over the
+   border. `max-height` stays a *percentage* even once a height has been
+   dragged: a stored 600px would crush the diff to nothing on a short window,
+   which is the complaint the branch list already made once. The cap rises from
+   45% to 70% only when somebody has said they want the room. */
 .detail {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
@@ -1742,17 +1769,27 @@ select:focus {
   overflow: hidden;
   border-bottom: 1px solid var(--border);
 }
+.detail.arranged {
+  max-height: 70%;
+}
 
 /* `0 1 auto`, not a percentage of a box that is itself a percentage: nesting
    the two gave the message forty per cent of forty-five and cut its last line
    in half. */
 .detail-head {
+  position: relative;
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   padding: var(--pad);
   border-bottom: 1px solid var(--border);
 }
+/* Same rule, one level in: a message dragged tall must still leave the file
+   list its own floor. */
+.detail-head.arranged {
+  max-height: 70%;
+}
+
 .detail-summary {
   margin: 0;
   font-size: var(--text-mono);

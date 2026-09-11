@@ -28,7 +28,7 @@ async function edge(props: Record<string, unknown>, scale = 1) {
   const state = await import("../state");
   document.documentElement.setAttribute("style", `--scale: ${scale};`);
   const Splitter = (await import("./Splitter.vue")).default;
-  const splitter = mount(Splitter, { props: { pane: "history", width: 520, ...props } });
+  const splitter = mount(Splitter, { props: { pane: "history", size: 520, ...props } });
   splitter.element.setPointerCapture = () => {};
   return { state, splitter };
 }
@@ -46,6 +46,30 @@ beforeEach(() => {
 });
 
 describe("a splitter", () => {
+  it("drags down as well as across", async () => {
+    // The same arithmetic on the other axis, and the reason there is one
+    // component: the scale, settling once at the end, and the keyboard are the
+    // same in both directions.
+    const { state, splitter } = await edge({ sizes: "height", size: 200, min: 48 });
+    splitter.element.dispatchEvent(
+      new MouseEvent("pointerdown", { clientY: 300, bubbles: true, cancelable: true }),
+    );
+    window.dispatchEvent(new MouseEvent("pointermove", { clientY: 380, bubbles: true }));
+    window.dispatchEvent(new MouseEvent("pointerup", { clientY: 380, bubbles: true }));
+
+    expect(state.paneWidth("history", 200)).toBe(280);
+  });
+
+  it("is one element, so the pointer reaches it", async () => {
+    // A comment above the root in the template makes the component a fragment,
+    // Vue keeps the comment as a node in development, and `mount(…).element`
+    // then points at *it* rather than the `<div>`. Every test here went silent
+    // when that happened — no handler ever fired.
+    const { splitter } = await edge({});
+    expect(splitter.element.nodeType).toBe(Node.ELEMENT_NODE);
+    expect((splitter.element as HTMLElement).classList.contains("splitter")).toBe(true);
+  });
+
   it("moves the edge with the pointer", async () => {
     const { state, splitter } = await edge({});
     drag(splitter.element, 100, 180);
@@ -59,8 +83,10 @@ describe("a splitter", () => {
     expect(state.paneWidth("history", 520)).toBe(584);
   });
 
-  it("grows a left-hand edge as the pointer moves left", async () => {
-    const { state, splitter } = await edge({ side: "left" });
+  it("grows a leading edge as the pointer moves towards it", async () => {
+    // `leading` rather than `left`: the same prop now serves an edge along the
+    // bottom of a row, where "left" would mean nothing.
+    const { state, splitter } = await edge({ side: "leading" });
     drag(splitter.element, 200, 120);
     expect(state.paneWidth("history", 520)).toBe(600);
   });

@@ -517,9 +517,21 @@ export function showCard(path: string): void {
   state.card = path;
 }
 
-/// A column's width, or the stylesheet's own when it has not been dragged.
+/// A pane's size, or the stylesheet's own when it has not been dragged.
 export function paneWidth(name: string, fallback: number): number {
   return state.panes[name] ?? fallback;
+}
+
+/// Whether this pane has ever been dragged.
+///
+/// The stacked panes need it and the columns do not. A column has a width
+/// either way; the panes on the right size themselves to their content — a
+/// one-line commit message takes one line — and pinning a height from the start
+/// would reserve half the panel for a message that does not need it. So the
+/// stylesheet keeps the answer until somebody disagrees with it, and from then
+/// on the drag does.
+export function paneArranged(name: string): boolean {
+  return state.panes[name] !== undefined;
 }
 
 /// While the pointer moves.
