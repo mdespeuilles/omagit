@@ -343,6 +343,7 @@ export class Repository {
         this.tags = this.tags.filter((row) => row.name !== args["name"]);
         return undefined;
       case "push_tag": {
+        if (this.holdNetwork) await this.holdNetwork;
         if (this.failNetwork) {
           const failure = this.failNetwork;
           this.failNetwork = null;

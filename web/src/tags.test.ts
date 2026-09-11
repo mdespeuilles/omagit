@@ -160,6 +160,46 @@ describe("publishing one", () => {
     expect(state.app.question, "publishing takes nothing away").toBeNull();
   });
 
+  it("says on the button that it is sending, and that it sent", async () => {
+    // Reported from use: "ça fonctionne mais je n'ai aucun retour visuel, on a
+    // l'impression que le bouton ne fonctionne pas". The only sign was a line
+    // in the status bar carrying `git`'s first line of output — the remote's
+    // URL — at the far bottom of the window.
+    let release = (): void => {};
+    const state = await opened((fake) => {
+      // Sans distant, il n'y a pas de bouton Pousser du tout.
+      fake.remoteBranches = [
+        { remote: "origin", name: "main", commit: { full: "o".repeat(40), short: "ooooooo" } },
+      ];
+      fake.holdNetwork = new Promise((resume) => {
+        release = () => resume();
+      });
+    });
+    state.openTag("", "the current commit");
+    state.setTagField("name", "v1");
+    await state.createTag();
+
+    state.publishTag("v1", "origin", false);
+    await until(() => state.app.pushingTag === "v1");
+
+    const BranchTree = (await import("./components/BranchTree.vue")).default;
+    const sending = mount(BranchTree).find(".tag-push");
+    expect(sending.text()).toContain("Sending");
+    expect(sending.classes()).toContain("working");
+    expect(sending.attributes("disabled")).toBeDefined();
+
+    release();
+    await settled(state);
+    await until(() => state.app.pushedTag === "v1");
+
+    const sent = mount(BranchTree).find(".tag-push");
+    expect(sent.text()).toContain("Sent");
+    expect(sent.classes()).toContain("done");
+    // And what the status bar says is a sentence about the tag, not git's
+    // first line.
+    expect(state.app.notes).toBe("v1 sent to origin");
+  });
+
   it("asks before taking one off the remote", async () => {
     // The asymmetry is the point: one of the two can remove something other
     // people are already using.

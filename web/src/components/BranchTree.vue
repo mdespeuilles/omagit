@@ -319,13 +319,25 @@ function stop(name: string): 0 | -1 {
                the part somebody actually chose. -->
           <span v-if="tag.message" class="tag-said">{{ tag.message.split("\n")[0] }}</span>
           <span class="pane-head-spacer" />
+          <!-- Il reste visible pendant l'envoi et juste après, même si le
+               pointeur a quitté la ligne : les actions d'une ligne ne
+               s'affichent qu'au survol, donc sans ça la réponse disparaissait
+               en même temps que la question. -->
           <button
             v-if="remotes.length > 0"
-            class="row-action"
+            class="row-action tag-push"
+            :class="{ working: app.pushingTag === tag.name, done: app.pushedTag === tag.name }"
+            :disabled="app.pushingTag === tag.name"
             :title="t('tag.publishTitle', { remote: remotes[0]![0] })"
             @click.stop="publishTag(tag.name, remotes[0]![0], false)"
           >
-            {{ t("tag.publish") }}
+            {{
+              app.pushingTag === tag.name
+                ? t("tag.pushing")
+                : app.pushedTag === tag.name
+                  ? t("tag.pushed")
+                  : t("tag.publish")
+            }}
           </button>
           <button
             class="row-action danger"

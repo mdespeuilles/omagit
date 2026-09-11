@@ -2392,6 +2392,26 @@ because it takes nothing away.
 whatever happens to be lying around, including the ones somebody made while
 trying something out. Naming it is the gesture.
 
+**And pushing it says so on the button.** Reported: "ça fonctionne mais je n'ai
+aucun retour visuel, on a l'impression que le bouton ne fonctionne pas". It was
+the third time the same shape of mistake reached a screen — the answer put
+where the code happened to be rather than where the click was. Pushing a tag
+changes nothing visible: the row is identical before and after, and the only
+sign was a line in the status bar at the far bottom of the window, carrying
+`git`'s *first line of output*, which is the remote's URL.
+
+So the button says it: "Envoi…" with the same sweeping bar as §2.66's, then
+"Envoyée ✓" in the success colour for a few seconds. Three details make it
+work. It stays visible while it does — a row's actions are drawn only on hover,
+so without that the answer disappeared with the pointer that asked for it. Its
+width is fixed across the three labels, so it does not move under that pointer.
+And the confirmation clears itself: "pushed" is true now and says nothing about
+later, since a fetch or somebody else's delete can undo it and this window would
+not know.
+
+The status bar's line is a sentence now — "v0.1.0 envoyée vers origin" — and not
+the first line of whatever `git` printed.
+
 The section is drawn now even when it is empty, which it was not: a repository
 with no tags had no way to get its first.
 

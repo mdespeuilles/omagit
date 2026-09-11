@@ -594,6 +594,10 @@ export const strings = {
   "tag.row": "{name} — click: the history up to it",
   "tag.delete": "Delete",
   "tag.deleteTitle": "Delete this tag — only here, not on any remote",
+  "tag.pushing": "Sending…",
+  "tag.pushed": "Sent ✓",
+  "tag.pushedTo": "{name} sent to {remote}",
+  "tag.removedFrom": "{name} removed from {remote}",
   "tag.publish": "Push",
   "tag.publishTitle": "Push this tag to {remote}",
   /// The row's tooltip when the tagger wrote something.

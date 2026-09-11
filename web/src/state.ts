@@ -286,6 +286,19 @@ type State = {
     force: boolean;
     refused: string | null;
   } | null;
+  /// Which tag is being pushed, and which one just was.
+  ///
+  /// The answer belongs on the row that was clicked. Pushing a tag changes
+  /// nothing you can see — the row looks the same before and after — and the
+  /// only sign was a line in the status bar, at the far bottom of the window,
+  /// reading the first line of `git`'s output: the remote's URL. It was
+  /// reported as a button that does nothing.
+  ///
+  /// The second one clears itself after a moment: "poussée" is true now and
+  /// says nothing about later, since a fetch or somebody else's delete can
+  /// undo it and this window would not know.
+  pushingTag: string | null;
+  pushedTag: string | null;
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
@@ -420,6 +433,8 @@ const state = reactive<State>({
   zone: 1,
   branchCursor: null,
   tagging: null,
+  pushingTag: null,
+  pushedTag: null,
   libraryFilter: "",
   renamingGroup: null,
   draggedRepository: null,
@@ -1759,12 +1774,24 @@ export function publishTag(name: string, remote: string, remove: boolean): void 
   const path = state.open;
   if (!path) return;
   const go = (): void => {
+    if (state.busy) return;
+    state.pushingTag = name;
     void write(
       remove ? t("do.unpublishTag", { name, remote }) : t("do.publishTag", { name, remote }),
       async () => {
-        state.notes = worded(await api.pushTag(path, remote, name, remove));
+        await api.pushTag(path, remote, name, remove);
+        // A sentence, not `git`'s first line — which is the remote's URL and
+        // says nothing about what happened to the tag.
+        state.notes = t(remove ? "tag.removedFrom" : "tag.pushedTo", { name, remote });
       },
-    );
+    ).then(() => {
+      state.pushingTag = null;
+      if (state.writeError) return;
+      state.pushedTag = name;
+      window.setTimeout(() => {
+        if (state.pushedTag === name) state.pushedTag = null;
+      }, 4000);
+    });
   };
   if (!remove) {
     go();

@@ -1693,8 +1693,57 @@ select:focus {
   opacity: 0;
 }
 .tag-row:hover .row-action,
-.tag-row .row-action:focus-visible {
+.tag-row .row-action:focus-visible,
+/* Pendant l'envoi et juste après : la réponse ne doit pas disparaître parce
+   que le pointeur a bougé. */
+.tag-row .tag-push.working,
+.tag-row .tag-push.done {
   opacity: 1;
+}
+
+/* L'envoi, et sa confirmation. La barre balaie au lieu de se remplir : un push
+   n'a rien à rapporter entre le début et la fin — même réponse, et mêmes
+   keyframes, que le bouton « Générer » et qu'un `git fetch` qui compte. */
+.tag-push {
+  position: relative;
+  overflow: hidden;
+  /* Les trois libellés — « Pousser », « Envoi… », « Envoyée ✓ » — n'ont pas la
+     même largeur, et `overflow: hidden`, qui tient la barre de balayage dans le
+     bouton, coupait le plus long. Une largeur fixe pour les trois : rien n'est
+     tronqué, et le bouton ne se déplace pas sous le pointeur en changeant
+     d'état. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  /* En `em`, donc relatif à la taille du bouton : une largeur en pixels ne
+     suivrait pas le réglage d'échelle. */
+  min-width: 7em;
+}
+.tag-push.working:disabled {
+  color: var(--text);
+  border-color: var(--text);
+}
+.tag-push.working::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 30%;
+  height: 2px;
+  background: var(--accent);
+  animation: sweep 1.1s linear infinite;
+}
+.tag-push.done {
+  color: var(--success);
+  border-color: var(--success);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag-push.working::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
 }
 /* What the tagger wrote, beside the name. It was the word "annotated" in a
    bordered chip — Git's name for the kind of tag, which says nothing about this
