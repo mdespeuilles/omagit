@@ -187,7 +187,14 @@ export type BranchRow = {
 };
 
 export type RemoteBranchRow = { remote: string; name: string; commit: Oid };
-export type TagRow = { name: string; commit: Oid; annotated: boolean };
+export type TagRow = {
+  name: string;
+  commit: Oid;
+  /// What the tagger wrote, or empty. The message, not a flag naming which of
+  /// Git's two kinds of tag this is: the kind is Git's own vocabulary and
+  /// offers no control — you write a message or you do not.
+  message: string;
+};
 
 export type Refs = {
   branches: BranchRow[];

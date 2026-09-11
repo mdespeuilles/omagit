@@ -583,9 +583,7 @@ export const strings = {
   "tag.at": "On",
   "tag.head": "the current commit",
   "tag.message": "Message",
-  "tag.messagePlaceholder": "What this release is. Leave empty for a lightweight tag.",
-  "tag.kindAnnotated": "Annotated — an object with a tagger, a date and this message.",
-  "tag.kindLightweight": "Lightweight — a name pointing at the commit, and nothing else.",
+  "tag.messagePlaceholder": "What this version brings. Optional.",
   "tag.create": "Create",
   "tag.cancel": "Cancel",
   "tag.force": "Move it to this commit",
@@ -598,7 +596,8 @@ export const strings = {
   "tag.deleteTitle": "Delete this tag — only here, not on any remote",
   "tag.publish": "Push",
   "tag.publishTitle": "Push this tag to {remote}",
-  "tag.annotated": "annotated",
+  /// The row's tooltip when the tagger wrote something.
+  "tag.rowWritten": "{name} — {message}\nclick: the history up to it",
   "settings.keyboard": "Keyboard",
   "settings.keyboardNote":
     "One table, read by four things: the keyboard, the palette, the shortcut sheet and the menu bar. Changing a binding here changes all four.",

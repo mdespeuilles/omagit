@@ -696,7 +696,8 @@ pub fn delete_branch(
 // read since M5 — `refs.rs` peels them, the sidebar draws them — and nothing
 // could make one.
 
-/// Make a tag. A message makes it annotated; none makes it a bare ref.
+/// Make a tag. A message makes it one of Git's annotated tags, none makes it
+/// a bare ref — a distinction the interface deliberately does not name.
 #[tauri::command(async)]
 pub fn create_tag(
     state: State<'_, AppState>,

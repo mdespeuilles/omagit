@@ -64,12 +64,16 @@ describe("making one", () => {
     const refs = state.app.refs;
     const tags = refs.status === "ready" ? refs.value.tags : [];
     expect(tags.map((one) => one.name)).toEqual(["v1.0.0"]);
-    expect(tags[0]?.annotated, "no message, so a bare ref").toBe(false);
+    expect(tags[0]?.message, "nothing was written").toBe("");
   });
 
-  it("is annotated exactly when there is a message, and nothing else decides", async () => {
-    // `git`'s own rule — `-m` implies `-a` — said with the presence of the
-    // message rather than a second switch, so the two cannot disagree.
+  it("keeps the message that was written, and shows no word for the kind", async () => {
+    // Git makes a different *kind* of tag depending on whether there is a
+    // message, and that kind is not the user's vocabulary: there is no control
+    // for it, writing a message or not is the whole of it. So what travels is
+    // the message — the part somebody chose — and not a flag named after the
+    // outcome. Reported: "je ne connaissais pas ce terme et ça embrouille sans
+    // apporter de plus-value".
     const state = await opened();
     state.openTag("", "the current commit");
     state.setTagField("name", "v2.0.0");
@@ -78,7 +82,7 @@ describe("making one", () => {
 
     const refs = state.app.refs;
     const tags = refs.status === "ready" ? refs.value.tags : [];
-    expect(tags[0]?.annotated).toBe(true);
+    expect(tags[0]?.message).toBe("Ce que cette version apporte.");
   });
 
   it("keeps the dialog open on a name already taken, and offers to move it", async () => {
@@ -269,11 +273,11 @@ describe("the sidebar", () => {
     expect(drawn.findAll(".tag-row")).toHaveLength(0);
   });
 
-  it("says which tags are annotated, since nothing else shows it", async () => {
+  it("shows what the tagger wrote, and never the word for the kind", async () => {
     const state = await opened();
     state.openTag("", "the current commit");
     state.setTagField("name", "v1");
-    state.setTagField("message", "une version");
+    state.setTagField("message", "La première qu'on montre");
     await state.createTag();
     state.openTag("", "the current commit");
     state.setTagField("name", "scratch");
@@ -281,9 +285,14 @@ describe("the sidebar", () => {
     await settled(state);
 
     const BranchTree = (await import("./components/BranchTree.vue")).default;
-    const rows = mount(BranchTree).findAll(".tag-row");
+    const drawn = mount(BranchTree);
+    const rows = drawn.findAll(".tag-row");
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.text()).toContain("annotated");
-    expect(rows[1]!.text()).not.toContain("annotated");
+    expect(rows[0]!.text()).toContain("La première qu'on montre");
+    expect(rows[1]!.text()).not.toContain("La première");
+    // And the tooltip carries it too, for a message longer than the row.
+    expect(rows[0]!.attributes("title")).toContain("La première qu'on montre");
+    // The word itself is nowhere: not on the row, not in the dialog.
+    expect(drawn.text().toLowerCase()).not.toContain("annot");
   });
 });

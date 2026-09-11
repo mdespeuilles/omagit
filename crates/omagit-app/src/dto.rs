@@ -734,7 +734,15 @@ pub struct RemoteBranchRow {
 pub struct TagRow {
     pub name: String,
     pub commit: Oid,
-    pub annotated: bool,
+    /// What the tagger wrote, when they wrote anything — empty for a tag that
+    /// is only a name.
+    ///
+    /// The *message*, and not a flag saying which of Git's two kinds of tag
+    /// this is. The kind is real, and it is not the user's vocabulary: they
+    /// write a message or they do not, and Git decides the rest. A row that
+    /// said "annotated" taught them the word for the outcome and told them
+    /// nothing about their own work; the message is the thing they wrote.
+    pub message: String,
 }
 
 pub fn refs(
@@ -780,7 +788,11 @@ pub fn refs(
             .map(|tag| TagRow {
                 name: tag.name.clone(),
                 commit: tag.commit.into(),
-                annotated: tag.annotation.is_some(),
+                message: tag
+                    .annotation
+                    .as_ref()
+                    .map(|written| written.message.trim().to_owned())
+                    .unwrap_or_default(),
             })
             .collect(),
         remotes: refs

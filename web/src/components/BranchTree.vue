@@ -304,12 +304,20 @@ function stop(name: string): 0 | -1 {
           :key="tag.name"
           class="row branch-row tag-row"
           :class="{ selected: showing(tag.name) }"
-          :title="t('tag.row', { name: tag.name })"
+          :title="
+            tag.message
+              ? t('tag.rowWritten', { name: tag.name, message: tag.message })
+              : t('tag.row', { name: tag.name })
+          "
           @click="showBranchHistory(tag.name)"
         >
           <Glyph name="tag" class="branch-glyph" />
           <span class="branch-name">{{ tag.name }}</span>
-          <span v-if="tag.annotated" class="ref">{{ t("tag.annotated") }}</span>
+          <!-- What the tagger wrote, when they wrote anything. It was the word
+               "annotated" — Git's name for the *kind* of tag this is, which is
+               vocabulary about Git and not about the repository. The message is
+               the part somebody actually chose. -->
+          <span v-if="tag.message" class="tag-said">{{ tag.message.split("\n")[0] }}</span>
           <span class="pane-head-spacer" />
           <button
             v-if="remotes.length > 0"

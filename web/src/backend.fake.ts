@@ -334,11 +334,7 @@ export class Repository {
         // rows carry their own ref badges, and a tag that names nothing in the
         // walk could never appear on one.
         const at = (args["at"] as string).trim() || (this.log[0]?.id ?? "");
-        const row = {
-          name,
-          commit: { full: at, short: at.slice(0, 7) },
-          annotated: message !== "",
-        };
+        const row = { name, commit: { full: at, short: at.slice(0, 7) }, message };
         if (held >= 0) this.tags[held] = row;
         else this.tags.push(row);
         return undefined;

@@ -156,7 +156,7 @@ describe("the branch tree", () => {
     const oid = (seed: string) => ({ full: seed.padEnd(40, "0"), short: seed.slice(0, 7) });
     const { tree } = await open([branch("main", { head: true })], (fake) => {
       fake.remoteBranches = [{ remote: "tags", name: "trunk", commit: oid("r") }];
-      fake.tags = [{ name: "v1.0", commit: oid("t"), annotated: false }];
+      fake.tags = [{ name: "v1.0", commit: oid("t"), message: "" }];
     });
     expect(names(tree)).toContain("v1.0");
 

@@ -1696,23 +1696,38 @@ select:focus {
 .tag-row .row-action:focus-visible {
   opacity: 1;
 }
-/* "annotated" beside the name: the one thing about a tag that is invisible
-   from it, and the difference between a release and a bookmark. */
-.tag-row .ref {
-  color: var(--text-muted);
+/* What the tagger wrote, beside the name. It was the word "annotated" in a
+   bordered chip — Git's name for the kind of tag, which says nothing about this
+   repository. The message is the part somebody chose, so it is set like a note
+   and not like a label: no border, quiet, and it gives way to the buttons. */
+.tag-said {
+  /* The message is what gives way, never the name. `.branch-name` is `0 1 auto`
+     — it shrinks — so with both competing for a 300px column the tag came out
+     as `v1…` beside a legible half-sentence, which is exactly backwards: the
+     name is what you are looking for, the message is what you read once you
+     have found it. The tooltip carries the whole of it either way. */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-meta);
+  color: var(--text-dim);
+}
+.tag-row .branch-name {
+  flex: none;
 }
 
-/* The dialog's own two lines: which kind of tag the message is about to make,
-   and the offer to move one that already exists. */
-.tag-kind,
-.tag-force {
-  font-size: var(--text-meta);
-  color: var(--text-muted);
-}
+/* The dialog's one extra line: the offer to move a tag whose name is taken.
+   There used to be a second, naming which of Git's two kinds of tag the message
+   was about to make — removed, with the word, for the reason `TagDialog.vue`
+   gives. */
 .tag-force {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
 }
 
 /* ── The sidebar ─────────────────────────────────────────────────────────── */

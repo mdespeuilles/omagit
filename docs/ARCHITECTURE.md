@@ -2342,13 +2342,29 @@ carried no action. §5 did not record it as a gap either, which is the part wort
 noting: a feature that is *visible* is easy to mistake for a feature that is
 there.
 
-**The kind is not a switch.** A lightweight tag is a ref and an annotated one is
-an object with a tagger, a date and a message, and `git` decides which by
-whether there is a message — `-m` implies `-a`. Offering an "annotated"
-checkbox beside the message field would let the two disagree: annotated with no
-message is a prompt for an editor that never opens here, and lightweight with a
-message throws the message away. So the message decides, and the dialog says
-which one is about to be made, under the field that decides it.
+**The kind is not a switch, and the interface does not name it either.** A
+lightweight tag is a ref and an annotated one is an object with a tagger, a date
+and a message; `git` decides which by whether there is a message — `-m` implies
+`-a`. An "annotated" checkbox beside the message field would let the two
+disagree, so the message decides. The first version went one step further and
+*said* which one was about to be made, in a line that switched as you typed.
+
+That line is gone, and the word with it, reported plainly: "je ne connaissais
+pas ce terme et je trouve que ça embrouille sans apporter de plus-value. C'est
+vraiment utile&nbsp;?". It is not. The distinction is real in Git and it offers
+the user no control — writing a message or not is the whole of it, identically
+in every client; Tower's own dialog is Name, Revision, Message and names nothing
+either. Saying "Annotée" taught the vocabulary Git uses for the outcome and
+added no choice, which is the app talking about itself instead of about the
+repository. The one place it bites is `git describe` without `--tags`, which
+passes over a tag that is only a name — a terminal concern.
+
+What replaced the word on a row is the **message itself**. `TagRow` carries the
+text rather than a boolean, the sidebar shows its first line beside the name and
+the whole of it in the tooltip, and the name never gives way to it: a 300px
+column showed `v1…` beside a legible half-sentence, which is backwards — the
+name is what you are looking for, the message is what you read once you have
+found it.
 
 **The message goes on standard input.** It is a paragraph somebody typed, and a
 paragraph in an argument is a paragraph a quoting mistake truncates. `--file -`

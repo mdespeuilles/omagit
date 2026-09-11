@@ -1,13 +1,19 @@
 <script setup lang="ts">
-// Making a tag: a name, what it goes on, and a message that decides what kind
-// of tag it is.
+// Making a tag: a name, what it goes on, and a message.
 //
-// The kind is not a choice of its own, and that is deliberate. `git` decides it
-// by whether there is a message — `-m` implies `-a` — and offering a separate
-// "annotated" switch would let the two disagree: an annotated tag with no
-// message is a prompt for an editor that never opens here, and a lightweight
-// one with a message is a message thrown away. So the box says which one you
-// are about to make, under the field that decides it.
+// **It does not name Git's two kinds of tag, and that is the point.** It used
+// to: a line under the message field said "Légère — un nom qui désigne le
+// commit" or "Annotée — un objet avec un auteur, une date et ce message",
+// switching as you typed. Reported, and rightly: "je ne connaissais pas ce
+// terme et je trouve que ça embrouille sans apporter de plus-value".
+//
+// The distinction is real in Git and it is not the user's to make. There is no
+// control here for it — writing a message or not is the whole of it, and that
+// is identical in every client; Tower's own dialog is Name, Revision, Message
+// and says nothing either. Naming the outcome taught the vocabulary Git uses
+// internally and added no choice. The one place it bites is `git describe`
+// without `--tags`, which passes over a tag that is only a name — a terminal
+// concern, and not a reason to put the word in a dialog.
 //
 // A name already taken is not pre-empted either. `git` refuses it and names the
 // tag in the way, which is better than anything composed here (SPEC §3 rule 3),
@@ -21,7 +27,6 @@ import { t } from "../i18n";
 const field = ref<HTMLInputElement | null>(null);
 
 const form = computed(() => app.tagging);
-const annotated = computed(() => (form.value?.message ?? "").trim() !== "");
 
 function onKey(event: KeyboardEvent): void {
   if (event.key === "Escape") {
@@ -79,11 +84,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           :value="form.message"
           @input="setTagField('message', ($event.target as HTMLTextAreaElement).value)"
         />
-
-        <span></span>
-        <span class="tag-kind">{{
-          annotated ? t("tag.kindAnnotated") : t("tag.kindLightweight")
-        }}</span>
 
         <!-- Only after `git` has refused: its own words, and the offer that
              those words make possible. -->
