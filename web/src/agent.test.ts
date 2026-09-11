@@ -47,8 +47,11 @@ async function box() {
   return mount(CommitBox);
 }
 
+/// By its class, not by its words: while an agent is thinking the button says
+/// "Writing…", which is the state half of these tests are about.
 function draftButton(drawn: Awaited<ReturnType<typeof box>>) {
-  return drawn.findAll("button").find((one) => one.text().includes("Draft"));
+  const found = drawn.find("button.generate");
+  return found.exists() ? found : undefined;
 }
 
 beforeEach(() => {
@@ -121,6 +124,32 @@ describe("drafting", () => {
     await state.draftMessage();
 
     expect(state.app.picked.size).toBe(1);
+  });
+
+  it("says on the button itself that it is working", async () => {
+    // It was only in the status bar — true, and at the far bottom of the window
+    // while the eye is on the commit box, which read as nothing happening at
+    // all for the twenty-five seconds an agent takes.
+    let release = (): void => {};
+    const state = await opened((fake) => {
+      fake.agent = "claude";
+      fake.holdDraft = new Promise((resume) => {
+        release = () => resume();
+      });
+    });
+
+    const drafting = state.draftMessage();
+    const working = draftButton(await box())!;
+    expect(working.text()).toContain("Writing");
+    expect(working.classes()).toContain("working");
+    expect(working.attributes("disabled")).toBeDefined();
+
+    release();
+    await drafting;
+
+    const done = draftButton(await box())!;
+    expect(done.text()).toContain("Generate");
+    expect(done.classes()).not.toContain("working");
   });
 
   it("says what went wrong rather than leaving an empty box", async () => {

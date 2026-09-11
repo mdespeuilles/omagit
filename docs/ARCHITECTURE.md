@@ -2261,6 +2261,29 @@ agent with write access to the repository you are about to commit is a different
 proposition from a sentence generator — one nobody agreed to by clicking
 "Draft".
 
+**Three things reported the moment it was used.** "Draft" did not say what the
+button does, the icon could not be made out, and pressing it looked like nothing
+happening.
+
+The label is "Generate" now. The icon was a pen over two lines of text, chosen
+against a sparkle on the argument that a sparkle means "new" and that borrowing
+it was following a fashion rather than drawing a shape. The argument was about
+the wrong thing: the glyph is 13px and a pen at 13px is a faint diagonal slash.
+Four candidates probed at 96, 32, 16 and 13, in the button they actually sit in,
+and the two stars are the only one legible at the last size. A convention that
+is recognised beats a metaphor that is not.
+
+And the third was the real one. The busy state *was* reported — `app.busy` put
+"Drafting the message…" in the status bar — at the far bottom of the window,
+while the eye is on the commit box, for the twenty-five seconds an agent takes.
+The answer belongs on the control that was pressed: the button says "Writing…"
+and carries a 2px bar along its own bottom edge, sweeping rather than filling
+because an agent has nothing to report in between — the same answer, and the
+same keyframes, as a `git fetch` counting objects with no total to count
+against. It is disabled while it works but **not dimmed**: busy is not
+unavailable, and a control greyed the way an off one is greyed says the wrong
+thing about itself.
+
 Two smaller decisions. The button is **not drawn at all** until an agent is
 configured, because an affordance for a feature that is off is the dead code
 SPEC §2 forbids wearing a button; `agent_chosen` exists so start-up can know

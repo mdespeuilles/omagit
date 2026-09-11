@@ -94,12 +94,12 @@ export const strings = {
     "No Git identity: git config --global user.name && git config --global user.email",
   "commit.blockedEmpty": "Nothing is staged",
   "commit.blockedMessage": "The message is empty",
-  "commit.draft": "Draft",
-  "commit.draftTitle": "Ask {agent} to write a message for what is staged",
-  "commit.draftReplace":
+  "commit.generate": "Generate",
+  "commit.generateTitle": "Ask {agent} to write a message for what is staged",
+  "commit.generateReplace":
     "Ask {agent} to write a message for what is staged — it replaces what is in the box",
-  "commit.drafting": "Drafting the message",
-  "commit.draftNothing": "Nothing is staged to write about",
+  "commit.generating": "Writing…",
+  "commit.generateNothing": "Nothing is staged to write about",
   "commit.detached": "{head}: this commit will belong to no branch.",
 
   // ── The diff ────────────────────────────────────────────────────────────

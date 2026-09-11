@@ -2615,12 +2615,12 @@ export function canDraft(): boolean {
 export async function draftMessage(): Promise<void> {
   const path = state.open;
   if (!path || !canDraft()) return;
-  state.busy = t("commit.drafting");
+  state.busy = t("commit.generating");
   state.writeError = null;
   try {
     state.message = await api.draftMessage(path);
   } catch (error) {
-    state.writeError = { what: t("commit.drafting"), said: message(error) };
+    state.writeError = { what: t("commit.generating"), said: message(error) };
   } finally {
     state.busy = null;
   }

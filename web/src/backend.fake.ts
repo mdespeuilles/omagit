@@ -135,6 +135,9 @@ export class Repository {
   drafted = "Un sujet rédigé par l'agent\n\nEt le corps qui va avec.";
   /// Set by a test to make the agent fail, the way a missing program does.
   failDraft: string | null = null;
+  /// Held open, so a test can look at the window while the agent is thinking.
+  /// A real one takes twenty-five seconds; this is that moment, stopped.
+  holdDraft: Promise<void> | null = null;
   /// A folder the picker would hand back that is not a repository.
   notARepository: string | null = null;
   /// The column widths the settings file remembers.
@@ -328,6 +331,7 @@ export class Repository {
         return undefined;
       case "draft_message": {
         if (this.agent === "") throw new Error("no agent is configured");
+        if (this.holdDraft) await this.holdDraft;
         if (this.failDraft) throw new Error(this.failDraft);
         const staged = this.files.filter((file) => file.staged !== null);
         if (staged.length === 0) throw new Error("nothing is staged");

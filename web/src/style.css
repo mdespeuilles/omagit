@@ -976,6 +976,54 @@ button.icon.on {
   font-size: var(--text-body);
 }
 
+/* The generate button, and what it does while an agent is thinking.
+
+   An agent takes twenty-five seconds and has nothing to report in between, so
+   the bar sweeps rather than filling — the same answer, and the same keyframes,
+   as a `git fetch` counting objects with no total to count against. It is drawn
+   inside the button rather than beside it so nothing moves: a control that
+   changes size when pressed is a control that has moved by the time the eye
+   gets back to it. */
+.commit-actions .generate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.commit-actions .generate .glyph {
+  width: 13px;
+  height: 13px;
+}
+/* Busy is not unavailable. The button is disabled while an agent is thinking —
+   pressing it again would start a second one — but dimming it the way an
+   unavailable control is dimmed says the wrong thing: it reads as off rather
+   than as working. The bar says busy; the text stays legible. */
+.commit-actions .generate.working:disabled {
+  color: var(--text);
+  border-color: var(--border);
+}
+.commit-actions .generate.working::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 30%;
+  height: 2px;
+  background: var(--accent);
+  animation: sweep 1.1s linear infinite;
+}
+/* Someone who has asked the system not to animate gets a still bar: the label
+   says "Writing…" either way, which is what carries the information. */
+@media (prefers-reduced-motion: reduce) {
+  .commit-actions .generate.working::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
 .commit-blocked {
   margin: 6px 0 0;
   font-size: var(--text-meta);

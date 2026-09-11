@@ -79,12 +79,12 @@ export const strings: Record<keyof typeof reference, string> = {
     "Aucune identité Git : git config --global user.name && git config --global user.email",
   "commit.blockedEmpty": "Rien n'est indexé",
   "commit.blockedMessage": "Le message est vide",
-  "commit.draft": "Rédiger",
-  "commit.draftTitle": "Demander à {agent} un message pour ce qui est indexé",
-  "commit.draftReplace":
+  "commit.generate": "Générer",
+  "commit.generateTitle": "Demander à {agent} un message pour ce qui est indexé",
+  "commit.generateReplace":
     "Demander à {agent} un message pour ce qui est indexé — remplace ce qu'il y a dans la boîte",
-  "commit.drafting": "Rédaction du message",
-  "commit.draftNothing": "Rien n'est indexé à décrire",
+  "commit.generating": "Rédaction…",
+  "commit.generateNothing": "Rien n'est indexé à décrire",
   "commit.detached": "{head} : ce commit n'appartiendra à aucune branche.",
 
   // ── Le diff ─────────────────────────────────────────────────────────────

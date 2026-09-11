@@ -44,18 +44,26 @@ const counter = computed(() => {
 
 const staged = computed(() => stagedCount());
 
-/// What the "Draft" button says it will do, which changes with the box.
+/// Whether the agent is working on it now.
+///
+/// The answer belongs on the button that was pressed. It was only in the status
+/// bar — true, and at the far bottom of the window while the eye is on the
+/// commit box, which read as nothing happening at all for the twenty-five
+/// seconds an agent takes.
+const generating = computed(() => app.busy === t("commit.generating"));
+
+/// What the button says it will do, which changes with the box.
 ///
 /// A message already typed is work, and a button that silently replaces it is
 /// the loss SPEC §3 rule 7 is about arriving through a control nobody thinks of
 /// as destructive. It is not blocked — asking again after an edit is exactly
 /// what somebody does — but it says so before the click.
-const draftTitle = computed(() => {
-  if (staged.value === 0) return t("commit.draftNothing");
+const generateTitle = computed(() => {
+  if (staged.value === 0) return t("commit.generateNothing");
   const agent = app.agent;
   return app.message.trim() === ""
-    ? t("commit.draftTitle", { agent })
-    : t("commit.draftReplace", { agent });
+    ? t("commit.generateTitle", { agent })
+    : t("commit.generateReplace", { agent });
 });
 
 const label = computed(() => (app.amend ? t("commit.doAmend") : count("commit.do", staged.value)));
@@ -155,8 +163,15 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
            lights. -->
       <!-- Only when an agent is configured. An affordance for a feature that is
            off is the dead code SPEC §2 forbids, wearing a button. -->
-      <button v-if="hasAgent()" :disabled="!canDraft()" :title="draftTitle" @click="draftMessage()">
-        <Glyph name="draft" />{{ t("commit.draft") }}
+      <button
+        v-if="hasAgent()"
+        class="generate"
+        :class="{ working: generating }"
+        :disabled="!canDraft()"
+        :title="generateTitle"
+        @click="draftMessage()"
+      >
+        <Glyph name="generate" />{{ generating ? t("commit.generating") : t("commit.generate") }}
       </button>
       <button class="primary" :disabled="!canCommit()" @click="commit()">
         {{ label }}
