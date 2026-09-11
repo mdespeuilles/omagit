@@ -237,6 +237,8 @@ export const strings: Record<keyof typeof reference, string> = {
   "card.missing":
     "Le dossier n'existe plus à l'emplacement enregistré. L'entrée reste : un disque démonté revient, et une liste qui se rangerait toute seule perdrait ce que tu as arrangé.",
   "card.repository": "Dépôt",
+  "card.folder": "Dossier",
+  "card.folderTitle": "Ranger ce dépôt dans un autre dossier",
   "card.location": "Emplacement",
   "card.lastOpened": "Dernière ouverture",
   "card.never": "jamais",
@@ -288,6 +290,18 @@ export const strings: Record<keyof typeof reference, string> = {
   "history.loaded": "{n} commits chargés",
   "history.firstParent": "Ne suivre que le premier parent de chaque fusion",
   "library.filterTitle": "Filtrer par nom, chemin ou description — /",
+
+  // Les dossiers. Le nom d'un groupe est une donnée, affichée telle quelle ;
+  // celui du groupe par défaut reste une clé tant que personne ne l'a renommé,
+  // et c'est pour ça que `library.recents` est ici et pas dans le modèle.
+  "library.newGroup": "Nouveau dossier",
+  "library.newGroupTitle": "Créer un dossier, puis y glisser des dépôts",
+  "library.renameGroup": "Renommer ce dossier",
+  "library.removeGroup": "Supprimer ce dossier — ce qu'il contient est conservé",
+  "library.lastGroup": "Le dernier dossier reste : un dépôt doit être quelque part",
+  "library.emptyGroup": "Rien de rangé ici — glissez-y un dépôt",
+  "library.dragTitle": "Glisser pour ranger dans un autre dossier",
+  "library.dragHint": "glisser pour ranger",
   "diff.goneFromStatus": "ce fichier n'est plus dans le statut",
   "diff.goneFromCommit": "ce fichier n'est pas dans ce commit",
   "diff.goneFromComparison": "ce fichier n'est pas dans cette comparaison",
@@ -316,6 +330,11 @@ export const strings: Record<keyof typeof reference, string> = {
   "ask.forget.detail":
     "Le dépôt reste sur le disque : seule son entrée dans cette liste disparaît, et il peut être rajouté.",
   "ask.forget.verb": "Retirer",
+  "ask.removeGroup.title": "Supprimer le dossier {name} ?",
+  "ask.removeGroup.detail":
+    "Les {n} qu'il contient passent dans {into}. Rien ne quitte la liste, " +
+    "rien ne quitte le disque.",
+  "ask.removeGroup.verb": "Supprimer le dossier",
   "ask.reconcile.title": "Fusionner ou rebaser ?",
   "ask.reconcile.detail":
     "{branch} a {ahead} que {upstream} n'a pas, et {upstream} en a {behind} de son côté. Rien dans la configuration ne dit comment les réconcilier, et git refuse de choisir. Fusionner garde les deux histoires et ajoute un commit de fusion ; rebaser rejoue tes commits par-dessus les siens, donc les réécrit. Ce choix ne vaut que pour ce pull : rien n'est enregistré.",
@@ -404,6 +423,7 @@ export const strings: Record<keyof typeof reference, string> = {
   // ── Le nom des actions ──────────────────────────────────────────────────
   "action.repository.add": "Ajouter un dépôt local",
   "action.repository.clone": "Cloner un dépôt",
+  "action.repository.newGroup": "Nouveau dossier",
   "action.repository.all": "Tous les dépôts",
   "action.screen.workingCopy": "Aller à la copie de travail",
   "action.screen.history": "Aller à l'historique",

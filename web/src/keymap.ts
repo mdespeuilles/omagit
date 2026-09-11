@@ -127,6 +127,25 @@ export const ACTIONS: Action[] = [
     run: () => store.openClone(),
   },
   {
+    id: "repository.newGroup",
+    label: "action.repository.newGroup",
+    // No default: the window has seven Primary bindings already and a folder
+    // is made a handful of times in a lifetime. It is in the table anyway,
+    // because the table is what the palette, the menu bar and the `?` sheet
+    // read — and because a binding can be *given* to it from Preferences,
+    // which is the whole point of SPEC §11's reassignable keymap.
+    binding: "",
+    where: "always",
+    menu: "file",
+    enabled: () => true,
+    run: () => {
+      // On the screen where it can be seen: a folder made while the window is
+      // looking at a diff is a folder nobody watched appear.
+      store.showScreen("repositories");
+      void store.createGroup();
+    },
+  },
+  {
     id: "repository.all",
     label: "action.repository.all",
     binding: "Shift+Primary+O",

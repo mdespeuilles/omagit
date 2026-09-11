@@ -45,7 +45,9 @@ import type {
   DiffRow,
   HistoryQuery,
   JournalRow,
+  LibraryGroup,
   LibraryRow,
+  LibraryView,
   Made as Committed,
   Page,
   PlatformFacts,
@@ -100,7 +102,10 @@ export class Repository {
   /// The history, newest first. Named for `git log` rather than "commits",
   /// which is already the list of commits the commit box has *made*.
   log: Made[] = [];
-  /// What the library holds. One row in one group unless a test says otherwise.
+  /// The folders, in the order they are drawn. One, until a test makes more.
+  groups: LibraryGroup[] = [{ name: "omagit:library.recents", collapsed: false }];
+  /// What the library holds, in display order across the folders. One row in
+  /// one group unless a test says otherwise.
   library: LibraryRow[] = [
     {
       group: 0,
@@ -287,7 +292,62 @@ export class Repository {
       case "git_status":
         return null;
       case "repositories":
-        return this.library.map((row) => ({ ...row })) satisfies LibraryRow[];
+        return this.view();
+      case "create_group":
+        this.groups.push({ name: (args["name"] as string).trim(), collapsed: false });
+        return this.groups.length - 1;
+      case "rename_group": {
+        const name = (args["name"] as string).trim();
+        const group = this.groups[args["group"] as number];
+        if (group && name !== "") group.name = name;
+        return undefined;
+      }
+      case "collapse_group": {
+        const group = this.groups[args["group"] as number];
+        if (group) group.collapsed = args["collapsed"] as boolean;
+        return undefined;
+      }
+      case "remove_group": {
+        const at = args["group"] as number;
+        // The rule the Rust side states: the last folder stays, and what was
+        // filed under one that goes is rehoused rather than dropped.
+        if (at >= this.groups.length || this.groups.length < 2) return undefined;
+        this.groups.splice(at, 1);
+        const host = Math.max(at - 1, 0);
+        for (const row of this.library) {
+          if (row.group === at) row.group = host;
+          else if (row.group > at) row.group -= 1;
+        }
+        this.reorder();
+        return undefined;
+      }
+      case "move_group": {
+        const from = args["from"] as number;
+        if (from >= this.groups.length) return undefined;
+        const [moved] = this.groups.splice(from, 1);
+        const to = Math.min(args["to"] as number, this.groups.length);
+        this.groups.splice(to, 0, moved!);
+        // Every row's group index is a position in that array, so they all
+        // move with it.
+        const at = (group: number) =>
+          group === from ? to : group - (group > from ? 1 : 0) + (group >= to ? 1 : 0);
+        for (const row of this.library) row.group = at(row.group);
+        this.reorder();
+        return undefined;
+      }
+      case "move_repository": {
+        const row = this.library.find((entry) => entry.path === args["path"]);
+        if (!row) return undefined;
+        this.library = this.library.filter((entry) => entry !== row);
+        row.group = args["group"] as number;
+        const inGroup = this.library.filter((entry) => entry.group === row.group);
+        const index = Math.min(args["index"] as number, inGroup.length);
+        const before = inGroup[index];
+        const at = before ? this.library.indexOf(before) : this.endOf(row.group);
+        this.library.splice(at, 0, row);
+        this.reorder();
+        return undefined;
+      }
       case "add_repository": {
         const path = args["path"] as string;
         if (path === this.notARepository) throw new Error(`${path} n'est pas un dépôt Git`);
@@ -605,6 +665,41 @@ export class Repository {
       default:
         throw new Error(`la commande ${command} n'existe pas`);
     }
+  }
+
+  /// The folders and the rows, the way the real `repositories` sends them —
+  /// the folders read from the folders, so one with nothing in it is still
+  /// there.
+  private view(): LibraryView {
+    this.reorder();
+    return {
+      groups: this.groups.map((group) => ({ ...group })),
+      rows: this.library.map((row) => ({ ...row })),
+    };
+  }
+
+  /// Put the flat list back in group order and renumber it. The real library
+  /// holds the rows *inside* their group, so an index is a position in that
+  /// group; here they share one array and this is what keeps the two agreeing.
+  private reorder(): void {
+    this.library.sort((a, b) => a.group - b.group);
+    const counted = new Map<number, number>();
+    for (const row of this.library) {
+      const index = counted.get(row.group) ?? 0;
+      row.index = index;
+      counted.set(row.group, index + 1);
+      row.group_name = this.groups[row.group]?.name ?? "omagit:library.recents";
+    }
+  }
+
+  /// Where a group's rows end in the flat array, for an insertion past its last
+  /// row.
+  private endOf(group: number): number {
+    let at = this.library.length;
+    for (let index = 0; index < this.library.length; index += 1) {
+      if (this.library[index]!.group > group) return index;
+    }
+    return at;
   }
 
   private summary(path: string): RepoSummary {

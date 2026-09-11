@@ -644,11 +644,12 @@ disk. That is not the usual reason for a confirmation — nothing is lost that
 Git cannot restore — but "Retirer" beside a repository name reads as though it
 might delete it, and the dialog is where that is answered.
 
-**What is not built**, and is board 06's: drag to reorder, groups created and
-renamed from the window, cloning from a URL, "Révéler dans le gestionnaire",
-and the per-repository description edited in place. The data model carries all
-of them — `Library::move_entry`, `add_group`, `Entry::description` — and each is
-an interaction surface of its own.
+**What is not built**, and is board 06's: "Révéler dans le gestionnaire", the
+per-repository description edited in place, and dragging one *folder* above
+another. The data model carries all of them — `Entry::description`,
+`Library::move_group` — and each is an interaction surface of its own. Cloning
+from a URL arrived with M7; the folders, and dragging a repository between
+them, with §2.64.
 
 ### 2.28 The interface was built from the mock-ups' text, not from the mock-ups
 
@@ -2025,7 +2026,7 @@ blink the sidebar. `shown()` is what panes read now — the answer, or the one i
 is in the middle of replacing — so a re-read is invisible unless it changes
 something, and a pane is blank only when it has never had an answer.
 
-### 2.62 GPL-3.0, and why the licence was the decision
+### 2.63 GPL-3.0, and why the licence was the decision
 
 The distribution model — open source, free on Linux, paid on macOS — turns on one
 line that was already in the repository and pointing the wrong way:
@@ -2058,6 +2059,81 @@ Two consequences worth writing down before somebody rediscovers them:
   public, so any check can be removed in ten minutes. What it is for is making
   paying easy for people who want to; designing it as a defence would be
   designing for the people who will never pay anyway.
+
+### 2.64 The folders, and the switch that would not let them be dragged
+
+SPEC §11 asks for "groupes utilisateur repliables, réordonnables par drag &
+drop, persistés", and the model has carried one per repository since M3:
+`Library::move_entry`, `add_group`, a `collapsed` flag, all written, all
+serialised, none of them ever called. §5 recorded it as **seen but not made** —
+the list drew the groups the first repository created and there was no way to
+make a second. This is that, built.
+
+**The folders are read from the folders, not from the rows.** The list used to
+group its rows by their `group` index and take each header's name from the first
+row that named it, which works exactly until a folder holds nothing — and a
+folder holds nothing the moment it is made. The button would have appeared to
+do nothing. So `repositories` now answers with a `LibraryView`: the folders, and
+the rows, from **one** read. Two commands could be taken a moment apart, across
+a rename or a creation, and a row names its folder by *index* — off by one and
+a repository is drawn under a folder it is not in. A test on each side holds the
+shape: `tests/library.rs` for the command, `folders.test.ts` for the window.
+
+**Pointer events, because the window cannot have HTML5 drag and drop.** §2.53
+ends with a note: `dragDropEnabled` is what makes a folder dropped from the
+Finder arrive as a *path* instead of as file contents, and the same switch turns
+off drag and drop inside the page on macOS and Windows — "whoever builds that
+will have to reconcile the two, and the line in the config is where they will
+find out". The reconciliation is `filing.ts`: a press, a 4px threshold before it
+counts as a drag at all — every row here is also a thing you select — a pointer
+capture, and the insertion line chosen by arithmetic rather than by the DOM.
+
+That arithmetic is a file of its own and not a lump inside the component,
+because it is the part that can be wrong in a way no screenshot shows: a line
+drawn one slot off files the repository where the user did not point. jsdom
+measures nothing — every rect it returns is zero — so a test driven through the
+DOM would assert on identical boxes. `filing.ts` takes numbers and returns the
+slot, and `filing.test.ts` asks it about the seam between two folders, about a
+folder with no rows to draw a line between, and about the space above and below
+the whole list.
+
+**Deleting a folder keeps what was in it.** `remove_group` was written in M3 as
+"remove a group and everything filed under it", with a comment telling the
+caller to confirm first. Building the caller changed the answer: a repository
+can be in exactly one folder, so a folder deletion is the only gesture that can
+lose several entries at once — and taking *one* entry out deliberately already
+asks a question. The entries now move to the neighbouring folder, and the
+confirmation's whole job is to say so, because "Delete" on a folder holding
+eight rows reads as though it takes them. `Library::load` moves a damaged file
+aside rather than replace it for the same reason: this list is arranged by hand.
+
+**And the last folder stays.** A repository has to be somewhere. The button is
+drawn disabled with the sentence in its title rather than hidden — a control
+that disappears leaves the question of whether it was ever there — and the way
+to be rid of the last folder is to rename it.
+
+**Two ways in, because one of them is a pointer.** Board 06 draws the drag and
+nothing else, and a drag is unreachable from a keyboard. The card gained a
+folder `select`: reachable with Tab, legible without hovering anything, and the
+obvious shape for "one of these" — which is the lesson §2.59 had just learned
+from five rows that only looked like buttons. `New folder` is in `ACTIONS` too,
+with no default binding, so it reaches the palette and the File menu and can be
+given a key from Preferences.
+
+**Two glyphs, and both contradicted a comment I had written.** `folder-plus`
+was drawn with the plus outside the folder, on the theory that inside it would
+meet the tab's fold and read as one scribble. Four constructions probed at 96,
+32, 16 and 12px say the opposite: outside, the folder has to be cut short to
+make room and stops being a folder, which is the half that carries the meaning.
+The same probe caught the rename pencil at the 10px a row's actions use — a
+diagonal at 10px is a slash — and the header's actions are set at 12.
+
+And one plain defect, found by the probe and not by the tests: the rename box
+was an `<input>` with no `type`. Every base rule in `style.css` is written
+`input[type="text"]`, which does not match an input that declares none, so the
+box came out with the browser's own white ground in the middle of a dark
+window. The codebase's other twenty-one inputs all name their type; this one
+now does too.
 
 ## 3. Data flow (from M2 onwards)
 
@@ -2237,6 +2313,10 @@ window:
 - **The Repositories screen** (§2.27): the grouped list with a summary per row,
   the card of board 06, adding through the platform's folder picker, and
   removing an entry without touching the disk.
+- **Folders** (§2.64): made, named, folded and persisted; a repository filed by
+  dragging it — pointer events, since `dragDropEnabled` forbids the browser's
+  own — or from a select on the card, which is the route a keyboard can take.
+  Removing a folder keeps what was in it, and the last one stays.
 
 The port is complete. What is left on those screens is named in §2.27 and
 §2.25 — board 06's reordering and groups, and Git's history simplification,
@@ -2374,13 +2454,14 @@ drawn on top of the file path — is fixed: the path could not shrink and had no
 clip, so its text spilled over them. It now keeps a floor and the stats clip
 first (`tests/working_copy.rs`).
 
-**Library groups can be seen but not made.** The backend has carried a group per
-repository since M3 and the list draws them, but nothing creates one, renames
-one, or reorders them — SPEC §11 asks for all three, "repliables, réordonnables
-par drag & drop, persistés". The Repositories column carried a "Nouveau groupe —
-jalon M9" placeholder for it; M9 ends without groups, so the placeholder is gone
-rather than re-dated. It is the last piece of the MVP's Repositories line that
-is not built, and it has no milestone: M10 is distribution.
+**Library groups could be seen but not made** — now **closed** (§2.64). They
+are made, named, folded, filled by drag or from the card, and removed without
+taking what was in them. What remains unbuilt of SPEC §11's sentence is
+*reordering the folders themselves* by drag: `Library::move_group` and the
+`move_group` command exist and are tested, and nothing in the window calls
+them. Repositories move between folders, which is the half that was asked for;
+dragging one folder above another is a second gesture over the same geometry
+and has no caller yet.
 
 A sixteenth, from M8, **half closed by M9** (§2.53): **the only way to add a
 repository was the platform's folder picker.** A folder dropped on the window is

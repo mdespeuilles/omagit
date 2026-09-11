@@ -274,6 +274,24 @@ export type StashRow = {
 /// One line of `git`'s progress, as the overlay draws it.
 export type Progress = { what: string; phase: string; percent: number | null };
 
+/// One folder of the repository list, in the order the user arranged them.
+///
+/// No count: the header shows how many rows are *visible*, and the filter is
+/// applied on this side.
+export type LibraryGroup = {
+  /// Data, and renameable. The default group's is an `omagit:` key — run it
+  /// through `worded()` before drawing it.
+  name: string;
+  collapsed: boolean;
+};
+
+/// The folders and the rows, from one read: a row names its group by index, so
+/// two reads a moment apart could put a row under the wrong folder.
+export type LibraryView = {
+  groups: LibraryGroup[];
+  rows: LibraryRow[];
+};
+
 export type LibraryRow = {
   group: number;
   index: number;
@@ -373,10 +391,24 @@ export const api = {
   setBinding: (id: string, binding: string | null) => invoke<void>("set_binding", { id, binding }),
   setPane: (name: string, width: number) => invoke<void>("set_pane", { name, width }),
   gitStatus: () => invoke<string | null>("git_status"),
-  repositories: () => invoke<LibraryRow[]>("repositories"),
+  repositories: () => invoke<LibraryView>("repositories"),
   addRepository: (path: string) => invoke<RepoSummary>("add_repository", { path }),
   forgetRepository: (path: string) => invoke<void>("forget_repository", { path }),
   touchRepository: (path: string) => invoke<void>("touch_repository", { path }),
+
+  // The folders (SPEC §11). Every one of them writes `repositories.toml` and
+  // answers nothing: the window re-reads the arrangement afterwards, which is
+  // one round trip rather than a view returned from six places that could each
+  // shape it differently.
+  createGroup: (name: string) => invoke<number>("create_group", { name }),
+  renameGroup: (group: number, name: string) => invoke<void>("rename_group", { group, name }),
+  removeGroup: (group: number) => invoke<void>("remove_group", { group }),
+  collapseGroup: (group: number, collapsed: boolean) =>
+    invoke<void>("collapse_group", { group, collapsed }),
+  moveGroup: (from: number, to: number) => invoke<void>("move_group", { from, to }),
+  /// The row's own path, which is the canonicalised one the list was sent.
+  moveRepository: (path: string, group: number, index: number) =>
+    invoke<void>("move_repository", { path, group, index }),
   closeRepository: (path: string) => invoke<void>("close_repository", { path }),
   summary: (path: string) => invoke<RepoSummary>("summary", { path }),
   status: (path: string) => invoke<StatusRow[]>("status", { path }),

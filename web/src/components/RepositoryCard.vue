@@ -7,8 +7,8 @@
 
 import { computed } from "vue";
 import { exact, tildify, when } from "../format";
-import { app, forgetRepository, openRepository } from "../state";
-import { count, t, type Plural } from "../i18n";
+import { app, fileRepository, forgetRepository, openRepository } from "../state";
+import { count, t, worded, type Plural } from "../i18n";
 
 const row = computed(() => app.repositories.find((entry) => entry.path === app.card) ?? null);
 const summary = computed(() => {
@@ -22,6 +22,18 @@ const failure = computed(() => {
   const held = path && path in app.library ? app.library[path] : null;
   return held?.status === "failed" ? held.error : null;
 });
+
+/// The folders, for the one control on this screen that files a repository
+/// without a pointer.
+///
+/// The list itself is dragged, which board 06 asks for and which nothing on a
+/// keyboard can do. A select is reachable with Tab, says what the folders are
+/// called without hovering anything, and is the obvious shape for "one of
+/// these": the Preferences screen learned the same lesson about rows that only
+/// looked like buttons.
+const folders = computed(() =>
+  app.groups.map((folder, index) => ({ index, name: worded(folder.name) })),
+);
 
 /// The status line, spelled out rather than summed: board 06 lists the kinds
 /// separately and colours each, because they are four different amounts of
@@ -132,6 +144,19 @@ const spark = computed(() => {
       <div v-else-if="summary" class="card-body">
         <div class="card-section">{{ t("card.repository") }}</div>
         <dl class="card-facts">
+          <dt>{{ t("card.folder") }}</dt>
+          <dd>
+            <select
+              class="card-folder"
+              :value="row.group"
+              :title="t('card.folderTitle')"
+              @change="fileRepository(row.path, Number(($event.target as HTMLSelectElement).value))"
+            >
+              <option v-for="folder in folders" :key="folder.index" :value="folder.index">
+                {{ folder.name }}
+              </option>
+            </select>
+          </dd>
           <dt>{{ t("card.location") }}</dt>
           <dd class="mono">{{ tildify(row.path) }}</dd>
           <dt>{{ t("card.lastOpened") }}</dt>

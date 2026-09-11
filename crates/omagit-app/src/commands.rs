@@ -193,9 +193,17 @@ pub fn git_status(state: State<'_, AppState>) -> Option<String> {
 /// before the screen drew anything; the rows arrive first and the front end
 /// fills them in.
 #[tauri::command(async)]
-pub fn repositories(state: State<'_, AppState>) -> Vec<dto::LibraryRow> {
-    state.with_library(|library| {
-        library
+pub fn repositories(state: State<'_, AppState>) -> dto::LibraryView {
+    state.with_library(|library| dto::LibraryView {
+        groups: library
+            .groups
+            .iter()
+            .map(|group| dto::LibraryGroup {
+                name: group.name.clone(),
+                collapsed: group.collapsed,
+            })
+            .collect(),
+        rows: library
             .groups
             .iter()
             .enumerate()
@@ -218,8 +226,59 @@ pub fn repositories(state: State<'_, AppState>) -> Vec<dto::LibraryRow> {
                         missing: !entry.path.exists(),
                     })
             })
-            .collect()
+            .collect(),
     })
+}
+
+/// Make a folder. Names are not unique — two called "Work" are the user's
+/// business — and the new one lands at the end, where the button that made it
+/// is.
+#[tauri::command(async)]
+pub fn create_group(state: State<'_, AppState>, name: String) -> usize {
+    state.with_library(|library| library.add_group(name.trim()))
+}
+
+/// Rename one. A blank name is refused rather than stored: the header is the
+/// only place to click to rename it back.
+#[tauri::command(async)]
+pub fn rename_group(state: State<'_, AppState>, group: usize, name: String) {
+    state.with_library(|library| library.rename_group(group, &name));
+}
+
+/// Remove one, and keep what was filed under it — [`Library::remove_group`]
+/// says where the repositories go and why they are not dropped.
+#[tauri::command(async)]
+pub fn remove_group(state: State<'_, AppState>, group: usize) {
+    state.with_library(|library| library.remove_group(group));
+}
+
+/// Fold a folder, or unfold it. Written out, because it is a preference about
+/// a list somebody arranged, not a passing state of the window.
+#[tauri::command(async)]
+pub fn collapse_group(state: State<'_, AppState>, group: usize, collapsed: bool) {
+    state.with_library(|library| library.collapse_group(group, collapsed));
+}
+
+/// Reorder the folders.
+#[tauri::command(async)]
+pub fn move_group(state: State<'_, AppState>, from: usize, to: usize) {
+    state.with_library(|library| library.move_group(from, to));
+}
+
+/// File a repository under `group`, at `index`.
+///
+/// By path rather than by the row's own group and index: an index is only true
+/// until the next edit, and this call arrives at the end of a drag the user
+/// spent a second on. The path is the *row's* — the canonicalised one the list
+/// was sent, not one typed somewhere — or nothing is found and nothing moves.
+#[tauri::command(async)]
+pub fn move_repository(state: State<'_, AppState>, path: String, group: usize, index: usize) {
+    let path = PathBuf::from(path);
+    state.with_library(|library| {
+        if let Some(from) = library.find(&path) {
+            library.move_entry(from, omagit_settings::Location { group, index });
+        }
+    });
 }
 
 /// Add a folder, remembering nothing about it until it turns out to be one.

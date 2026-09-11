@@ -30,6 +30,10 @@ Commit detail with clickable parents, and A ↔ B comparison between any two.
 awkward cases handled rather than hung on: binary, oversized, mode-only,
 submodule.
 
+**Repositories in folders.** Make one, name it, fold it, and drag repositories
+into it — or pick the folder from the card, which is the route that does not
+need a pointer. Removing a folder keeps what was filed in it.
+
 **Branches, remotes, tags, stashes.** Grouped on `/`, ahead/behind kept fresh,
 "merged" read from `git` rather than guessed. Fetch, pull (merge or rebase),
 push — `--force-with-lease` only, never a bare `--force`. Cloning with a

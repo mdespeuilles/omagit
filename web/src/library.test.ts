@@ -39,11 +39,15 @@ function entry(path: string, over: Partial<LibraryRow> = {}): LibraryRow {
   };
 }
 
-async function open(library: LibraryRow[]) {
+async function open(
+  library: LibraryRow[],
+  dress: (fake: InstanceType<typeof Repository>) => void = () => {},
+) {
   backend.current = new Repository([
     { path: "a.txt", staged: null, unstaged: "modified", hunks: 1 },
   ]);
   backend.current.library = library;
+  dress(backend.current);
   vi.resetModules();
   const state = await import("./state");
   await state.boot();
@@ -101,7 +105,12 @@ describe("reading the library", () => {
     // A group's name is data — SPEC §11 lets it be renamed — so the default one
     // is stored as a key and worded on the way to the screen. Renamed, it is a
     // plain word and is shown verbatim.
-    await open([entry("/a"), { ...entry("/b"), group: 1, group_name: "Mes clients" }]);
+    await open([entry("/a"), { ...entry("/b"), group: 1, group_name: "Mes clients" }], (fake) => {
+      fake.groups = [
+        { name: "omagit:library.recents", collapsed: false },
+        { name: "Mes clients", collapsed: false },
+      ];
+    });
     const RepositoryList = (await import("./components/RepositoryList.vue")).default;
     const heads = mount(RepositoryList)
       .findAll(".group-head")

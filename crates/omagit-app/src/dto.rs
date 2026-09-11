@@ -794,6 +794,32 @@ pub fn refs(
     }
 }
 
+/// One folder of the repository list, in the order the user arranged them.
+///
+/// It carries no count: the header shows how many rows are *visible*, and the
+/// filter is applied on the other side. A group with nothing in it is still
+/// sent — it is the one a user has just made, and a folder that vanished the
+/// moment it was created would read as a button that did nothing.
+#[derive(Debug, serde::Serialize)]
+pub struct LibraryGroup {
+    /// Data, and renameable. The default group's is the `omagit:` key SPEC
+    /// §11 explains, said in the window's language until somebody renames it.
+    pub name: String,
+    pub collapsed: bool,
+}
+
+/// The repository list: the folders, and the rows filed under them.
+///
+/// Both from one read, because a row names its group by *index*. Served from
+/// two commands they could be taken a moment apart — across a rename, or a
+/// group being made — and a row would be drawn under the wrong folder, or
+/// under none.
+#[derive(Debug, serde::Serialize)]
+pub struct LibraryView {
+    pub groups: Vec<LibraryGroup>,
+    pub rows: Vec<LibraryRow>,
+}
+
 /// One row of the repository list.
 ///
 /// What the library holds and nothing Git knows: reading a summary per row

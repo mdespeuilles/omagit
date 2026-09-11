@@ -255,6 +255,8 @@ export const strings = {
   "card.missing":
     "The folder is no longer where it was recorded. The entry stays: an unmounted disk comes back, and a list that tidied itself would lose what you arranged.",
   "card.repository": "Repository",
+  "card.folder": "Folder",
+  "card.folderTitle": "File this repository in another folder",
   "card.location": "Location",
   "card.lastOpened": "Last opened",
   "card.never": "never",
@@ -306,6 +308,18 @@ export const strings = {
   "history.loaded": "{n} commits loaded",
   "history.firstParent": "Follow only the first parent of each merge",
   "library.filterTitle": "Filter by name, path or description — /",
+
+  // The folders. A group's name is data and is shown verbatim; the default
+  // one is a key until somebody renames it, which is why `library.recents`
+  // sits with the strings and not with the model.
+  "library.newGroup": "New folder",
+  "library.newGroupTitle": "Make a folder, and drag repositories into it",
+  "library.renameGroup": "Rename this folder",
+  "library.removeGroup": "Remove this folder — what is in it is kept",
+  "library.lastGroup": "The last folder stays: a repository has to be somewhere",
+  "library.emptyGroup": "Nothing filed here yet — drag a repository onto it",
+  "library.dragTitle": "Drag to file it in another folder",
+  "library.dragHint": "drag to file",
   "diff.goneFromStatus": "this file is no longer in the status",
   "diff.goneFromCommit": "this file is not in this commit",
   "diff.goneFromComparison": "this file is not in this comparison",
@@ -338,6 +352,10 @@ export const strings = {
   "ask.forget.detail":
     "The repository stays on the disk: only its entry in this list goes, and it can be added again.",
   "ask.forget.verb": "Remove",
+  "ask.removeGroup.title": "Remove the folder {name}?",
+  "ask.removeGroup.detail":
+    "The {n} it holds move to {into}. Nothing leaves the list, and nothing " + "leaves the disk.",
+  "ask.removeGroup.verb": "Remove the folder",
   "ask.reconcile.title": "Merge or rebase?",
   "ask.reconcile.detail":
     "{branch} has {ahead} that {upstream} does not, and {upstream} has {behind} of its own. Nothing in the configuration says how to reconcile them, and git refuses to choose. Merging keeps both histories and adds a merge commit; rebasing replays your commits on top of theirs, which rewrites them. This choice holds for this pull only: nothing is stored.",
@@ -429,6 +447,7 @@ export const strings = {
   // them in its tooltips.
   "action.repository.add": "Add a local repository",
   "action.repository.clone": "Clone a repository",
+  "action.repository.newGroup": "New folder",
   "action.repository.all": "All repositories",
   "action.screen.workingCopy": "Go to the working copy",
   "action.screen.history": "Go to the history",

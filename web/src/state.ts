@@ -29,6 +29,7 @@ import {
   type HistoryQuery,
   type HistoryRow,
   type JournalRow,
+  type LibraryGroup,
   type LibraryRow,
   type PlatformFacts,
   type Preferences,
@@ -102,6 +103,10 @@ type State = {
   /// rather than after (SPEC §8).
   gitUnusable: string | null;
   repositories: LibraryRow[];
+  /// The folders the rows are filed under, in the order they are drawn. Held
+  /// beside the rows rather than derived from them: a folder with nothing in
+  /// it is one the user has just made, and deriving would make it vanish.
+  groups: LibraryGroup[];
   screen: Screen;
   /// The repository the window is looking at, by path.
   open: string | null;
@@ -257,6 +262,16 @@ type State = {
   /// What narrows the repository list. Board 06 draws the box; it was disabled
   /// and labelled M9 until now, and `/` needs somewhere to land.
   libraryFilter: string;
+  /// The folder whose name is being typed, or `null`. A folder made from the
+  /// button opens straight into it: a folder called "New folder" that has to
+  /// be renamed in a second gesture is a folder most people leave so named.
+  renamingGroup: number | null;
+  /// The repository being dragged, by path, and where it would land. Board 06
+  /// draws the insertion as a 2px accent line between two rows — which needs
+  /// to be *between*, so the target is a group and a position in it rather
+  /// than a row.
+  draggedRepository: string | null;
+  dropAt: { group: number; index: number } | null;
 };
 
 /// The three columns, numbered as DESIGN §5 numbers them.
@@ -312,6 +327,7 @@ const state = reactive<State>({
   platform: null,
   gitUnusable: null,
   repositories: [],
+  groups: [],
   screen: "repositories",
   open: null,
   summary: null,
@@ -375,6 +391,9 @@ const state = reactive<State>({
   zone: 1,
   branchCursor: null,
   libraryFilter: "",
+  renamingGroup: null,
+  draggedRepository: null,
+  dropAt: null,
   dragging: false,
   tabs: [],
 });
@@ -418,13 +437,18 @@ export async function boot(): Promise<void> {
     })
     .catch((error) => api.log("warn", `largeurs de colonnes illisibles : ${message(error)}`));
   state.gitUnusable = gitUnusable;
-  state.repositories = repositories;
+  state.repositories = repositories.rows;
+  state.groups = repositories.groups;
   state.keymap = keymap;
 
   // The list first, then a summary per row in the background: the screen draws
   // immediately and fills in, rather than waiting on a status walk per
   // repository.
-  void readLibrary();
+  //
+  // The summaries directly rather than through `readLibrary`, which would ask
+  // for the arrangement a second time — it arrived above, with everything
+  // else — and would not begin the status walks until that answer came back.
+  void Promise.all(state.repositories.map((row) => readSummary(row)));
 
   // The window opens on Repositories, always. SPEC §12 measures cold start
   // "jusqu'à l'écran Repositories" and board 06 is drawn "pas de dépôt ouvert":
@@ -435,14 +459,24 @@ export async function boot(): Promise<void> {
   state.screen = "repositories";
 }
 
-/// Re-read the library, and a summary for each row that is still on disk.
-export async function readLibrary(): Promise<void> {
-  const rows = await api.repositories();
+/// Re-read how the list is arranged — the folders, and which one each row is
+/// in — and nothing Git knows.
+///
+/// Separate from [`readLibrary`] because the summaries are a status walk per
+/// repository: renaming a folder would set every row back to "…" for as long
+/// as that takes, to answer a question nobody asked.
+export async function readArrangement(): Promise<void> {
+  const { groups, rows } = await api.repositories();
   state.repositories = rows;
+  state.groups = groups;
   if (state.card && !rows.some((row) => row.path === state.card)) state.card = null;
   state.card ??= rows[0]?.path ?? null;
+}
 
-  await Promise.all(rows.map((row) => readSummary(row)));
+/// The arrangement, and a fresh summary for each row that is still on disk.
+export async function readLibrary(): Promise<void> {
+  await readArrangement();
+  await Promise.all(state.repositories.map((row) => readSummary(row)));
 }
 
 async function readSummary(row: LibraryRow): Promise<void> {
@@ -543,6 +577,125 @@ export function forgetRepository(row: LibraryRow): void {
       })();
     },
   );
+}
+
+// ── The folders (SPEC §11) ──────────────────────────────────────────────────
+//
+// The model has carried a group per repository since M3 and the list has drawn
+// them since; what was missing was every way to make one. Each of these writes
+// `repositories.toml` and then re-reads the arrangement rather than patching
+// the local copy: the indices a row names are positions in the stored list, and
+// a front end that guessed at them after a move would draw rows under folders
+// they are not in until the next read.
+
+/// Make a folder, and open its name for typing.
+export async function createGroup(): Promise<void> {
+  const at = await api.createGroup(t("library.newGroup"));
+  await readArrangement();
+  state.renamingGroup = at;
+}
+
+/// Begin, or abandon, typing a folder's name.
+export function renameGroup(group: number | null): void {
+  state.renamingGroup = group;
+}
+
+/// Settle it. A blank name is refused by the backend and leaves the old one,
+/// so `Esc` and an emptied box do the same thing, which is what makes the box
+/// safe to open on a folder that already has a name.
+export async function setGroupName(group: number, name: string): Promise<void> {
+  state.renamingGroup = null;
+  if (name.trim() === "") return;
+  await api.renameGroup(group, name);
+  await readArrangement();
+}
+
+/// Fold a folder, or unfold it. Written out: someone who files forty
+/// repositories into eight folders did it to keep seven of them shut.
+export async function toggleGroup(group: number): Promise<void> {
+  const held = state.groups[group];
+  if (!held) return;
+  // Locally first, so the chevron turns under the finger rather than after a
+  // round trip through a file.
+  held.collapsed = !held.collapsed;
+  await api.collapseGroup(group, held.collapsed);
+}
+
+/// Take a folder away. What was in it is not.
+///
+/// The question is asked only when there is something to say — an empty folder
+/// loses nothing, and a confirmation that answers no question is one people
+/// learn to click through. When it holds repositories, the sentence's job is
+/// to say they are kept, because "Delete" on a folder holding eight rows reads
+/// as though it takes them.
+export function removeGroup(group: number): void {
+  const folder = state.groups[group];
+  if (!folder || state.groups.length < 2) return;
+  const inside = state.repositories.filter((row) => row.group === group).length;
+  const go = () => {
+    void (async () => {
+      await api.removeGroup(group);
+      if (state.renamingGroup === group) state.renamingGroup = null;
+      await readArrangement();
+    })();
+  };
+  if (inside === 0) {
+    go();
+    return;
+  }
+  // Where they go: the folder above, or the one below when this is the first.
+  const host = state.groups[group === 0 ? 1 : group - 1];
+  ask(
+    {
+      title: t("ask.removeGroup.title", { name: worded(folder.name) }),
+      detail: t("ask.removeGroup.detail", {
+        n: plural("library.repositories", inside),
+        into: worded(host?.name ?? ""),
+      }),
+      verb: t("ask.removeGroup.verb"),
+    },
+    go,
+  );
+}
+
+/// Reorder the folders.
+export async function moveGroup(from: number, to: number): Promise<void> {
+  if (from === to) return;
+  await api.moveGroup(from, to);
+  await readArrangement();
+}
+
+/// A drag begins, moves, or ends nowhere.
+export function dragRepository(path: string | null): void {
+  state.draggedRepository = path;
+  if (path === null) state.dropAt = null;
+}
+
+export function dropTarget(at: { group: number; index: number } | null): void {
+  state.dropAt = at;
+}
+
+/// Put one repository in one folder, at the end of it.
+///
+/// What the card's select calls, and the only way to file a repository that
+/// does not need a pointer. The end rather than a position: choosing a folder
+/// is one decision, and asking for a rank inside it in the same gesture would
+/// be two.
+export async function fileRepository(path: string, group: number): Promise<void> {
+  const rows = state.repositories.filter((row) => row.group === group).length;
+  await api.moveRepository(path, group, rows);
+  await readArrangement();
+}
+
+/// File the dragged repository where the insertion line is.
+export async function dropRepository(): Promise<void> {
+  const path = state.draggedRepository;
+  const at = state.dropAt;
+  state.draggedRepository = null;
+  state.dropAt = null;
+  if (!path || !at) return;
+  await api.moveRepository(path, at.group, at.index);
+  await readArrangement();
 }
 
 export async function openRepository(path: string): Promise<void> {

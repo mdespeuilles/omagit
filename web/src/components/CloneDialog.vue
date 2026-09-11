@@ -22,7 +22,7 @@ import {
   setCloneUrl,
   startClone,
 } from "../state";
-import { t } from "../i18n";
+import { t, worded } from "../i18n";
 import { tildify } from "../format";
 
 const url = ref<HTMLInputElement | null>(null);
@@ -38,13 +38,15 @@ const destination = computed(() => {
   return tildify(current.name ? `${parent}/${current.name}` : parent);
 });
 
-/// The groups the library already has, so a clone can join one as it arrives
+/// The folders the library already has, so a clone can join one as it arrives
 /// rather than be dragged there afterwards.
-const groups = computed(() => {
-  const seen = new Map<number, string>();
-  for (const row of app.repositories) if (!seen.has(row.group)) seen.set(row.group, row.group_name);
-  return [...seen].map(([index, name]) => ({ index, name }));
-});
+///
+/// From the folders, not from the rows they hold: a folder made for the clone
+/// that is about to be fetched holds nothing yet, and is exactly the one the
+/// user means to put it in.
+const groups = computed(() =>
+  app.groups.map((folder, index) => ({ index, name: worded(folder.name) })),
+);
 
 function onKey(event: KeyboardEvent): void {
   if (event.key === "Escape") {

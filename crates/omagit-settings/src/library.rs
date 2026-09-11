@@ -264,12 +264,77 @@ impl Library {
         self.groups.len() - 1
     }
 
-    /// Remove a group and everything filed under it.
+    /// Remove a group, and keep what was filed under it.
     ///
-    /// Destructive in the sense of SPEC §3 rule 7 — the entries go with it — so
-    /// the caller confirms first. Nothing on disk is touched.
-    pub fn remove_group(&mut self, index: usize) -> Option<Group> {
-        (index < self.groups.len()).then(|| self.groups.remove(index))
+    /// The repositories move to the group that was before it, or to the one
+    /// that follows when it was the first. They are *not* removed with it:
+    /// this list is arranged by hand — `load` moves a damaged file aside
+    /// rather than replace it for exactly that reason — and a folder deleted
+    /// by mistake would otherwise take eight rows with it, when taking one out
+    /// deliberately already asks a question.
+    ///
+    /// Refused when it is the only group: a repository has to be somewhere,
+    /// and the way to be rid of the last folder is to rename it.
+    ///
+    /// Returns how many repositories were rehoused, and where they went.
+    pub fn remove_group(&mut self, index: usize) -> Option<(usize, usize)> {
+        if index >= self.groups.len() || self.groups.len() < 2 {
+            return None;
+        }
+        let group = self.groups.remove(index);
+        // After the removal, the group before it keeps its index and the one
+        // after it has taken this one's — so `index - 1` and `index` name the
+        // two neighbours, and `saturating_sub` picks the survivor at the top.
+        let host = index.saturating_sub(1);
+        let moved = group.repositories.len();
+        self.groups[host].repositories.extend(group.repositories);
+        Some((moved, host))
+    }
+
+    /// Rename a group.
+    ///
+    /// A name that is blank once trimmed is refused rather than stored: two
+    /// nameless folders cannot be told apart, and the header is the only place
+    /// to click to rename one back.
+    pub fn rename_group(&mut self, index: usize, name: &str) -> bool {
+        let name = name.trim();
+        if name.is_empty() {
+            return false;
+        }
+        match self.groups.get_mut(index) {
+            Some(group) => {
+                group.name = name.to_owned();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Fold a group, or unfold it. Stored, because someone who files forty
+    /// repositories into eight folders did it to keep seven of them shut.
+    pub fn collapse_group(&mut self, index: usize, collapsed: bool) -> bool {
+        match self.groups.get_mut(index) {
+            Some(group) => {
+                group.collapsed = collapsed;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Move a group among the others, carrying its repositories.
+    ///
+    /// `to` is read after the group has been lifted out, the same rule
+    /// [`Self::move_entry`] follows, so an index taken from the insertion line
+    /// means what the line showed.
+    pub fn move_group(&mut self, from: usize, to: usize) -> Option<usize> {
+        if from >= self.groups.len() {
+            return None;
+        }
+        let group = self.groups.remove(from);
+        let to = to.min(self.groups.len());
+        self.groups.insert(to, group);
+        Some(to)
     }
 }
 
@@ -396,6 +461,80 @@ mod tests {
 
         library.save(dir.path()).expect("save");
         assert_eq!(Library::load(dir.path()), library);
+    }
+
+    #[test]
+    fn removing_a_group_keeps_its_repositories() {
+        // The whole reason this is not `Vec::remove`: a folder deleted by
+        // mistake would take every row filed in it, and taking one out
+        // deliberately already asks a question.
+        let mut library = library();
+        let (moved, host) = library.remove_group(1).expect("two groups, so one may go");
+
+        assert_eq!((moved, host), (1, 0), "gamma rehoused in the group above");
+        assert_eq!(library.groups.len(), 1);
+        assert_eq!(library.len(), 3, "nothing was dropped");
+        let names: Vec<&str> = library.groups[0]
+            .repositories
+            .iter()
+            .map(|entry| entry.name.as_str())
+            .collect();
+        assert_eq!(names, vec!["alpha", "beta", "gamma"]);
+    }
+
+    #[test]
+    fn removing_the_first_group_rehouses_into_the_one_that_follows() {
+        let mut library = library();
+        let (moved, host) = library.remove_group(0).expect("removable");
+
+        assert_eq!((moved, host), (2, 0), "there is nothing above the first");
+        assert_eq!(library.groups[0].name, "Travail");
+        assert_eq!(library.len(), 3);
+    }
+
+    #[test]
+    fn the_last_group_cannot_be_removed() {
+        // A repository has to be somewhere. The way to be rid of the last
+        // folder is to rename it.
+        let mut library = Library::default();
+        library.add(Entry::new("/src/alpha"), None);
+        assert!(library.remove_group(0).is_none());
+        assert_eq!(library.len(), 1);
+        assert!(library.remove_group(9).is_none(), "and no such group");
+    }
+
+    #[test]
+    fn a_group_renames_and_refuses_a_blank_name() {
+        let mut library = library();
+        assert!(library.rename_group(1, "  Client  "));
+        assert_eq!(library.groups[1].name, "Client", "trimmed");
+
+        assert!(!library.rename_group(1, "   "));
+        assert_eq!(library.groups[1].name, "Client", "and left alone");
+        assert!(!library.rename_group(9, "Nowhere"));
+    }
+
+    #[test]
+    fn a_group_folds_and_remembers_it() {
+        let mut library = library();
+        assert!(library.collapse_group(1, true));
+        assert!(library.groups[1].collapsed);
+        assert!(!library.collapse_group(9, true));
+    }
+
+    #[test]
+    fn a_group_moves_among_the_others_with_its_repositories() {
+        let mut library = library();
+        assert_eq!(library.move_group(1, 0), Some(0));
+
+        assert_eq!(library.groups[0].name, "Travail");
+        assert_eq!(library.groups[0].repositories[0].name, "gamma");
+        assert_eq!(library.groups[1].name, Library::DEFAULT_GROUP);
+        assert_eq!(library.len(), 3);
+
+        // Clamped rather than refused, like a repository dropped past the end.
+        assert_eq!(library.move_group(0, 99), Some(1));
+        assert!(library.move_group(9, 0).is_none());
     }
 
     #[test]
