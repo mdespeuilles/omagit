@@ -322,6 +322,13 @@ button.icon .glyph {
   width: 16px;
   height: 16px;
 }
+/* The screen this button leads to is the one you are on. A surface rather than
+   the accent fill: the fill is for a chooser's answer, and this is a place. */
+button.icon.on {
+  color: var(--text);
+  background: var(--surface-raised);
+  border-color: var(--border);
+}
 
 .reserve {
   flex: none;

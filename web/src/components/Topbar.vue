@@ -101,6 +101,11 @@ const cannotPush = computed(() => {
 /// whole bar, board 06's 40px stands.
 const reduced = computed(() => !inRepository.value && (app.platform?.reserve.leading ?? 0) === 0);
 
+/// What the bar says you are looking at, when it is not a repository.
+const crumb = computed(() =>
+  app.screen === "settings" ? t("sidebar.settings") : t("topbar.repositories"),
+);
+
 /// Whether the window is looking *into* a repository, which is what decides the
 /// topbar's whole shape.
 const inRepository = computed(() => app.screen !== "repositories" && app.open !== null);
@@ -160,7 +165,7 @@ const where = computed(() => {
     <template v-else>
       <span class="topbar-name mono">omagit</span>
       <span class="topbar-rule" />
-      <span class="topbar-crumb">{{ t("topbar.repositories") }}</span>
+      <span class="topbar-crumb">{{ crumb }}</span>
     </template>
 
     <span class="topbar-spacer" data-tauri-drag-region />
@@ -213,6 +218,20 @@ const where = computed(() => {
     <span class="topbar-rule" />
     <button :title="titled(t('topbar.palette'), 'palette.open')" @click="openPalette()">
       {{ t("topbar.search") }}
+    </button>
+
+    <!-- Preferences belong to the application, not to a repository — the
+         routing has said so since the screen was built, and nothing drew the
+         door: the only way in was the sidebar, which is only there once a
+         repository is open, or a shortcut you had to know. -->
+    <button
+      class="icon"
+      :class="{ on: app.screen === 'settings' }"
+      :title="titled(t('sidebar.settings'), 'settings.open')"
+      :aria-label="t('sidebar.settings')"
+      @click="showScreen('settings')"
+    >
+      <Glyph name="settings" />
     </button>
 
     <span

@@ -111,6 +111,29 @@ describe("the topbar", () => {
   });
 });
 
+describe("the way to Preferences", () => {
+  it("is in the topbar, on the screen where there is no sidebar", async () => {
+    // Preferences belong to the application, not to a repository — the routing
+    // has said so since the screen was built. The only ways in were the
+    // sidebar, which is not drawn until a repository is open, and a shortcut
+    // you had to know already.
+    const { state, app } = await running();
+    expect(state.app.open).toBeNull();
+
+    const settings = app
+      .find(".topbar")
+      .findAll("button")
+      .find((one) => one.attributes("aria-label") === "Settings")!;
+    await settings.trigger("click");
+    await app.vm.$nextTick();
+
+    expect(state.app.screen).toBe("settings");
+    // And the bar says where you are rather than "Repositories", which is what
+    // it said while showing another screen.
+    expect(topbar(app)).toContain("Settings");
+  });
+});
+
 describe("the topbar under a window system that draws into it", () => {
   it("keeps one height on macOS, where the traffic lights are placed once", async () => {
     // Board 06 reduces the bar to 40px with no repository open. On macOS the
