@@ -6,6 +6,7 @@
 //! that made moving off GPUI a rewrite of the interface rather than of the
 //! project.
 
+pub mod agent;
 pub mod commands;
 pub mod dto;
 pub mod editor;
@@ -75,6 +76,11 @@ pub fn run() {
             commands::set_binding,
             commands::language,
             commands::set_language,
+            commands::agents,
+            commands::agent_chosen,
+            commands::set_agent,
+            commands::set_agent_guidelines,
+            commands::draft_message,
             commands::git_status,
             commands::repositories,
             commands::add_repository,

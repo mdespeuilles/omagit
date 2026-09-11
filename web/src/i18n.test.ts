@@ -40,6 +40,9 @@ describe("the catalogues", () => {
           // cannot grow by accident: an untranslated string is otherwise
           // indistinguishable from one that was never translated.
           "action.network.fetch",
+          // The same word in both, and it names a thing rather than describing
+          // one.
+          "agent.which",
           "action.network.pull",
           "action.network.push",
           "ask.commits.one",

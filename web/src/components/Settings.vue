@@ -24,6 +24,8 @@ import {
   chooseLanguage,
   languagePreference,
   readPreferences,
+  setAgent,
+  setAgentGuidelines,
   setBinding,
   toggleShortcuts,
 } from "../state";
@@ -32,6 +34,54 @@ import { LANGUAGES, systemLanguage, t } from "../i18n";
 import type { Editor as EditorFact } from "../ipc";
 
 const prefs = computed(() => (app.preferences.status === "ready" ? app.preferences.value : null));
+
+// ── The commit-message agent ───────────────────────────────────────────────
+//
+// The same rule as the theme sources above: an agent this machine does not have
+// is drawn disabled with the reason, not hidden. "Codex is not installed" is an
+// answer, and it is the answer somebody has come to this screen looking for.
+
+/// Whether the chosen command is one of the agents omagit knows, or something
+/// the user typed. Decided from the list rather than from the shape of the
+/// string, so an id this version does not know reads as a custom command —
+/// which is exactly what it is here.
+const custom = computed(() => {
+  const chosen = app.agents?.command ?? "";
+  if (chosen === "") return false;
+  return !app.agents?.candidates.some((one) => one.id === chosen);
+});
+
+/// What the select is showing: an id, the empty answer, or the custom marker.
+const picked = computed(() => (custom.value ? CUSTOM : (app.agents?.command ?? "")));
+
+/// Not an id any agent can have, and never stored: it only says which of the
+/// two controls below is the one being used.
+const CUSTOM = "\u0000custom";
+
+function chooseAgent(value: string): void {
+  // Choosing "another command" opens the box rather than storing the marker.
+  // Nothing is written until something is typed into it: a command of one null
+  // byte is not a command.
+  if (value === CUSTOM) {
+    void setAgent(typed.value.trim() === "" ? null : typed.value);
+    opened.value = true;
+    return;
+  }
+  opened.value = false;
+  void setAgent(value === "" ? null : value);
+}
+
+/// The version line the chosen agent printed, which is the only proof that it
+/// answered. A custom command has none: it was never probed, because omagit has
+/// no idea what `--version` means to it.
+const chosenVersion = computed(
+  () => app.agents?.candidates.find((one) => one.id === app.agents?.command)?.version ?? "",
+);
+
+/// The box for a command of the user's own, and whether it is showing.
+const typed = ref(app.agents?.command ?? "");
+const opened = ref(false);
+const showCustom = computed(() => custom.value || opened.value);
 
 /// The scale in whole percentages, which is what a person thinks in.
 const percent = computed(() => Math.round((prefs.value?.scale ?? 1) * 100));
@@ -319,6 +369,71 @@ function on(source: string, name = ""): boolean {
             <span class="settings-detail mono">{{ one.tag }}</span>
           </button>
         </div>
+      </section>
+
+      <!-- SPEC §11 lists this out of the MVP, and this amends it. What makes it
+           cheap is the shape: no key is asked for, because the program the user
+           already installed holds their credentials. -->
+      <section v-if="app.agents" class="settings-block">
+        <h2 class="settings-title">{{ t("agent.title") }}</h2>
+        <p class="settings-note">{{ t("agent.note") }}</p>
+
+        <div class="settings-row">
+          <span>{{ t("agent.which") }}</span>
+          <span class="pane-head-spacer" />
+          <select
+            class="settings-select"
+            :value="picked"
+            :aria-label="t('agent.which')"
+            @change="chooseAgent(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ t("agent.none") }}</option>
+            <option
+              v-for="one in app.agents.candidates"
+              :key="one.id"
+              :value="one.id"
+              :disabled="one.version === null"
+            >
+              {{ one.label }}{{ one.version === null ? ` — ${t("agent.missing")}` : "" }}
+            </option>
+            <option :value="CUSTOM">{{ t("agent.custom") }}</option>
+          </select>
+        </div>
+
+        <!-- The version it printed, which is the only proof it answered: a
+             program can be on the `PATH` and broken, and one of these was. -->
+        <p v-if="chosenVersion" class="settings-note mono">{{ chosenVersion }}</p>
+
+        <template v-if="showCustom">
+          <label class="settings-field">
+            <span>{{ t("agent.customLabel") }}</span>
+            <input
+              type="text"
+              :value="typed"
+              :placeholder="t('agent.customPlaceholder')"
+              spellcheck="false"
+              @change="
+                typed = ($event.target as HTMLInputElement).value;
+                chooseAgent(CUSTOM);
+              "
+            />
+          </label>
+          <p class="settings-note">{{ t("agent.customNote") }}</p>
+        </template>
+
+        <template v-if="app.agents.command !== ''">
+          <label class="settings-field">
+            <span>{{ t("agent.guidelines") }}</span>
+            <textarea
+              rows="3"
+              :value="app.agents.guidelines"
+              :placeholder="t('agent.guidelinesPlaceholder')"
+              @change="setAgentGuidelines(($event.target as HTMLTextAreaElement).value)"
+            />
+          </label>
+          <p class="settings-note">{{ t("agent.guidelinesNote") }}</p>
+          <p class="settings-note">{{ t("agent.what") }}</p>
+        </template>
       </section>
 
       <section class="settings-block">

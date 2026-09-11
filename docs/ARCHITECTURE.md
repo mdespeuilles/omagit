@@ -2189,6 +2189,78 @@ would still pass this one. Both were widened as well: backticks are read now,
 and `de` joined the function words — without it `Largeur de la colonne` scored
 one and stayed invisible.
 
+### 2.66 The commit-message agent, and the key that is not stored
+
+Asked for as "the user types an Anthropic, OpenAI, Mistral or Gemini key into
+Preferences and that unlocks generated commit messages". Two questions were
+about to go back — where a secret is kept, and how much context is worth its
+privacy cost — when the better answer arrived as a screenshot of Tower:
+**detect an agent already on the machine.**
+
+It is better for reasons that are structural rather than a matter of taste.
+**There is no secret**, so no keychain, no `credentials.toml`, no plaintext
+token, and `settings.toml` goes on being a file the user edits by hand.
+**There is no HTTP client**, so no TLS stack, no `cargo deny` churn, no wire
+format per provider to keep up with. And it is the shape the app already has:
+SPEC §8 says everything omagit writes it writes by running `git`, a command you
+could have typed, visible in the journal. This is that again with a different
+program — which is why the runner is `omagit-git`'s, generalised, and not a
+second one.
+
+**Rules 2 to 5 of SPEC §8 are not about Git.** A controlled environment, a
+process group that can be signalled, a deadline and `stderr` passed through
+unedited are true of anything this app starts. Rule 1 — machine formats — is
+Git's alone. So `cli::Invocation` stopped holding a `&Git` and started holding a
+program and a journal, and `cli::program()` is the door. The part that must not
+be written twice is the signalling: `git` delegates to `git-remote-https` and
+`ssh`, an agent delegates to a Node wrapper, and a kill that reaches only the
+leader leaves both running.
+
+**The patch is assembled, not shelled out for.** `git diff --staged` would have
+been one line and would have broken the rule `ops/mod.rs` states — "gix does
+every read; these do every write". `patch::build`, which staging by hunk already
+depends on and which is tested where a mistake destroys work, serialises each
+staged file instead. It is also strictly better: a binary file is *named* rather
+than skipped in silence, because "the icon changed" is part of what the commit
+is even when its bytes are not worth sending.
+
+**Three things were learned by running the binaries rather than reading about
+them**, and each changed the code:
+
+* The prompt cannot be an argument. `claude`'s `--disallowed-tools` is variadic
+  and swallowed every word of it — the agent was handed a prompt as a list of
+  tool names and asked nothing at all. Everything goes on stdin.
+* Being on the `PATH` is not being installed. `codex` was on it and answered
+  every invocation with a Node stack trace: its wrapper could not find its own
+  vendored binary. So detection is "it answered `--version`", and an agent that
+  did not is drawn disabled with the reason — the rule §2.59 settled for theme
+  sources, for the same reason.
+* A tool with no terminal can simply not return. `gemini` took a prompt on
+  stdin and produced nothing, indefinitely. The deadline is what turns that into
+  a message instead of a button that never comes back.
+
+**And one property nobody designed.** The agent is started *in the repository*,
+so it reads the project's own `CLAUDE.md` before answering. Asked about a
+three-line diff here, it came back in French, in this repository's voice, and
+noted that nothing called the new function yet. An API key with a bare diff
+could not have done either — which retired the second of the two questions
+without it ever being asked.
+
+The tools are denied all the same (`Bash`, `Edit`, `Read`, the rest). It is
+being asked for a sentence; everything it needs is on its standard input, and an
+agent with write access to the repository you are about to commit is a different
+proposition from a sentence generator — one nobody agreed to by clicking
+"Draft".
+
+Two smaller decisions. The button is **not drawn at all** until an agent is
+configured, because an affordance for a feature that is off is the dead code
+SPEC §2 forbids wearing a button; `agent_chosen` exists so start-up can know
+that for the price of a string, while `agents` — which starts a process per
+candidate — is asked only when Preferences is looked at. And drafting does not
+go through `write()`: that one calls `settle()`, which clears the lines picked
+in the diff, and a draft is not a write. It has no business undoing a selection
+somebody made by hand.
+
 ## 3. Data flow (from M2 onwards)
 
 ```
@@ -2367,6 +2439,10 @@ window:
 - **The Repositories screen** (§2.27): the grouped list with a summary per row,
   the card of board 06, adding through the platform's folder picker, and
   removing an entry without touching the disk.
+- **Commit messages drafted by an agent** (§2.66): a coding agent already
+  installed on the machine — `claude`, `codex`, `gemini`, or a command of the
+  user's own — asked in the repository, with no key stored anywhere and no HTTP
+  client in the tree.
 - **Folders** (§2.64): made, named, folded and persisted; a repository filed by
   dragging it — pointer events, since `dragDropEnabled` forbids the browser's
   own — or from a select on the card, which is the route a keyboard can take.

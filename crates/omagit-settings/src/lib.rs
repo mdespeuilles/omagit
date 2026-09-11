@@ -67,6 +67,35 @@ pub struct Settings {
     /// machine must not arrive spelled `⌘`.
     #[serde(default)]
     pub keymap: std::collections::BTreeMap<String, String>,
+    /// Which coding agent writes commit messages, and what to tell it.
+    #[serde(default)]
+    pub agent: Agent,
+}
+
+/// The coding agent that drafts commit messages (SPEC §11, amended).
+///
+/// **No secret lives here, and that is the design.** The feature was imagined
+/// as an API key typed into Preferences; what is stored instead is the *name of
+/// a program already on the machine* — one the user has already installed and
+/// logged in to. There is nothing in this file that must not be read, which is
+/// why this file can go on being ordinary TOML the user edits by hand.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Agent {
+    /// An id omagit knows — `claude`, `codex`, `gemini` — or a command of the
+    /// user's own. `None` is the default and means the feature is off: nothing
+    /// is run, and no button offers to.
+    ///
+    /// A plain string rather than an enum, because the set of agents is the
+    /// front end's business the same way the keymap's actions are: an id this
+    /// version does not recognise is treated as a command and tried, which is
+    /// what keeps a settings file written by a later release working.
+    pub command: Option<String>,
+    /// What the author wants said about their commit messages, in their own
+    /// words. Empty by default, and deliberately: the agent is started *in the
+    /// repository* and reads whatever the project already tells contributors,
+    /// so a paragraph here is for what the project does not say.
+    pub guidelines: String,
 }
 
 /// Slightly larger than the boards, because the boards are a reference frame
@@ -90,6 +119,7 @@ impl Default for Settings {
             panes: std::collections::BTreeMap::new(),
             language: None,
             keymap: std::collections::BTreeMap::new(),
+            agent: Agent::default(),
         }
     }
 }
@@ -192,6 +222,10 @@ mod tests {
             keymap: [("network.fetch".to_owned(), "Alt+Primary+F".to_owned())]
                 .into_iter()
                 .collect(),
+            agent: Agent {
+                command: Some("claude".to_owned()),
+                guidelines: "Toujours en français, et au présent.".to_owned(),
+            },
         };
         settings.save(dir.path()).expect("save");
         assert_eq!(Settings::load(dir.path()), settings);

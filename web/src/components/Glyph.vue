@@ -56,6 +56,13 @@ const PATHS = {
   /// at 10 a long thin diagonal is a slash, which is why the header's actions
   /// draw larger than a row's.
   rename: '<path d="M3 13h2.5l7-7-2.5-2.5-7 7z"/><path d="M10.5 3.5l2.5 2.5"/>',
+  /// Drafting: a pen over a line of text. Not a star or a sparkle — those mean
+  /// "new", and every product that uses one for this means "a machine wrote
+  /// it", which is a fashion and not a shape. What the button does is write a
+  /// line in the box below it.
+  draft:
+    '<path d="M2.75 13.25h4M2.75 10.5h3"/>' +
+    '<path d="M13.25 2.75l-1.5-1.5-7 7-.5 2 2-.5z" transform="translate(0.5 1.25)"/>',
   /// A tag: the label shape, with its hole.
   tag: '<path d="M8.5 2.5h4.5v4.5l-6 6-4.5-4.5z"/><circle cx="10.75" cy="5.25" r="0.9"/>',
   /// Disclosure, both ways.

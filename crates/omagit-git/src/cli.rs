@@ -138,7 +138,8 @@ impl Git {
     /// Start building an invocation inside `work_dir`.
     pub fn at(&self, work_dir: impl Into<PathBuf>) -> Invocation<'_> {
         Invocation {
-            git: self,
+            program: &self.program,
+            journal: &self.journal,
             work_dir: work_dir.into(),
             args: Vec::new(),
             timeout: DEFAULT_TIMEOUT,
@@ -149,7 +150,64 @@ impl Git {
     }
 }
 
-/// A `git` command line, before it runs.
+/// Ask a program for its version, without writing it down.
+///
+/// Two things this settles that `PATH` cannot. A program can be on the `PATH`
+/// and not work — `codex` ships a vendored binary its wrapper could not find,
+/// and answered every invocation with a Node stack trace — so "installed" has
+/// to mean *it answered*. And the deadline matters as much as the answer: a
+/// probe is run while somebody is looking at a screen, and a tool that needs a
+/// terminal it does not have will sit there forever.
+///
+/// Unjournaled, unlike everything else here: a probe is not a command the user
+/// ran. The journal exists to show the Git that omagit runs on their behalf,
+/// and filling it with `claude --version` at every glance at Preferences would
+/// bury exactly that.
+pub fn probe(program: &Path) -> Result<String> {
+    let output = execute(
+        Spawn {
+            program,
+            args: &[OsString::from("--version")],
+            work_dir: None,
+            timeout: PROBE_TIMEOUT,
+            command_line: &format!("{} --version", program.display()),
+            input: None,
+            watch: None,
+        },
+        &Cancel::new(),
+    )?;
+    Ok(output.text().trim().to_owned())
+}
+
+/// Run a program that is **not** `git`, under the same rules.
+///
+/// Rules 2 to 5 of SPEC §8 are not about Git. A controlled environment, a
+/// process group that can be signalled, a deadline, and `stderr` passed through
+/// unedited are true of anything this app starts on the user's machine — and
+/// the one thing that must not be written twice is the signalling, which is the
+/// part that goes subtly wrong. Rule 1 is Git's alone and simply does not
+/// apply.
+///
+/// The caller supplies the journal, because a command the app runs is a command
+/// the user is entitled to see (SPEC §11).
+pub fn program<'a>(
+    program: &'a Path,
+    journal: &'a Journal,
+    work_dir: impl Into<PathBuf>,
+) -> Invocation<'a> {
+    Invocation {
+        program,
+        journal,
+        work_dir: work_dir.into(),
+        args: Vec::new(),
+        timeout: DEFAULT_TIMEOUT,
+        input: None,
+        destructive: false,
+        watch: None,
+    }
+}
+
+/// A command line, before it runs.
 ///
 /// Kept as a value rather than executed on the spot so it can be logged exactly
 /// as it will run — SPEC §15 requires that of every destructive command, and the
@@ -158,7 +216,8 @@ impl Git {
 /// is [`Invocation::command_line`], which is the thing the journal records.
 #[derive(Clone)]
 pub struct Invocation<'a> {
-    git: &'a Git,
+    program: &'a Path,
+    journal: &'a Journal,
     work_dir: PathBuf,
     args: Vec<OsString>,
     timeout: Duration,
@@ -216,8 +275,17 @@ impl<'a> Invocation<'a> {
 
     /// The command line as it will run, for logs and for the operations
     /// journal. Not shell-quoted: it is meant to be read, not pasted.
+    ///
+    /// The program by its file name, not its path: `git` is what the user would
+    /// have typed, and `/opt/homebrew/bin/git status` is the same command said
+    /// less clearly.
     pub fn command_line(&self) -> String {
-        let mut line = String::from("git");
+        let mut line = self
+            .program
+            .file_name()
+            .unwrap_or(self.program.as_os_str())
+            .to_string_lossy()
+            .into_owned();
         for arg in &self.args {
             line.push(' ');
             line.push_str(&arg.to_string_lossy());
@@ -231,14 +299,13 @@ impl<'a> Invocation<'a> {
         // Opened before the process exists, so a command that never returns
         // still leaves a record of having been started.
         let record = self
-            .git
             .journal
             .begin(&command_line, &self.work_dir, self.destructive);
         let started = Instant::now();
 
         let result = execute(
             Spawn {
-                program: &self.git.program,
+                program: self.program,
                 args: &self.args,
                 work_dir: Some(&self.work_dir),
                 timeout: self.timeout,

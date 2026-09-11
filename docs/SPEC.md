@@ -575,9 +575,34 @@ thème complet (§6), mode compact/confortable, journal des opérations Git avec
 ### Hors MVP
 
 Pull requests GitHub/GitLab · rebase interactif graphique · blame · submodules · Git LFS ·
-worktrees · bisect · reflog · génération de message de commit par IA · signature GPG/SSH.
+worktrees · bisect · ~~génération de message de commit par IA~~ *(amendé — voir ci-dessous)* ·
+reflog · signature GPG/SSH.
 
 Point d'extension identifiable, **aucun code mort** (§2).
+
+#### Amendement (2026-09-11) — la génération de message de commit entre
+
+Elle était hors MVP parce qu'elle était chère : une clef d'API par fournisseur,
+saisie dans les réglages, donc un secret à stocker — trousseau système ou
+fichier en clair, les deux avec leur coût — un client HTTP et une pile TLS dans
+l'arbre de dépendances, et une API par fournisseur à suivre.
+
+Aucun de ces coûts n'existe dans la forme retenue. omagit **s'adresse à un agent
+de code déjà installé sur la machine** — `claude`, `codex`, `gemini`, ou une
+commande que l'utilisateur nomme lui-même. Il n'y a pas de secret à stocker :
+l'agent porte déjà les identifiants de son utilisateur. Pas de client HTTP :
+c'est un processus, lancé par le lanceur qui lance déjà `git`, sous les règles 2
+à 5 de §8 — environnement contrôlé, groupe de processus signalable, délai,
+`stderr` verbatim. Ce qui est configuré est le **nom d'un programme**, et
+`settings.toml` reste un fichier ordinaire que personne n'a besoin de protéger.
+
+Ce qui part : le diff indexé, tronqué au-delà de 120 Ko, et la commande exacte
+apparaît dans le journal comme toute commande qu'omagit lance. L'agent est
+démarré **dans le dépôt**, donc il lit le `CLAUDE.md` ou l'`AGENTS.md` du projet
+et suit les conventions qui y sont écrites — ce qu'une clef d'API avec un diff
+nu ne peut pas faire.
+
+Le reste de la liste ci-dessus est inchangé.
 
 ## 12. Performance — objectifs mesurés
 

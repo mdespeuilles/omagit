@@ -274,6 +274,25 @@ export type StashRow = {
 /// One line of `git`'s progress, as the overlay draws it.
 export type Progress = { what: string; phase: string; percent: number | null };
 
+/// One coding agent omagit knows how to ask for a commit message.
+export type AgentCandidate = {
+  id: string;
+  /// A product name. Not translated.
+  label: string;
+  program: string;
+  /// What it printed for `--version`, or `null` when it did not answer. That is
+  /// the whole of "installed": being on the `PATH` is not enough — a broken
+  /// wrapper is on it too.
+  version: string | null;
+};
+
+export type Agents = {
+  candidates: AgentCandidate[];
+  /// The chosen id or command. Empty means the feature is off.
+  command: string;
+  guidelines: string;
+};
+
 /// One folder of the repository list, in the order the user arranged them.
 ///
 /// No count: the header shows how many rows are *visible*, and the filter is
@@ -387,6 +406,20 @@ export const api = {
   /// `null` while the interface follows the system's language.
   language: () => invoke<string | null>("language"),
   setLanguage: (language: string | null) => invoke<void>("set_language", { language }),
+
+  // The commit-message agent (SPEC §11, amended). No key, no endpoint: what is
+  // stored is the name of a program already on the machine, and asking it is
+  // running it — the same shape as everything omagit does with `git`.
+  //
+  // `agents` starts a process per candidate, so it is asked when the block is
+  // looked at and not with the rest of the preferences.
+  agents: () => invoke<Agents>("agents"),
+  /// Only which one is chosen, which costs a string rather than three
+  /// processes. What start-up asks.
+  agentChosen: () => invoke<string>("agent_chosen"),
+  setAgent: (command: string | null) => invoke<void>("set_agent", { command }),
+  setAgentGuidelines: (guidelines: string) => invoke<void>("set_agent_guidelines", { guidelines }),
+  draftMessage: (path: string) => invoke<string>("draft_message", { path }),
   /// `null` puts the action back on the table's own binding.
   setBinding: (id: string, binding: string | null) => invoke<void>("set_binding", { id, binding }),
   setPane: (name: string, width: number) => invoke<void>("set_pane", { name, width }),

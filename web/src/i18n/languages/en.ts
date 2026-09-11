@@ -94,6 +94,12 @@ export const strings = {
     "No Git identity: git config --global user.name && git config --global user.email",
   "commit.blockedEmpty": "Nothing is staged",
   "commit.blockedMessage": "The message is empty",
+  "commit.draft": "Draft",
+  "commit.draftTitle": "Ask {agent} to write a message for what is staged",
+  "commit.draftReplace":
+    "Ask {agent} to write a message for what is staged — it replaces what is in the box",
+  "commit.drafting": "Drafting the message",
+  "commit.draftNothing": "Nothing is staged to write about",
   "commit.detached": "{head}: this commit will belong to no branch.",
 
   // ── The diff ────────────────────────────────────────────────────────────
@@ -513,6 +519,33 @@ export const strings = {
   "settings.scaleNote":
     "The whole interface, proportions kept. The type scale is a contract; how large it is drawn is a property of your screen.",
   "settings.default": "Default",
+  // ── The commit-message agent (SPEC §11, amended) ────────────────────────
+  //
+  // No key is asked for anywhere, and the screen says why: what is configured
+  // is a program already on the machine.
+  "agent.title": "Commit messages",
+  "agent.which": "Agent",
+  "agent.note":
+    "omagit can ask a coding agent already installed here to draft a commit message. " +
+    "It asks the program, not a service: nothing is sent anywhere omagit chose, no API " +
+    "key is stored, and the agent is started inside the repository, so it follows the " +
+    "conventions the project already documents.",
+  "agent.what":
+    "What is sent is the staged diff, cut short past 120 KB. The exact command appears " +
+    "in the journal, like every command omagit runs.",
+  "agent.none": "Off — no message is drafted",
+  "agent.custom": "Another command…",
+  "agent.customLabel": "Command",
+  "agent.customPlaceholder": "a program that reads a prompt on stdin",
+  "agent.customNote":
+    "Anything that reads a prompt on standard input and prints a message: another agent, " +
+    "a script of your own, a model running on this machine.",
+  "agent.missing": "not installed",
+  "agent.guidelines": "What to ask for",
+  "agent.guidelinesPlaceholder": "Always in French. Mention the milestone. No emoji.",
+  "agent.guidelinesNote":
+    "Optional, and for what the project does not already say: the agent reads its " +
+    "CLAUDE.md or AGENTS.md before answering.",
   "settings.keyboard": "Keyboard",
   "settings.keyboardNote":
     "One table, read by four things: the keyboard, the palette, the shortcut sheet and the menu bar. Changing a binding here changes all four.",

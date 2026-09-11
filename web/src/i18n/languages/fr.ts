@@ -79,6 +79,12 @@ export const strings: Record<keyof typeof reference, string> = {
     "Aucune identité Git : git config --global user.name && git config --global user.email",
   "commit.blockedEmpty": "Rien n'est indexé",
   "commit.blockedMessage": "Le message est vide",
+  "commit.draft": "Rédiger",
+  "commit.draftTitle": "Demander à {agent} un message pour ce qui est indexé",
+  "commit.draftReplace":
+    "Demander à {agent} un message pour ce qui est indexé — remplace ce qu'il y a dans la boîte",
+  "commit.drafting": "Rédaction du message",
+  "commit.draftNothing": "Rien n'est indexé à décrire",
   "commit.detached": "{head} : ce commit n'appartiendra à aucune branche.",
 
   // ── Le diff ─────────────────────────────────────────────────────────────
@@ -488,6 +494,30 @@ export const strings: Record<keyof typeof reference, string> = {
   "settings.scaleNote":
     "Toute l'interface, proportions gardées. L'échelle typographique est un contrat ; la taille à laquelle elle est dessinée est une propriété de ton écran.",
   "settings.default": "Défaut",
+  // ── L'agent de message de commit (SPEC §11, amendé) ─────────────────────
+  "agent.title": "Messages de commit",
+  "agent.which": "Agent",
+  "agent.note":
+    "omagit peut demander à un agent de code déjà installé ici de rédiger un message de " +
+    "commit. Il s'adresse au programme, pas à un service : rien n'est envoyé quelque part " +
+    "qu'omagit aurait choisi, aucune clef d'API n'est stockée, et l'agent est lancé dans " +
+    "le dépôt, donc il suit les conventions que le projet documente déjà.",
+  "agent.what":
+    "Ce qui est envoyé, c'est le diff indexé, tronqué au-delà de 120 Ko. La commande exacte " +
+    "apparaît dans le journal, comme toute commande qu'omagit lance.",
+  "agent.none": "Désactivé — aucun message n'est rédigé",
+  "agent.custom": "Une autre commande…",
+  "agent.customLabel": "Commande",
+  "agent.customPlaceholder": "un programme qui lit un prompt sur stdin",
+  "agent.customNote":
+    "N'importe quoi qui lit un prompt sur l'entrée standard et imprime un message : un autre " +
+    "agent, un script à vous, un modèle qui tourne sur cette machine.",
+  "agent.missing": "pas installé",
+  "agent.guidelines": "Ce qu'il faut demander",
+  "agent.guidelinesPlaceholder": "Toujours en français. Citer le jalon. Pas d'emoji.",
+  "agent.guidelinesNote":
+    "Facultatif, et pour ce que le projet ne dit pas déjà : l'agent lit son CLAUDE.md ou " +
+    "son AGENTS.md avant de répondre.",
   "settings.keyboard": "Clavier",
   "settings.keyboardNote":
     "Une seule table, lue par quatre choses : le clavier, la palette, la feuille des raccourcis et la barre de menus. Changer une liaison ici les change toutes les quatre.",

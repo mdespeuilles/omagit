@@ -12,7 +12,10 @@ import { computed } from "vue";
 import {
   app,
   canCommit,
+  canDraft,
   commit,
+  draftMessage,
+  hasAgent,
   setAmend,
   setMessage,
   setNoVerify,
@@ -21,6 +24,7 @@ import {
   stageEverything,
 } from "../state";
 import { count, t } from "../i18n";
+import Glyph from "./Glyph.vue";
 
 /// Git's own conventions, and the only two numbers in this component: a
 /// subject over 50 columns is long, over 72 it no longer fits the tools that
@@ -39,6 +43,20 @@ const counter = computed(() => {
 });
 
 const staged = computed(() => stagedCount());
+
+/// What the "Draft" button says it will do, which changes with the box.
+///
+/// A message already typed is work, and a button that silently replaces it is
+/// the loss SPEC §3 rule 7 is about arriving through a control nobody thinks of
+/// as destructive. It is not blocked — asking again after an edit is exactly
+/// what somebody does — but it says so before the click.
+const draftTitle = computed(() => {
+  if (staged.value === 0) return t("commit.draftNothing");
+  const agent = app.agent;
+  return app.message.trim() === ""
+    ? t("commit.draftTitle", { agent })
+    : t("commit.draftReplace", { agent });
+});
 
 const label = computed(() => (app.amend ? t("commit.doAmend") : count("commit.do", staged.value)));
 
@@ -135,6 +153,11 @@ const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
            the window's top-left corner after the button under the pointer
            changed, which is a sentence about staging floating over the traffic
            lights. -->
+      <!-- Only when an agent is configured. An affordance for a feature that is
+           off is the dead code SPEC §2 forbids, wearing a button. -->
+      <button v-if="hasAgent()" :disabled="!canDraft()" :title="draftTitle" @click="draftMessage()">
+        <Glyph name="draft" />{{ t("commit.draft") }}
+      </button>
       <button class="primary" :disabled="!canCommit()" @click="commit()">
         {{ label }}
       </button>

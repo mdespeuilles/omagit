@@ -1523,12 +1523,23 @@ input[type="checkbox"]:focus-visible {
   border-color: var(--border-focus);
 }
 
+/* The platform draws its own select, and the platform's own is light: every
+   colour set here was being ignored, so the one control on the Preferences
+   screen that picks something came out white in a dark window. `appearance:
+   none` is what hands the box back, and the chevron has to be drawn because
+   that is what it takes away — the same disclosure mark `Glyph.vue` uses, as a
+   background image because a pseudo-element cannot sit inside a `<select>`. */
 select {
+  appearance: none;
   height: 26px;
-  padding: 0 8px;
+  padding: 0 26px 0 8px;
   font: inherit;
   color: var(--text);
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23868dad' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M4.5 6.5l3.5 3.5 3.5-3.5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 12px 12px;
   border: 1px solid var(--border);
   border-radius: 0;
 }
@@ -2961,6 +2972,48 @@ select:focus {
   text-align: left;
   font-size: var(--text-body);
   cursor: pointer;
+}
+/* A row that holds a control instead of being one. The pointer belongs to the
+   thing that answers a click, and a whole row wearing it when only the select
+   responds is the complaint this screen already heard once about the theme
+   sources, in reverse. */
+div.settings-row {
+  cursor: default;
+}
+
+/* A label over its field, for the two things on this screen that are typed
+   rather than chosen. Stacked and not side by side: both are long — a command
+   with a path in it, a paragraph of guidelines — and a field that starts
+   halfway across the pane has half the room. */
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0 8px;
+  max-width: 62ch;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+.settings-field input,
+.settings-field textarea {
+  width: 100%;
+  font-size: var(--text-body);
+  color: var(--text);
+}
+.settings-field textarea {
+  padding: 6px 8px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.settings-select {
+  max-width: 34ch;
+}
+/* An agent this machine does not have. Drawn rather than dropped, the way a
+   theme source this machine cannot offer is: it is the answer somebody came to
+   this screen for. */
+.settings-select option:disabled {
+  color: var(--text-dim);
 }
 .settings-detail {
   font-size: var(--text-meta);

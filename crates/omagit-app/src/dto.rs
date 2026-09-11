@@ -794,6 +794,19 @@ pub fn refs(
     }
 }
 
+/// What the Preferences screen needs to draw the commit-message agent.
+#[derive(Debug, serde::Serialize)]
+pub struct Agents {
+    /// Every agent this version knows, whether or not it is installed. Drawn
+    /// disabled rather than hidden, the way the theme sources are: "Codex is
+    /// not on this machine" is an answer, and an option that vanishes is one
+    /// nobody can ask about.
+    pub candidates: Vec<crate::agent::Candidate>,
+    /// The chosen id or command, empty when the feature is off.
+    pub command: String,
+    pub guidelines: String,
+}
+
 /// One folder of the repository list, in the order the user arranged them.
 ///
 /// It carries no count: the header shows how many rows are *visible*, and the

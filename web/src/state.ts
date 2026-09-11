@@ -29,6 +29,7 @@ import {
   type HistoryQuery,
   type HistoryRow,
   type JournalRow,
+  type Agents,
   type LibraryGroup,
   type LibraryRow,
   type PlatformFacts,
@@ -103,6 +104,18 @@ type State = {
   /// rather than after (SPEC §8).
   gitUnusable: string | null;
   repositories: LibraryRow[];
+  /// The coding agents on this machine, and which one drafts commit messages.
+  /// `null` until the Preferences screen asks — the answer costs a process per
+  /// candidate, so it is not read with the rest of the preferences.
+  agents: Agents | null;
+  /// Which agent drafts commit messages, read at start-up. Empty when the
+  /// feature is off.
+  ///
+  /// Separate from `agents` above, and it has to be: that one costs a process
+  /// per candidate and is only read on the Preferences screen, while the commit
+  /// box needs the name on every screen — to know whether to draw a button, and
+  /// to say whose answer it is about to put in the box.
+  agent: string;
   /// The folders the rows are filed under, in the order they are drawn. Held
   /// beside the rows rather than derived from them: a folder with nothing in
   /// it is one the user has just made, and deriving would make it vanish.
@@ -328,6 +341,8 @@ const state = reactive<State>({
   gitUnusable: null,
   repositories: [],
   groups: [],
+  agents: null,
+  agent: "",
   screen: "repositories",
   open: null,
   summary: null,
@@ -403,7 +418,7 @@ export const app = readonly(state);
 // ── Reading ─────────────────────────────────────────────────────────────────
 
 export async function boot(): Promise<void> {
-  const [theme, platform, gitUnusable, repositories, keymap, language] = await Promise.all([
+  const [theme, platform, gitUnusable, repositories, keymap, language, agent] = await Promise.all([
     api.theme(),
     api.platform(),
     api.gitStatus(),
@@ -416,6 +431,9 @@ export async function boot(): Promise<void> {
     // English and switched to French a tick later would be a window that
     // flickers in a language you did not ask for.
     api.language(),
+    // Which agent drafts commit messages, not whether it is installed: the
+    // commit box draws a button from this, and finding out costs a string.
+    api.agentChosen(),
   ]);
   useLanguage(language);
   // Before anything is drawn: a frame rendered without the tokens shows the
@@ -440,6 +458,7 @@ export async function boot(): Promise<void> {
   state.repositories = repositories.rows;
   state.groups = repositories.groups;
   state.keymap = keymap;
+  state.agent = agent;
 
   // The list first, then a summary per row in the background: the screen draws
   // immediately and fills in, rather than waiting on a status walk per
@@ -860,6 +879,8 @@ export function showScreen(screen: Screen): void {
     return;
   }
   if (screen === "settings" && state.preferences.status === "idle") void readPreferences();
+  // Once, and only on this screen: finding out costs a process per candidate.
+  if (screen === "settings" && state.agents === null) void readAgents();
   state.screen = screen;
   // History is read when it is first looked at rather than when a repository
   // opens: a walk of a hundred thousand commits is not what someone who wanted
@@ -2545,6 +2566,64 @@ export function discardPicked(): void {
         api.discard(path, file, { kind: "lines", lines }),
       ),
   );
+}
+
+// ── The commit-message agent (SPEC §11, amended) ────────────────────────────
+//
+// No key and no endpoint: what is configured is the name of a program already
+// installed on the machine, and asking it is running it. The front end never
+// sees a credential because there is not one to see.
+
+/// Ask which agents are here. Costs a process per candidate, so it is asked
+/// when the Preferences block is drawn and not at start-up.
+export async function readAgents(): Promise<void> {
+  try {
+    state.agents = await api.agents();
+  } catch (error) {
+    void api.log("warn", `agents illisibles : ${message(error)}`);
+  }
+}
+
+/// Choose one, or `null` to turn the feature off.
+export async function setAgent(command: string | null): Promise<void> {
+  await api.setAgent(command);
+  state.agent = (command ?? "").trim();
+  if (state.agents) state.agents.command = state.agent;
+}
+
+export async function setAgentGuidelines(text: string): Promise<void> {
+  if (state.agents) state.agents.guidelines = text;
+  await api.setAgentGuidelines(text);
+}
+
+/// Whether an agent is configured at all, which is what decides whether the
+/// button is *drawn*.
+export function hasAgent(): boolean {
+  return state.agent !== "";
+}
+
+/// Whether it can be pressed now.
+export function canDraft(): boolean {
+  return hasAgent() && stagedCount() > 0 && !state.busy;
+}
+
+/// Draft a message for what is staged, and put it in the box.
+///
+/// Not through `write`: that one calls `settle`, which clears the lines picked
+/// in the diff — and a draft is not a write. It has no business undoing a
+/// selection somebody made by hand.
+export async function draftMessage(): Promise<void> {
+  const path = state.open;
+  if (!path || !canDraft()) return;
+  state.busy = t("commit.drafting");
+  state.writeError = null;
+  try {
+    state.message = await api.draftMessage(path);
+  } catch (error) {
+    state.writeError = { what: t("commit.drafting"), said: message(error) };
+  } finally {
+    state.busy = null;
+  }
 }
 
 // ── The commit box ──────────────────────────────────────────────────────────

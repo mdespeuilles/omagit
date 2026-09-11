@@ -153,6 +153,82 @@ pub fn set_language(state: State<'_, AppState>, language: Option<String>) {
     state.with_settings(|settings| settings.language = language);
 }
 
+// ── The commit-message agent (SPEC §11, amended) ────────────────────────────
+
+/// Which agents are on this machine, and which one is chosen.
+///
+/// Its own command rather than a field of [`preferences`], because answering it
+/// starts three processes: the Preferences screen is read every time it opens,
+/// and a version probe per agent on every visit would be paid whether or not
+/// anybody looked at this block.
+#[tauri::command(async)]
+pub fn agents(state: State<'_, AppState>) -> dto::Agents {
+    let settings = state.settings();
+    dto::Agents {
+        candidates: crate::agent::candidates(),
+        command: settings.agent.command.unwrap_or_default(),
+        guidelines: settings.agent.guidelines,
+    }
+}
+
+/// Just which agent is chosen, for start-up.
+///
+/// [`agents`] answers this too and starts three processes doing it. The commit
+/// box needs to know whether to draw a button before anybody has opened
+/// Preferences, and that question costs a string.
+#[tauri::command]
+pub fn agent_chosen(state: State<'_, AppState>) -> String {
+    state.settings().agent.command.unwrap_or_default()
+}
+
+/// Choose one, or `None` to turn the feature off.
+#[tauri::command(async)]
+pub fn set_agent(state: State<'_, AppState>, command: Option<String>) {
+    let command = command
+        .map(|name| name.trim().to_owned())
+        .filter(|name| !name.is_empty());
+    state.with_settings(|settings| settings.agent.command = command);
+}
+
+#[tauri::command(async)]
+pub fn set_agent_guidelines(state: State<'_, AppState>, guidelines: String) {
+    state.with_settings(|settings| settings.agent.guidelines = guidelines);
+}
+
+/// Draft a commit message for what is staged.
+///
+/// Everything that can refuse is refused *here*, with the reason, rather than
+/// by a button that does nothing: no agent chosen, nothing staged, the program
+/// missing. SPEC §11's rule for the commit box — say what is wrong before the
+/// message is typed — is the same rule.
+#[tauri::command(async)]
+pub fn draft_message(state: State<'_, AppState>, path: String) -> Answer<String> {
+    let settings = state.settings();
+    let chosen = crate::agent::Chosen::parse(settings.agent.command.as_deref().unwrap_or(""))
+        .ok_or_else(|| "no agent is configured".to_owned())?;
+
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let cancel = state.cancel();
+    let (patch, truncated) = crate::agent::staged_patch(&open.repo, &cancel)?;
+    if patch.trim().is_empty() {
+        return Err("nothing is staged".to_owned());
+    }
+
+    let branch = match open.repo.head().map_err(say)? {
+        omagit_git::Head::Branch { branch, .. } => branch,
+        omagit_git::Head::Detached { .. } => "a detached HEAD".to_owned(),
+        omagit_git::Head::Unborn { branch } => branch,
+    };
+    let prompt = if truncated {
+        crate::agent::prompt_truncated(&patch, &branch, &settings.agent.guidelines)
+    } else {
+        crate::agent::prompt(&patch, &branch, &settings.agent.guidelines)
+    };
+
+    let journal = state.journal().clone();
+    crate::agent::ask(&chosen, &journal, &open.path, &prompt, &cancel)
+}
+
 /// The bindings the user has changed, by action id (SPEC §11).
 ///
 /// Overrides only. The table of what omagit can do is the front end's, and this

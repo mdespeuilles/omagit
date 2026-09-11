@@ -45,6 +45,8 @@ import type {
   DiffRow,
   HistoryQuery,
   JournalRow,
+  AgentCandidate,
+  Agents,
   LibraryGroup,
   LibraryRow,
   LibraryView,
@@ -118,6 +120,21 @@ export class Repository {
       missing: false,
     },
   ];
+  /// Which agent drafts commit messages. Empty is the default: the feature is
+  /// off until somebody turns it on, and the button is not drawn.
+  agent = "";
+  agentGuidelines = "";
+  /// What the Preferences screen finds. One installed and one not, because the
+  /// case worth drawing is the second.
+  agentCandidates: AgentCandidate[] = [
+    { id: "claude", label: "Claude Code", program: "claude", version: "2.1.267 (Claude Code)" },
+    { id: "codex", label: "Codex", program: "codex", version: null },
+    { id: "gemini", label: "Gemini CLI", program: "gemini", version: "0.17.1" },
+  ];
+  /// What it comes back with.
+  drafted = "Un sujet rédigé par l'agent\n\nEt le corps qui va avec.";
+  /// Set by a test to make the agent fail, the way a missing program does.
+  failDraft: string | null = null;
   /// A folder the picker would hand back that is not a repository.
   notARepository: string | null = null;
   /// The column widths the settings file remembers.
@@ -291,6 +308,31 @@ export class Repository {
       }
       case "git_status":
         return null;
+
+      // The commit-message agent. The fake never runs one — what a test is
+      // about here is which button is drawn and what lands in the box, not
+      // whether an agent answers.
+      case "agent_chosen":
+        return this.agent;
+      case "agents":
+        return {
+          candidates: this.agentCandidates.map((one) => ({ ...one })),
+          command: this.agent,
+          guidelines: this.agentGuidelines,
+        } satisfies Agents;
+      case "set_agent":
+        this.agent = ((args["command"] as string | null) ?? "").trim();
+        return undefined;
+      case "set_agent_guidelines":
+        this.agentGuidelines = args["guidelines"] as string;
+        return undefined;
+      case "draft_message": {
+        if (this.agent === "") throw new Error("no agent is configured");
+        if (this.failDraft) throw new Error(this.failDraft);
+        const staged = this.files.filter((file) => file.staged !== null);
+        if (staged.length === 0) throw new Error("nothing is staged");
+        return this.drafted;
+      }
       case "repositories":
         return this.view();
       case "create_group":

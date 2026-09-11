@@ -30,6 +30,13 @@ Commit detail with clickable parents, and A ↔ B comparison between any two.
 awkward cases handled rather than hung on: binary, oversized, mode-only,
 submodule.
 
+**Commit messages, drafted.** If a coding agent is installed — Claude Code,
+Codex, the Gemini CLI, or a command of your own — omagit can ask it to write the
+message for what is staged. **No API key is stored**: it asks the program you
+already installed and logged in to. It runs the agent inside the repository, so
+the message follows the conventions your project already documents, and the
+exact command appears in the journal like every other.
+
 **Repositories in folders.** Make one, name it, fold it, and drag repositories
 into it — or pick the folder from the card, which is the route that does not
 need a pointer. Removing a folder keeps what was filed in it.
