@@ -15,12 +15,19 @@ the journal shows you the exact line before it runs.
 
 Free on Linux. The signed macOS build is sold; see [Licence](#licence).
 
+![The history: a multi-lane graph, the branches beside it, and a commit open](docs/screenshots/history-dark.png)
+
+<sup>Every screenshot here is the macOS build. Linux ones follow. The repository
+in them is the one `scripts/showcase.sh` makes.</sup>
+
 ## Features
 
 **Working copy.** Staging by file, by hunk and by line. Discard at all three,
 each behind a confirmation that says what is lost and where it can still be
 found. Commit, amend, sign-off, `--no-verify`; `commit.template` respected, and
 the committer identity checked before you start typing.
+
+![The working copy: status on the left, a file's hunks on the right, two staged](docs/screenshots/working-copy-dark.png)
 
 **History.** A virtualised list with a multi-lane graph, paged as you scroll.
 Filters by author, message, path and date; a branch's own history on a click.
@@ -64,6 +71,8 @@ Every binding is reassignable.
 
 **Themes.** Eight built in, or follow the system's light and dark, or follow
 [Omarchy](https://omarchy.org)'s palette live. Two densities, and a scale.
+
+![The same window in a light theme](docs/screenshots/history-light.png)
 
 **Two languages**, English and French, taken from the system and changeable in
 Settings. Adding a third is adding one file.
@@ -171,6 +180,7 @@ Other theme sources: `omarchy` (Linux, follows the live Quattro palette),
 ./scripts/dev.sh      # the front end's dev server, then the app
 ./scripts/check.sh    # the gate: fmt, clippy, tests, release build, cargo-deny
 ./scripts/fixture.sh  # a throw-away repository with something to look at
+./scripts/showcase.sh # a second one, in English, built for screenshots
 ```
 
 **Do not run the debug binary on its own.** Tauri loads the dev server rather
@@ -183,6 +193,12 @@ everything a screen needs to have something to draw — a history with a merge i
 it, five branches, two tags, a divergence from a "remote" that is a bare
 repository beside it, two stashes, a working copy holding six kinds of change at
 once, and, with `--conflict`, a merge stopped in the middle of three files.
+
+`scripts/showcase.sh` builds a different one in `~/omagit-showcase`, for
+screenshots rather than for driving the app by hand. It is in English, it runs to
+thirty-odd commits over two authors, and its four branches grow at the same time
+so the graph has crossed lanes to draw rather than one column. The files it
+touches are Rust, TOML, JSON and Markdown, the four the diff highlights.
 
 `scripts/check.sh` is the only gate, and it is run by hand: there is no CI for
 it, for the reason `CLAUDE.md` gives. It compiles only **this** host's half of
