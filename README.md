@@ -97,12 +97,34 @@ From the [releases page](https://github.com/mdespeuilles/omagit/releases):
 # Debian, Ubuntu and derivatives
 sudo apt install ./omagit_0.1.0_amd64.deb
 
+# Arch and derivatives
+curl -O https://raw.githubusercontent.com/mdespeuilles/omagit/main/packaging/aur/PKGBUILD
+makepkg -si
+
 # anything else
 chmod +x omagit_0.1.0_amd64.AppImage && ./omagit_0.1.0_amd64.AppImage
 ```
 
 Wayland is the primary target, X11 the fallback. The `.deb` pulls in what it
 needs; the AppImage carries it.
+
+On Arch the `PKGBUILD` repackages that same `.deb`, and gives you a package
+pacman knows about — upgradeable, removable, listed. It lives in the repository
+rather than the AUR because [AUR registration is
+closed](https://aur.archlinux.org/register) to new accounts; it moves there, as
+`omagit-bin`, when that reopens.
+
+**If the AppImage exits with `error loading libfuse.so.2`**, the distribution
+ships FUSE 3 and no FUSE 2 — Arch, recent Fedora and openSUSE all do. Either
+install the compatibility package (`fuse2` on Arch, `fuse-libs` on Fedora), or
+skip the mount entirely:
+
+```sh
+./omagit_0.1.0_amd64.AppImage --appimage-extract-and-run
+```
+
+The second unpacks to a temporary directory and runs from there: slower to
+start, and it asks nothing of the system.
 
 ### macOS
 
@@ -121,8 +143,13 @@ You need [Rust](https://rustup.rs) — the version in `rust-toolchain.toml`
 installs itself — and Node 22. On Linux, the WebKitGTK headers as well:
 
 ```sh
+# Debian, Ubuntu and derivatives
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
                  libxdo-dev libssl-dev patchelf
+
+# Arch and derivatives
+sudo pacman -S --needed base-devel webkit2gtk-4.1 gtk3 librsvg \
+                        xdotool openssl patchelf
 ```
 
 The bundles land in `target/release/bundle/`.

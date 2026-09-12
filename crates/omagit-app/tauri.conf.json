@@ -31,6 +31,7 @@
   },
   "bundle": {
     "active": true,
+    "category": "DeveloperTool",
     "copyright": "© 2026 Maxence d'Espeuilles",
     "license": "GPL-3.0-only",
     "licenseFile": "../../LICENSE",

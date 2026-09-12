@@ -1,0 +1,54 @@
+# Maintainer: Maxence d'Espeuilles <despeuilles@gmail.com>
+#
+# Arch has no bundle target in Tauri, and would not want one: the format is a
+# PKGBUILD in the AUR, not a `.pkg.tar.zst` attached to a release. So this
+# repackages the `.deb` the release already builds — the binary inside is built
+# on Ubuntu 22.04 for its glibc, and resolves every soname on Arch unchanged.
+#
+# It is not on the AUR yet: registration is closed to new accounts while Arch
+# deals with a wave of automated sign-ups, with no queue and no date. Until it
+# reopens, this file *is* the distribution — a user fetches it and runs
+# `makepkg -si`, and gets the same package the AUR would have handed them.
+#
+# When an account becomes possible, this file stays the source of truth and the
+# AUR repository becomes a clone of it:
+#
+#   git clone ssh://aur@aur.archlinux.org/omagit-bin.git
+#   cp packaging/aur/PKGBUILD omagit-bin/ && cd omagit-bin
+#   makepkg --printsrcinfo > .SRCINFO
+#   namcap PKGBUILD && extra-x86_64-build   # a clean chroot, or depends() lies
+#   git commit -am "omagit-bin $pkgver" && git push
+#
+# At each release: bump pkgver, replace the sha256, regenerate .SRCINFO, push.
+
+pkgname=omagit-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A git client that shows you the repository, not a form to fill in"
+arch=('x86_64')
+url="https://github.com/mdespeuilles/omagit"
+license=('GPL-3.0-only')
+# Measured from the binary's NEEDED entries, not guessed: webkit2gtk-4.1 owns
+# libwebkit2gtk-4.1 and libjavascriptcoregtk-4.1, gtk3 owns libgtk-3 and
+# libgdk-3, libsoup3 owns libsoup-3.0, dbus owns libdbus-1. `git` is a runtime
+# dependency the program states itself at start-up.
+depends=('webkit2gtk-4.1' 'gtk3' 'libsoup3' 'dbus' 'git' 'hicolor-icon-theme')
+provides=('omagit')
+conflicts=('omagit')
+# The binary is prebuilt and already stripped by the release build; letting
+# makepkg strip it again only earns a bogus `-debug` package with no symbols in
+# it.
+options=('!strip' '!debug')
+source=("$pkgname-$pkgver.deb::$url/releases/download/v$pkgver/omagit_${pkgver}_amd64.deb")
+sha256sums=('409fa9792cb36d3732e873662380c06246f9e8c3bf2dddfe22a0e89aef3b82c5')
+# Unpacked in package(), not by makepkg: what to do with an `ar` archive is a
+# decision, not a default worth inheriting.
+noextract=("$pkgname-$pkgver.deb")
+
+package() {
+  # The `.deb` is already laid out for the FHS — /usr/bin, four icon sizes under
+  # /usr/share/icons/hicolor, /usr/share/applications — so there is nothing to
+  # move, only to unpack. `data.tar*` rather than `data.tar.gz`: the compression
+  # the bundler picks is its business, not ours.
+  bsdtar -xOf "$srcdir/$pkgname-$pkgver.deb" 'data.tar*' | bsdtar -xf - -C "$pkgdir"
+}
