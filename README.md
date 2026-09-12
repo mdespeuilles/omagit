@@ -1,24 +1,31 @@
-<img src="crates/omagit-app/icons/128x128.png" width="88" align="right" alt="">
+<div align="center">
+
+<img src="crates/omagit-app/icons/icon.png" width="128" alt="">
 
 # omagit
 
-[![Licence: GPL v3](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
+**Every write is a command you could have typed.**
+A graphical Git client for Linux and macOS.
+
+[![Licence: GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/mdespeuilles/omagit?include_prereleases&sort=semver)](https://github.com/mdespeuilles/omagit/releases)
 ![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS-lightgrey)
 
-A graphical Git client for **Linux** and **macOS**. Rust underneath, a web front
-end in a Tauri window.
-
-It reads with [`gitoxide`](https://github.com/GitoxideLabs/gitoxide) and writes
-by running `git` itself — so every write is a command you could have typed, and
-the journal shows you the exact line before it runs.
-
-Free on Linux. The signed macOS build is sold; see [Licence](#licence).
+</div>
 
 ![The history: a multi-lane graph, the branches beside it, and a commit open](docs/screenshots/history-dark.png)
 
-<sup>Every screenshot here is the macOS build. Linux ones follow. The repository
-in them is the one `scripts/showcase.sh` makes.</sup>
+<div align="center">
+<sup>Every screenshot here is the macOS build. Linux ones follow. The repository in
+them is the one <code>scripts/showcase.sh</code> makes.</sup>
+</div>
+
+It reads with [`gitoxide`](https://github.com/GitoxideLabs/gitoxide) and writes
+by running `git` itself — so every write is a command you could have typed, and
+the journal shows you the exact line before it runs. Rust underneath, a web
+front end in a Tauri window.
+
+Free on Linux. The signed macOS build is sold; see [Licence](#licence).
 
 ## Features
 
