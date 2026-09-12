@@ -212,12 +212,21 @@ be seen but not made.
 ```sh
 ./scripts/check.sh
 $EDITOR crates/omagit-app/tauri.conf.json Cargo.toml   # the version, in both
-git commit -am "0.2.0" && git tag v0.2.0 && git push --follow-tags
+git commit -am "0.2.0"
+git tag --annotate v0.2.0 --message "omagit 0.2.0"     # annotated, see below
+git push --follow-tags
 ```
 
 The tag starts `.github/workflows/release.yml`: it refuses immediately if the
 tag and the manifests disagree, builds from a clean checkout, and attaches the
-Linux packages to a **draft** release.
+Linux packages to a **draft** release. The notes are written by a person, so
+publishing the draft is a person's gesture too.
+
+**`--annotate` is not a flourish.** `--follow-tags` pushes annotated tags and
+*silently skips* lightweight ones, so `git tag v0.2.0` followed by that push
+leaves the tag on your machine, no build runs, and nothing says why. It is also
+the kind a release should be: it carries a tagger, a date and a message, and
+`git describe` passes over the other kind.
 
 ## Contributing
 
