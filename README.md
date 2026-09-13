@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="crates/omagit-app/icons/icon.png" width="128" alt="">
+<img src="docs/logo/mark.svg" width="120" alt="">
 
 # omagit
 

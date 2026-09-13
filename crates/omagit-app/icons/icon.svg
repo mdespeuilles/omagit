@@ -1,24 +1,28 @@
-<!-- omagit's mark: the sidebar's own branch glyph, at icon size.
+<!-- omagit's mark, drawn in Figma: a trunk with three commits, and a branch
+     leaving from the middle one.
 
-     The geometry is `Glyph.vue`'s `branch`, unit for unit — the icon and the
-     tree say the same thing, and a change to one has to be a change to both.
-     Two colours because the graph has lanes: the trunk in the accent, the
-     branch leaving it in the green a merged branch wears.
+     The mark itself is 120 units square with a 27-unit radius. Here it is scaled
+     to 824 on a 1024 canvas, 100 in from every edge: that is the size of an app
+     icon on macOS, and at that scale the radius comes out at 185 — the corner
+     macOS draws its own icons with. Full-bleed, it would sit larger in the Dock
+     than every icon beside it.
 
-     Square corners, like everything else (DESIGN §1). `icon.png` is rendered
-     from this file, and `npx tauri icon` makes the rest of the set from that. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect x="72" y="72" width="880" height="880" fill="#1a1b26"/>
-  <rect x="76" y="76" width="872" height="872" fill="none" stroke="#414868" stroke-width="8"/>
-  <g transform="translate(512 512) scale(48) translate(-8 -8)" stroke-width="1.5">
-    <g stroke="#7aa2f7" fill="#7aa2f7">
-      <circle cx="5" cy="3.25" r="1.25"/>
-      <circle cx="5" cy="12.75" r="1.25"/>
-      <path d="M5 4.5v7" fill="none"/>
+     The unscaled drawing is `docs/logo/mark.svg`; a change to one is a change to
+     both. `npx tauri icon icons/icon.svg` makes the rest of the set from this
+     file — keep only the five that `tauri.conf.json` lists. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <g transform="translate(100 100) scale(6.8666667)">
+    <rect width="120" height="120" rx="27" fill="#E0F2FE"/>
+    <g stroke="#0284C7" stroke-width="3.3" stroke-linecap="round">
+      <path d="M52.5 92.4V38.4"/>
+      <path d="M52.5 69C52.5 60 83.4 63 83.4 52.5"/>
     </g>
-    <g stroke="#9ece6a" fill="#9ece6a">
-      <circle cx="11" cy="3.25" r="1.25"/>
-      <path d="M11 4.5v2.5h-6" fill="none"/>
+    <g fill="#E0F2FE" stroke="#0284C7" stroke-width="3.3">
+      <circle cx="52.5" cy="92.4" r="5.1"/>
+      <circle cx="52.5" cy="69" r="5.1"/>
+      <circle cx="83.4" cy="52.5" r="5.1"/>
     </g>
+    <circle cx="52.5" cy="38.4" r="6" fill="#0284C7"/>
+    <circle cx="52.5" cy="38.4" r="1.8" fill="#E0F2FE"/>
   </g>
 </svg>
