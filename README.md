@@ -7,6 +7,7 @@
 **Every write is a command you could have typed.**
 A graphical Git client for Linux and macOS.
 
+[![Built for Omarchy: App](https://raw.githubusercontent.com/tcballard/omarchy-badges/75975e5b5bf75e7ede3764bcd2950046f7abfe2c/badges/v1/omarchy-app.svg)](https://github.com/tcballard/omarchy-badges)
 [![Licence: GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/mdespeuilles/omagit?include_prereleases&sort=semver)](https://github.com/mdespeuilles/omagit/releases)
 ![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS-lightgrey)
