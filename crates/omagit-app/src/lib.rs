@@ -189,7 +189,14 @@ fn follow_system_palette(app: tauri::AppHandle, dir: std::path::PathBuf) {
         let mut sent = commands::stylesheet(&app.state::<AppState>().settings());
 
         for event in events {
-            if event.is_err() {
+            let Ok(event) = event else { continue };
+            // The trap `omagit_git::watch::changes_something` was written for,
+            // met a second time: `notify` asks inotify for `IN_OPEN`, and the
+            // tracker's own read of `theme.name` — a direct child of the
+            // directory watched here — comes back as an event, which reads it
+            // again. Unfiltered, that is a core spent parsing the same
+            // `colors.toml` for as long as the window is open.
+            if !omagit_git::watch::changes_something(&event.kind) {
                 continue;
             }
             if tracker.refresh(&dir).is_none() {

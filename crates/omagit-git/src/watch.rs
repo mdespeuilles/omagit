@@ -269,7 +269,11 @@ fn debounce_loop(
     }
 }
 
-/// Whether an event says the repository *changed*, as opposed to *was read*.
+/// Whether an event says the watched tree *changed*, as opposed to *was read*.
+///
+/// Public because this trap is not the repository watch's alone: anything that
+/// reads a file inside a directory it watches needs this filter, and a second
+/// copy of it is a second chance to forget it (see `follow_system_palette`).
 ///
 /// This is the one that cost a whole evening. `notify` 8 asks inotify for
 /// `IN_OPEN` along with the writes, so on Linux every `open(2)` under the
@@ -289,7 +293,7 @@ fn debounce_loop(
 /// all — create, modify, remove, rename, and `Any` from the backends that do
 /// not say — is kept: a watch that guesses wrong here should guess towards
 /// re-reading.
-fn changes_something(kind: &notify::EventKind) -> bool {
+pub fn changes_something(kind: &notify::EventKind) -> bool {
     use notify::event::{AccessKind, AccessMode, EventKind};
     match kind {
         EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
