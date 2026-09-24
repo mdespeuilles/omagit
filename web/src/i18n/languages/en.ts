@@ -133,6 +133,22 @@ export const strings = {
   "progress.cancel": "Cancel",
   "progress.stopping": "stopping…",
 
+  // ── The new build (M10) ─────────────────────────────────────────────────
+  //
+  // The band says the version and nothing else about it: "a new version is
+  // available" is a sentence somebody has read a thousand times and stopped
+  // seeing, and the number is the part that says whether it matters.
+  "update.available": "omagit {version} is available",
+  "update.install": "Install",
+  "update.downloading": "Fetching omagit {version}…",
+  "update.ready": "omagit {version} is ready",
+  "update.restart": "Restart",
+  "update.failed": "omagit {version} could not be installed",
+  "update.retry": "Try again",
+  // Not "dismiss": what this does is durable, and the word has to carry that
+  // the band will not come back for this version.
+  "update.skip": "Skip this version",
+
   // ── The two sides of a conflict ─────────────────────────────────────────
   //
   // Named by their branch wherever `git` gives one. `ours` and `theirs` are
@@ -657,6 +673,8 @@ export const strings = {
   "refuse.noSide": "{0} has no diff on that side",
   "refuse.themeSource": "unknown theme source: {0}",
   "refuse.density": "unknown density: {0}",
+  "refuse.updateNotReplaceable": "this build is installed by a package manager, which owns it",
+  "refuse.updateGone": "that release is no longer published",
   "said.opened": "{0} opened in {1}",
   "said.openedByOpener": "{0} opened with {1} — no editor configured",
   "said.openedNotInTerminal":

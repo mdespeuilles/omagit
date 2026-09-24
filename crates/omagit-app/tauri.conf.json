@@ -46,6 +46,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.png"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/mdespeuilles/omagit/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1QjU4NEI3NUNBMTgyREUKUldUZWdxRmN0NFMxTmVhUUhBbStqQkJFeThsbnJ4NlpNQWl4anpwSDNGWFg2L2tnTi9aTDdkcXYK"
+    }
   }
 }

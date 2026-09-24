@@ -42,6 +42,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // In-app updates (SPEC §11, M10). Registering the plugin only makes the
+        // machinery available; nothing is checked, downloaded or installed
+        // until the window asks — see `commands::update_offer`.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
         // A menu item does not act; it names an action, and the front end runs
         // it — the same table, the same three rules, whether the action was
@@ -142,6 +146,10 @@ pub fn run() {
             commands::stash_drop,
             commands::journal,
             commands::log,
+            commands::update_offer,
+            commands::update_install,
+            commands::update_restart,
+            commands::update_skip,
         ])
         .run(tauri::generate_context!())
         .expect("omagit could not start");

@@ -20,6 +20,10 @@ repository = "https://github.com/omagit/omagit"
 tauri = { version = "2", features = [] }
 tauri-build = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+# In-app updates (SPEC §11, M10). Desktop only, and on Linux the plugin can only
+# replace an AppImage — see `commands::update_offer` for the gate that keeps it
+# from offering what it cannot install.
+tauri-plugin-updater = "2"
 
 # Internal
 omagit-git = { path = "crates/omagit-git" }

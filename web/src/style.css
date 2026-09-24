@@ -3124,6 +3124,59 @@ select:focus {
   padding: 0;
 }
 
+/* ── The new build (M10) ─────────────────────────────────────────────────── */
+
+/* The shape `.notice` established, in the accent colour rather than the danger
+   one: nothing has gone wrong, and painting an announcement red would teach
+   people to read the red band as "probably nothing". */
+.update {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 8px var(--pad);
+  font-size: var(--text-meta);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-top: 1px solid var(--accent);
+}
+.update-mark {
+  flex: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+.update-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.update-what {
+  color: var(--accent);
+  font-weight: 500;
+}
+/* What the updater said, wrapped whole and never re-worded (SPEC §3 rule 3). */
+.update-said {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+}
+.update-percent {
+  flex: none;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.update .link,
+.update .icon {
+  flex: none;
+}
+.update .icon {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+
 /* ── The command palette (M9, board 07) ──────────────────────────────────── */
 
 /* Near the top rather than centred on the height: the list grows downwards, and

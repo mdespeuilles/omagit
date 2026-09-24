@@ -30,6 +30,7 @@ import StatusBar from "./components/StatusBar.vue";
 import StatusList from "./components/StatusList.vue";
 import Tabs from "./components/Tabs.vue";
 import Topbar from "./components/Topbar.vue";
+import Update from "./components/Update.vue";
 import { onBeforeUnmount, onMounted, watch } from "vue";
 import { app, paneWidth } from "./state";
 import { dispatch } from "./keymap";
@@ -141,6 +142,9 @@ const widths = {
   </div>
   <Progress />
   <Notice />
+  <!-- Under the notice: a write that failed is about what the user just did,
+       and a new release is about nothing they asked for. -->
+  <Update />
   <StatusBar />
   <!-- Par-dessus la fenêtre, et non à la place d'un écran : les réglages sont
        ceux de l'application, pas ceux du dépôt. -->

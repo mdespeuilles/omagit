@@ -2552,6 +2552,70 @@ list that will be forgotten again; the alternative, asking the DOM whether an
 overlay is mounted, makes the keyboard depend on rendering. It stays a list, and
 a test now names every member and fails when one is dropped.
 
+### 2.70 In-app updates, and the three things that decide their shape
+
+SPEC §11 lists "mise à jour in-app optionnelle" under M10. Three facts decided
+what it could be, and none of them were negotiable.
+
+**Only an AppImage can be replaced.** `tauri-plugin-updater` swaps the running
+bundle for a downloaded one, and on Linux the only bundle it knows how to swap
+is an AppImage. The `.deb` and the AUR package are installed as root under
+`/usr/bin` and belong to `apt` and to `pacman`: replacing the binary underneath
+them would fail on permissions — and if it somehow succeeded, the package
+manager's idea of what is installed would silently stop being true. So the
+check does not run at all for those builds. `commands::replaceable` asks the
+environment rather than the bundle format, because the AppImage runtime is what
+exports `APPIMAGE`, and because that makes a `cargo run` build answer "no" too,
+which is the right answer: there is nothing to replace.
+
+The consequence is worth stating plainly: **a `.deb` or AUR install is never
+offered anything**, and that is not a bug. It is logged at debug on every
+launch, so the question "why does omagit never offer me a new version" has an
+answer somebody can find.
+
+**The manifest is made by the build, not by a person.** `latest.json` carries,
+per platform, the URL of the file and the signature *of that file*. Both come
+out of the bundle that was just made, so `release.yml` writes it. A manifest
+typed by hand is a manifest that will one day name a file that is not there, or
+carry the signature of the one before it — and the failure that produces is a
+client that refuses every update while saying nothing anybody will see.
+
+**The signature is the whole security model.** The endpoint is public GitHub,
+which anybody can serve a redirect for; what makes the downloaded file
+trustworthy is that it verifies against the public key in `tauri.conf.json`,
+which ships inside the application. The private half lives in one place, the
+repository's `TAURI_SIGNING_PRIVATE_KEY` secret, and in one backup off the
+machine that generated it. Losing it means no existing installation can ever be
+updated again: a new key ships in a new build, and only people who install that
+build by hand are reachable. `release.yml` refuses to start without it rather
+than producing an unsigned release nobody can install.
+
+**What the window does with all that** is one band, and three clicks that are
+never taken for the user. The check happens once at start-up and says nothing
+when there is nothing — every reason to stay quiet, including a check that did
+not get through, reaches the front end as the same `null`, because a band
+announcing that the update check failed is noise about something nobody asked
+for. When there is something, `Update.vue` says which version in the vocabulary
+`Notice.vue` established, in the accent colour rather than the danger one:
+nothing has gone wrong.
+
+Downloading is a click. *Restarting is a second one* — an application that
+replaced itself and vanished mid-sentence is indistinguishable from one that
+crashed, and whoever is being updated may have a commit message half written.
+And "no thanks" is an answer about a version, not about updating: what is
+stored is `settings.skipped_update`, the version string, so the band stays away
+for 0.2.0 and comes back for 0.2.1.
+
+Two states deliberately cannot be dismissed: while the download runs, and once
+the new build is on disk. Neither stops because the band went away, so
+dismissing would hide a replacement that is happening anyway — and a `ready`
+band that closed would leave the new build in place with no way back to the
+button that starts it.
+
+**macOS is not wired to this.** SPEC §4's amendment keeps that build off public
+releases, so it has no endpoint here; the manifest has one platform in it, and a
+second one arrives with the channel that serves it.
+
 ## 3. Data flow (from M2 onwards)
 
 ```

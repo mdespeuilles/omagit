@@ -395,6 +395,17 @@ export type MenuEntry = {
   enabled: boolean;
 };
 
+/// A release the band may offer (SPEC §11, M10).
+///
+/// `null` from `updateOffer` is every reason at once — nothing newer, a build
+/// the updater cannot replace, a version already waved away, a check that did
+/// not get through. The window treats them the same: it says nothing.
+export type UpdateOffer = { version: string };
+
+/// How far the new build has downloaded. `percent` is null until the server
+/// says how large it is.
+export type Downloaded = { percent: number | null };
+
 export const api = {
   platform: () => invoke<PlatformFacts>("platform"),
   setMenu: (entries: MenuEntry[], labels: Record<string, string>) =>
@@ -560,4 +571,12 @@ export const api = {
     invoke<Made>("commit", { path, message, amend, signOff, noVerify }),
   log: (level: "info" | "warn" | "error", message: string) =>
     invoke<void>("log", { level, message }),
+
+  // In-app updates (M10). Four steps, three of them behind a click: what is
+  // being replaced here is the application, so nothing past the check happens
+  // without somebody asking for it.
+  updateOffer: () => invoke<UpdateOffer | null>("update_offer"),
+  updateInstall: () => invoke<void>("update_install"),
+  updateRestart: () => invoke<void>("update_restart"),
+  updateSkip: (version: string) => invoke<void>("update_skip", { version }),
 };

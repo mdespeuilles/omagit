@@ -64,6 +64,7 @@ import type {
   StatusRow,
   TagRow,
   Tracking,
+  UpdateOffer,
 } from "./ipc";
 
 export type Call = { command: string; args: Record<string, unknown> };
@@ -106,6 +107,17 @@ export class Repository {
   log: Made[] = [];
   /// The folders, in the order they are drawn. One, until a test makes more.
   groups: LibraryGroup[] = [{ name: "omagit:library.recents", collapsed: false }];
+  /// What `update_offer` answers. `null` — say nothing — unless a test sets
+  /// one, which is the shape the real backend is in almost always.
+  offer: UpdateOffer | null = null;
+  /// Why the install should fail, or `null` for one that works.
+  updateFails: string | null = null;
+  /// The versions waved away, in the order they were skipped.
+  skipped: string[] = [];
+  /// Whether the app was asked to restart into the new build.
+  restarted = false;
+  /// Held open so a test can watch the band while the download is in flight.
+  holdUpdate: Promise<void> | null = null;
   /// What the library holds, in display order across the folders. One row in
   /// one group unless a test says otherwise.
   library: LibraryRow[] = [
@@ -757,6 +769,20 @@ export class Repository {
         return `Dropped stash@{${at}} (${gone!.row.id.full})`;
       }
       case "log":
+        return undefined;
+
+      // The new build (M10).
+      case "update_offer":
+        return this.offer;
+      case "update_install":
+        if (this.holdUpdate) await this.holdUpdate;
+        if (this.updateFails) throw new Error(this.updateFails);
+        return undefined;
+      case "update_restart":
+        this.restarted = true;
+        return undefined;
+      case "update_skip":
+        this.skipped.push(args["version"] as string);
         return undefined;
       case "stage":
         if (this.holdWrite) await this.holdWrite;

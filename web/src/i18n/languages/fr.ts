@@ -118,6 +118,16 @@ export const strings: Record<keyof typeof reference, string> = {
   "progress.cancel": "Annuler",
   "progress.stopping": "arrêt…",
 
+  // ── La nouvelle version (M10) ───────────────────────────────────────────
+  "update.available": "omagit {version} est disponible",
+  "update.install": "Installer",
+  "update.downloading": "Récupération d'omagit {version}…",
+  "update.ready": "omagit {version} est prête",
+  "update.restart": "Redémarrer",
+  "update.failed": "omagit {version} n'a pas pu être installée",
+  "update.retry": "Réessayer",
+  "update.skip": "Passer cette version",
+
   // ── Les deux côtés d'un conflit ─────────────────────────────────────────
   "conflict.inPlace": "la version en place",
   "conflict.arriving": "celle qui arrive",
@@ -618,6 +628,9 @@ export const strings: Record<keyof typeof reference, string> = {
   "refuse.noSide": "{0} n'a pas de diff de ce côté",
   "refuse.themeSource": "source de thème inconnue : {0}",
   "refuse.density": "densité inconnue : {0}",
+  "refuse.updateNotReplaceable":
+    "cette version est installée par un gestionnaire de paquets, à qui elle appartient",
+  "refuse.updateGone": "cette version n'est plus publiée",
   "said.opened": "{0} ouvert dans {1}",
   "said.openedByOpener": "{0} ouvert avec {1} — aucun éditeur configuré",
   "said.openedNotInTerminal":

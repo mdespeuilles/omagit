@@ -6,3 +6,6 @@
 
 # Tauri's generated schemas and plugin permissions.
 /crates/omagit-app/gen/
+
+# The updater's private signing key, if a copy ever lands beside the tree.
+*.key

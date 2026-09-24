@@ -5,7 +5,14 @@ import App from "./App.vue";
 import { api } from "./ipc";
 import { watchDrops } from "./drop";
 import { installMenu } from "./menu";
-import { boot, watchProgress, watchRepository, watchTheme } from "./state";
+import {
+  boot,
+  checkForUpdate,
+  watchProgress,
+  watchRepository,
+  watchTheme,
+  watchUpdate,
+} from "./state";
 
 const app = createApp(App);
 
@@ -50,3 +57,9 @@ watchTheme().catch(report);
 // And the repositories themselves: a client that only refreshes when clicked is
 // wrong every time you touch a terminal (SPEC §10).
 watchRepository().catch(report);
+// Whether a newer build is out (M10). Last, independent, and logged rather than
+// drawn on failure: this is the one thing in the window nobody asked for, so it
+// may not delay the repository appearing and it may not paint over anything
+// when the network is not there.
+watchUpdate().catch((error) => api.log("warn", `watchUpdate: ${String(error)}`));
+checkForUpdate().catch((error) => api.log("warn", `checkForUpdate: ${String(error)}`));

@@ -109,6 +109,17 @@ chmod +x omagit_0.1.0_amd64.AppImage && ./omagit_0.1.0_amd64.AppImage
 Wayland is the primary target, X11 the fallback. The `.deb` pulls in what it
 needs; the AppImage carries it.
 
+**The AppImage keeps itself up to date.** It looks once at start-up, says
+nothing when there is nothing, and when there is a newer release it offers it in
+a band at the foot of the window — a click to fetch it, a second one to restart
+into it, and "skip this version" if you would rather not. The download is
+checked against a signature before anything is replaced.
+
+The `.deb` and the Arch package deliberately do not: they belong to `apt` and to
+`pacman`, and an application that replaced its own binary behind a package
+manager's back would leave that manager wrong about what is installed. Those
+update the way everything else on the machine does.
+
 On Arch the `PKGBUILD` repackages that same `.deb`, and gives you a package
 pacman knows about — upgradeable, removable, listed. It lives in the repository
 rather than the AUR because [AUR registration is

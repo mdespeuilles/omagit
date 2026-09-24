@@ -1586,3 +1586,165 @@ pub fn head_message(state: State<'_, AppState>, path: String) -> Answer<Option<S
         body => format!("{}\n\n{}", commit.summary, body),
     }))
 }
+
+// ── In-app updates (SPEC §11, M10) ──────────────────────────────────────────
+//
+// Nothing here happens on its own beyond the one check at start-up. The window
+// asks, the user decides, and the binary is replaced only after a click — the
+// rule of SPEC §3 rule 7 read the other way round: what is about to be replaced
+// here is the application itself.
+
+/// A release the window may offer.
+///
+/// The version and nothing else. The manifest also carries notes and a date,
+/// and both were here until it was clear the band does not draw either: the
+/// band names the version, which is the part that says whether the release
+/// matters. A field carried across the wire and never read is a field that
+/// goes stale without anybody noticing.
+#[derive(Clone, serde::Serialize)]
+pub struct UpdateOffer {
+    pub version: String,
+}
+
+/// How far the download has got, on its way to the band.
+#[derive(Clone, serde::Serialize)]
+pub struct Downloaded {
+    /// `None` until the server says how large the file is — the same reason the
+    /// fetch overlay runs indeterminate rather than sitting at zero.
+    pub percent: Option<u8>,
+}
+
+/// Whether this build is one the updater could actually replace.
+///
+/// On Linux the plugin knows how to swap an AppImage and nothing else. A `.deb`
+/// belongs to `apt` and the AUR package to `pacman`; both are installed as root
+/// under `/usr/bin`, and offering to replace them would be offering something
+/// that cannot work — the write fails on permissions, and rightly, because the
+/// package manager's idea of what is installed would no longer be true.
+///
+/// An AppImage says so itself: its runtime exports `APPIMAGE`. Asking the
+/// environment rather than the bundle format is what makes a `cargo run` build
+/// answer "no" too, which is the right answer — there is nothing to replace.
+fn replaceable() -> bool {
+    !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some()
+}
+
+/// Whether a newer release is waiting, and worth mentioning.
+///
+/// `None` is four different answers, and the window is told none of them apart:
+/// this build cannot be replaced, the endpoint has nothing newer, the user
+/// already waved this version away, or the check itself did not get through.
+/// That last one is deliberately not an error. A machine on a plane would show
+/// a band saying "the update check failed" at every launch, which is noise
+/// about something nobody asked for; it goes to the log instead, which is the
+/// file somebody reads when they wonder why they were never offered anything.
+#[tauri::command]
+pub async fn update_offer(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Answer<Option<UpdateOffer>> {
+    use tauri_plugin_updater::UpdaterExt as _;
+
+    if !replaceable() {
+        // Debug rather than info: this is the answer for every `.deb` and every
+        // AUR install, at every launch, and it is not news. It is said at all
+        // because "omagit never offers me anything" is a question somebody will
+        // ask, and this is the line that answers it.
+        tracing::debug!("this build is not one the updater can replace; not checking");
+        return Ok(None);
+    }
+
+    let found = match app.updater() {
+        Ok(updater) => updater.check().await,
+        Err(error) => Err(error),
+    };
+    let update = match found {
+        Ok(update) => update,
+        Err(error) => {
+            tracing::warn!(%error, "the update check did not get through");
+            return Ok(None);
+        }
+    };
+    let Some(update) = update else {
+        return Ok(None);
+    };
+
+    // Asked *after* the check rather than before it: what the user waved away
+    // is a version, and until the endpoint has answered there is no version to
+    // compare against.
+    if state.settings().skipped_update.as_deref() == Some(update.version.as_str()) {
+        tracing::info!(version = %update.version, "a newer release is out, and was skipped");
+        return Ok(None);
+    }
+
+    tracing::info!(version = %update.version, "a newer release is available");
+    Ok(Some(UpdateOffer {
+        version: update.version.clone(),
+    }))
+}
+
+/// Fetch the new build and put it in place. Nothing restarts.
+///
+/// The check runs a second time rather than the handle being kept from
+/// [`update_offer`]: it is one small request, and holding a live `Update`
+/// across two commands would mean a download that resumed against a release
+/// that has since been replaced or withdrawn. Re-asking is how the signature
+/// being verified is the signature of the file actually being installed.
+#[tauri::command]
+pub async fn update_install(app: tauri::AppHandle) -> Answer<()> {
+    use tauri::Emitter as _;
+    use tauri_plugin_updater::UpdaterExt as _;
+
+    if !replaceable() {
+        return Err(refusal("refuse.updateNotReplaceable"));
+    }
+
+    let update = app
+        .updater()
+        .map_err(|error| error.to_string())?
+        .check()
+        .await
+        .map_err(|error| error.to_string())?;
+    // Between the offer and the click, the release was withdrawn.
+    let Some(update) = update else {
+        return Err(refusal("refuse.updateGone"));
+    };
+
+    let mut so_far: u64 = 0;
+    let progress = app.clone();
+    update
+        .download_and_install(
+            move |chunk, total| {
+                so_far += chunk as u64;
+                let percent = total.and_then(|total| {
+                    (total > 0).then(|| (so_far.saturating_mul(100) / total).min(100) as u8)
+                });
+                // A failure to emit is the window having gone; the download can
+                // finish without anybody watching it.
+                let _ = progress.emit("update-progress", Downloaded { percent });
+            },
+            || {},
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+
+    tracing::info!("the new build is in place, waiting for a restart");
+    Ok(())
+}
+
+/// Start the build that was just put in place.
+///
+/// Its own command, and its own click: an application that replaced itself and
+/// vanished mid-sentence would be indistinguishable from one that crashed, and
+/// whoever is being updated may have a commit message half written.
+#[tauri::command]
+pub fn update_restart(app: tauri::AppHandle) {
+    tracing::info!("restarting into the new build");
+    app.restart()
+}
+
+/// Remember that this version was waved away, so it is not offered again.
+#[tauri::command]
+pub fn update_skip(state: State<'_, AppState>, version: String) {
+    state.with_settings(|settings| settings.skipped_update = Some(version));
+}

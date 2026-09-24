@@ -70,6 +70,15 @@ pub struct Settings {
     /// Which coding agent writes commit messages, and what to tell it.
     #[serde(default)]
     pub agent: Agent,
+    /// A version the user was offered and waved away, so the band does not ask
+    /// again at every launch (SPEC §11, M10).
+    ///
+    /// The *version*, not a boolean: "no thanks" is an answer about 0.2.0, not
+    /// about updating. When 0.2.1 arrives the string no longer matches and the
+    /// band comes back, which is what somebody who dismissed one release and
+    /// wants the next actually means.
+    #[serde(default)]
+    pub skipped_update: Option<String>,
 }
 
 /// The coding agent that drafts commit messages (SPEC §11, amended).
@@ -120,6 +129,7 @@ impl Default for Settings {
             language: None,
             keymap: std::collections::BTreeMap::new(),
             agent: Agent::default(),
+            skipped_update: None,
         }
     }
 }
@@ -226,6 +236,7 @@ mod tests {
                 command: Some("claude".to_owned()),
                 guidelines: "Toujours en français, et au présent.".to_owned(),
             },
+            skipped_update: Some("0.9.9".to_owned()),
         };
         settings.save(dir.path()).expect("save");
         assert_eq!(Settings::load(dir.path()), settings);

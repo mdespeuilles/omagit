@@ -42,6 +42,8 @@ import {
   type Sides,
   type StashRow,
   type StatusRow,
+  type Downloaded,
+  type UpdateOffer,
 } from "./ipc";
 
 /// The four states of SPEC §10, rendered explicitly and never collapsed into a
@@ -275,6 +277,23 @@ type State = {
   /// of the list while its tab is up would otherwise lose the only thing the
   /// tab shows.
   tabs: { path: string; name: string }[];
+  /// The new release the band is about, and how far it has got (SPEC §11, M10).
+  ///
+  /// One field rather than four loose ones, because the four are only ever
+  /// meaningful together: a percentage with no offer is a number about nothing,
+  /// and `null` is the state the window is in almost always — no band at all.
+  ///
+  /// `said` carries the failure rather than `writeError`: the band is where the
+  /// user asked, and a download that failed has not touched the repository, so
+  /// putting it in the notice that reports *writes* would say the wrong thing
+  /// about what just happened.
+  update: {
+    offer: UpdateOffer;
+    phase: "offered" | "downloading" | "ready" | "failed";
+    /// `null` while the server has not said how large the file is.
+    percent: number | null;
+    said: string | null;
+  } | null;
   /// Whether something is being dragged over the window right now. Board 06
   /// draws no drop target, so the window says it another way: the empty state
   /// and the list edge answer the pointer rather than staying silent.
@@ -465,6 +484,7 @@ const state = reactive<State>({
   dropAt: null,
   dragging: false,
   tabs: [],
+  update: null,
 });
 
 export const app = readonly(state);
@@ -1245,6 +1265,72 @@ async function refreshJournal(): Promise<void> {
 export async function watchProgress(): Promise<void> {
   await listen<Progress>("progress", (event) => {
     state.running = event.payload;
+  });
+}
+
+// ── The new build (SPEC §11, M10) ───────────────────────────────────────────
+//
+// Four steps, and only the first one happens on its own. The window asks once
+// at start-up whether there is a newer release; everything after that — the
+// download, the restart, the "no thanks" — waits for a click. What is being
+// replaced is the application, and replacing it under somebody who is halfway
+// through a commit message is the one thing this must never do.
+
+/// Ask whether there is a newer release, and say nothing if there is not.
+///
+/// Every reason to stay quiet reaches here as the same `null`: nothing newer,
+/// a build the updater cannot replace, a version already waved away, a check
+/// that did not get through. The backend logs which; the window has no use for
+/// the difference, and a band explaining that the update check failed would be
+/// noise about something nobody asked for.
+export async function checkForUpdate(): Promise<void> {
+  const offer = await api.updateOffer();
+  if (!offer) return;
+  state.update = { offer, phase: "offered", percent: null, said: null };
+}
+
+/// Fetch the new build and put it in place. Nothing restarts.
+export async function installUpdate(): Promise<void> {
+  if (!state.update || state.update.phase === "downloading") return;
+  state.update = { ...state.update, phase: "downloading", percent: null, said: null };
+  try {
+    await api.updateInstall();
+    // Read again rather than kept from before the await: the slot is the one
+    // piece of state two of these functions touch, and writing a whole object
+    // built from a stale copy is how a band comes back after being cleared.
+    if (state.update) state.update = { ...state.update, phase: "ready", percent: 100 };
+  } catch (error) {
+    if (state.update) {
+      state.update = { ...state.update, phase: "failed", said: message(error) };
+    }
+  }
+}
+
+/// Start the build that was just put in place.
+export async function restartForUpdate(): Promise<void> {
+  await api.updateRestart();
+}
+
+/// Wave this version away, for good — the band does not come back until the
+/// next one.
+///
+/// Only from `offered` and `failed`. Dismissing a build that is already on disk
+/// would leave the old one running with the new one beside it and no way back
+/// to the button, so a `ready` band closes by restarting or by being left
+/// alone.
+export async function dismissUpdate(): Promise<void> {
+  const update = state.update;
+  if (!update || update.phase === "downloading" || update.phase === "ready") return;
+  state.update = null;
+  await api.updateSkip(update.offer.version);
+}
+
+/// Follow the download. Independent of the call that started it, the same way
+/// the fetch overlay is: the event carries the only thing that moves.
+export async function watchUpdate(): Promise<void> {
+  await listen<Downloaded>("update-progress", (event) => {
+    if (!state.update || state.update.phase !== "downloading") return;
+    state.update = { ...state.update, percent: event.payload.percent };
   });
 }
 
