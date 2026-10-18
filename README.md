@@ -96,14 +96,14 @@ From the [releases page](https://github.com/mdespeuilles/omagit/releases):
 
 ```sh
 # Debian, Ubuntu and derivatives
-sudo apt install ./omagit_0.1.0_amd64.deb
+sudo apt install ./omagit_0.2.0_amd64.deb
 
 # Arch and derivatives
 curl -O https://raw.githubusercontent.com/mdespeuilles/omagit/main/packaging/aur/PKGBUILD
 makepkg -si
 
 # anything else
-chmod +x omagit_0.1.0_amd64.AppImage && ./omagit_0.1.0_amd64.AppImage
+chmod +x omagit_0.2.0_amd64.AppImage && ./omagit_0.2.0_amd64.AppImage
 ```
 
 Wayland is the primary target, X11 the fallback. The `.deb` pulls in what it
@@ -132,7 +132,7 @@ install the compatibility package (`fuse2` on Arch, `fuse-libs` on Fedora), or
 skip the mount entirely:
 
 ```sh
-./omagit_0.1.0_amd64.AppImage --appimage-extract-and-run
+./omagit_0.2.0_amd64.AppImage --appimage-extract-and-run
 ```
 
 The second unpacks to a temporary directory and runs from there: slower to
