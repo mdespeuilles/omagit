@@ -108,10 +108,10 @@ pub trait Platform: Send + Sync + 'static {
     /// Called first thing in `run()` — before the logger, whose writer thread
     /// would make `set_var` unsound — because what belongs here are the
     /// environment variables GTK and WebKit read once, at initialisation. What
-    /// it did comes back as a line for `run()` to log once there is a log; a
-    /// platform with nothing to settle returns `None`.
-    fn prepare_display(&self) -> Option<&'static str> {
-        None
+    /// it did comes back as lines for `run()` to log once there is a log; a
+    /// platform with nothing to settle returns none.
+    fn prepare_display(&self) -> Vec<String> {
+        Vec::new()
     }
 
     /// Where settings, keymap and persisted layout live (SPEC §9).

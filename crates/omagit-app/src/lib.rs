@@ -22,11 +22,11 @@ use state::AppState;
 /// Build and run the application.
 pub fn run() {
     let platform = platform::current();
-    let display_note = platform.prepare_display();
+    let display_notes = platform.prepare_display();
     let config_dir = platform.config_dir();
     let _log_guard = logging::init(config_dir.as_deref());
 
-    if let Some(note) = display_note {
+    for note in display_notes {
         tracing::info!("{note}");
     }
 

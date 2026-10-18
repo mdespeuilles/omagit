@@ -3491,7 +3491,7 @@ dependencies = [
 
 [[package]]
 name = "omagit-app"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "jiff",
@@ -3513,7 +3513,7 @@ dependencies = [
 
 [[package]]
 name = "omagit-git"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-channel",
  "gix",
@@ -3526,7 +3526,7 @@ dependencies = [
 
 [[package]]
 name = "omagit-git-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -3535,7 +3535,7 @@ dependencies = [
 
 [[package]]
 name = "omagit-settings"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "omagit-theme",
  "serde",
@@ -3547,7 +3547,7 @@ dependencies = [
 
 [[package]]
 name = "omagit-theme"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "palette",
  "serde",

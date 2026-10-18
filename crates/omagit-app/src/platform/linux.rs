@@ -17,6 +17,70 @@ impl Linux {
             side: CaptionSide::Trailing,
         }
     }
+
+    /// Brings `GDK_SCALE` down to the largest screen Hyprland drives, when the
+    /// window is about to go through XWayland.
+    ///
+    /// The AppImage forces `GDK_BACKEND=x11` — linuxdeploy's GTK hook does it,
+    /// for tauri-apps/tauri#8541 — and Hyprland with
+    /// `xwayland:force_zero_scaling` draws X11 windows unscaled, leaving the
+    /// scale to `GDK_SCALE`. Omarchy sets that to 2 whatever the screen, so on a
+    /// monitor at scale 1 every pixel of the interface came out doubled.
+    ///
+    /// Only ever lowered, and only past the largest screen rounded up: a
+    /// HiDPI setup keeps exactly what it asked for, a 1.5 screen keeps 2. Off
+    /// Hyprland, or when the compositor does not answer, nothing changes.
+    fn fit_gdk_scale() -> Option<String> {
+        let x11 = std::env::var("GDK_BACKEND")
+            .is_ok_and(|backend| backend.split(',').next().map(str::trim) == Some("x11"));
+        let signature = std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE")?;
+        if !x11 || std::env::var_os("WAYLAND_DISPLAY").is_none() {
+            return None;
+        }
+        let asked: u32 = std::env::var("GDK_SCALE").ok()?.trim().parse().ok()?;
+
+        let socket = PathBuf::from(std::env::var_os("XDG_RUNTIME_DIR")?)
+            .join("hypr")
+            .join(signature)
+            .join(".socket.sock");
+        let fitted = Linux::fitted_gdk_scale(asked, &hyprland_monitors(&socket)?)?;
+
+        // SAFETY: single-threaded — this runs before `run()` starts anything.
+        unsafe { std::env::set_var("GDK_SCALE", fitted.to_string()) };
+        Some(format!(
+            "xwayland on hyprland: GDK_SCALE {asked} lowered to {fitted}, the largest screen"
+        ))
+    }
+
+    /// The rule, apart from the environment: `Some` only when `asked` is
+    /// above every screen in Hyprland's `j/monitors` answer.
+    fn fitted_gdk_scale(asked: u32, monitors: &str) -> Option<u32> {
+        let monitors: Vec<serde_json::Value> = serde_json::from_str(monitors).ok()?;
+        let largest = monitors
+            .iter()
+            .filter_map(|monitor| monitor.get("scale")?.as_f64())
+            .fold(None, |max: Option<f64>, scale| {
+                Some(max.map_or(scale, |max| max.max(scale)))
+            })?;
+        let ceiling = (largest.ceil() as u32).max(1);
+        (asked > ceiling).then_some(ceiling)
+    }
+}
+
+/// Asks Hyprland's IPC socket for its monitors. Bounded, because this runs
+/// before there is a window and a stuck compositor must not become a stuck
+/// start.
+fn hyprland_monitors(socket: &std::path::Path) -> Option<String> {
+    use std::io::{Read, Write};
+
+    let timeout = Some(std::time::Duration::from_millis(500));
+    let mut stream = std::os::unix::net::UnixStream::connect(socket).ok()?;
+    stream.set_read_timeout(timeout).ok()?;
+    stream.set_write_timeout(timeout).ok()?;
+    stream.write_all(b"j/monitors").ok()?;
+    let mut answer = String::new();
+    stream.read_to_string(&mut answer).ok()?;
+    Some(answer)
 }
 
 impl Platform for Linux {
@@ -36,19 +100,24 @@ impl Platform for Linux {
     /// Intel and AMD keep the accelerated path — and an explicit setting in the
     /// environment always wins, so the workaround can be undone from the shell
     /// the day WebKit or NVIDIA fixes it.
-    fn prepare_display(&self) -> Option<&'static str> {
+    ///
+    /// Also holds `GDK_SCALE` to the screens Hyprland has: see
+    /// [`Linux::fit_gdk_scale`].
+    fn prepare_display(&self) -> Vec<String> {
         const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
+        let mut notes = Vec::new();
 
-        if std::env::var_os(VAR).is_some()
-            || std::env::var_os("WAYLAND_DISPLAY").is_none()
-            || !std::path::Path::new("/sys/module/nvidia_drm").exists()
+        if std::env::var_os(VAR).is_none()
+            && std::env::var_os("WAYLAND_DISPLAY").is_some()
+            && std::path::Path::new("/sys/module/nvidia_drm").exists()
         {
-            return None;
+            // SAFETY: single-threaded — this runs before `run()` starts anything.
+            unsafe { std::env::set_var(VAR, "1") };
+            notes.push("nvidia under wayland: WebKit's DMABUF renderer disabled".into());
         }
 
-        // SAFETY: single-threaded — this runs before `run()` starts anything.
-        unsafe { std::env::set_var(VAR, "1") };
-        Some("nvidia under wayland: WebKit's DMABUF renderer disabled")
+        notes.extend(Linux::fit_gdk_scale());
+        notes
     }
 
     fn config_dir(&self) -> Option<PathBuf> {
@@ -148,6 +217,25 @@ mod tests {
         let desktop = Linux::caption_under(false);
         assert!(desktop.minimize && desktop.maximize && desktop.close);
         assert_eq!(desktop.side, CaptionSide::Trailing);
+    }
+
+    #[test]
+    fn gdk_scale_is_held_to_the_largest_screen() {
+        let one = r#"[{"name":"HDMI-A-1","scale":1.0}]"#;
+        let mixed = r#"[{"scale":1.0},{"scale":1.5}]"#;
+        let hidpi = r#"[{"scale":2.0}]"#;
+
+        // Omarchy's 2 on a plain screen: the bug.
+        assert_eq!(Linux::fitted_gdk_scale(2, one), Some(1));
+        // A screen at 1.5 rounds up, so Omarchy's 2 stands.
+        assert_eq!(Linux::fitted_gdk_scale(2, mixed), None);
+        assert_eq!(Linux::fitted_gdk_scale(3, mixed), Some(2));
+        // What already fits is left alone, and nothing is ever raised.
+        assert_eq!(Linux::fitted_gdk_scale(2, hidpi), None);
+        assert_eq!(Linux::fitted_gdk_scale(1, hidpi), None);
+        // An answer that says nothing usable changes nothing.
+        assert_eq!(Linux::fitted_gdk_scale(2, "[]"), None);
+        assert_eq!(Linux::fitted_gdk_scale(2, "unknown request"), None);
     }
 
     #[test]
