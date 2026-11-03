@@ -436,6 +436,22 @@ pub fn github_repositories(state: State<'_, AppState>) -> Answer<crate::hosted::
     crate::hosted::github(&journal, &state.cancel())
 }
 
+/// Every project the user's `glab` can see on `host`.
+#[tauri::command(async)]
+pub fn gitlab_repositories(
+    state: State<'_, AppState>,
+    host: String,
+) -> Answer<crate::hosted::Hosted> {
+    let journal = state.journal().clone();
+    crate::hosted::gitlab(&host, &journal, &state.cancel())
+}
+
+/// Which forges the clone dialog can search on this machine.
+#[tauri::command(async)]
+pub fn forges() -> crate::hosted::Forges {
+    crate::hosted::forges()
+}
+
 /// Every local branch against the trunk, for the branch map.
 #[tauri::command(async)]
 pub fn branch_map(state: State<'_, AppState>, path: String) -> Answer<Option<dto::BranchMap>> {

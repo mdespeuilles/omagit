@@ -25,7 +25,7 @@ import {
 } from "../state";
 import { count, t, worded } from "../i18n";
 import { ago, tildify } from "../format";
-import { hosted, loadHosted, remoteKey, search } from "../hosted";
+import { chooseSource, hosted, loadHosted, remoteKey, search, sources } from "../hosted";
 import type { HostedRepo } from "../ipc";
 
 const url = ref<HTMLInputElement | null>(null);
@@ -40,6 +40,7 @@ const cursor = ref(0);
 /// hundred buttons to show eight is work nobody sees.
 const SHOWN = 60;
 
+const allSources = computed(() => sources(hosted.forges));
 const found = computed(() => search(hosted.list?.repos ?? [], query.value).slice(0, SHOWN));
 watch(query, () => (cursor.value = 0));
 
@@ -142,7 +143,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
       <div class="clone-finder">
         <div class="clone-finder-head">
-          <span class="dialog-label">{{ t("clone.hosted.title") }}</span>
+          <div v-if="allSources.length > 1" class="segmented">
+            <button
+              v-for="source in allSources"
+              :key="source"
+              type="button"
+              :class="{ on: source === hosted.source }"
+              @click="chooseSource(source)"
+            >
+              {{ source === "github" ? t("clone.hosted.title") : source.slice("gitlab:".length) }}
+            </button>
+          </div>
+          <span v-else class="dialog-label">{{
+            hosted.source === "github"
+              ? t("clone.hosted.title")
+              : hosted.source.slice("gitlab:".length)
+          }}</span>
           <span v-if="hosted.list" class="ov-muted">
             {{ count("clone.hosted.count", hosted.list.repos.length) }}
           </span>

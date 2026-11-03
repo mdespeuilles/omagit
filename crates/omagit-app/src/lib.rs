@@ -101,6 +101,8 @@ pub fn run() {
             commands::summary,
             commands::divergence,
             commands::github_repositories,
+            commands::gitlab_repositories,
+            commands::forges,
             commands::commit_places,
             commands::branch_map,
             commands::branch_commits,

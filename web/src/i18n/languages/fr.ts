@@ -788,14 +788,14 @@ export const strings: Record<keyof typeof reference, string> = {
 
   // ── Cloner depuis GitHub (v2) ───────────────────────────────────────────────
   "clone.hosted.title": "GitHub",
-  "clone.hosted.search": "Chercher dans tes dépôts GitHub…",
+  "clone.hosted.search": "Chercher dans tes dépôts…",
   "clone.hosted.count.one": "{n} dépôt",
   "clone.hosted.count.other": "{n} dépôts",
   "clone.hosted.refresh": "Actualiser",
   "clone.hosted.refreshing": "Actualisation…",
-  "clone.hosted.loading": "Demande de tes dépôts à gh…",
+  "clone.hosted.loading": "Demande de tes dépôts…",
   "clone.hosted.missing":
-    "Installe la CLI GitHub (gh) et lance « gh auth login » pour chercher tes dépôts ici. Une URL ci-dessous fonctionne sans.",
+    "Installe la CLI GitHub (gh) et lance « gh auth login », ou glab et « glab auth login » pour un GitLab, pour chercher tes dépôts ici. Une URL ci-dessous fonctionne sans.",
   "clone.hosted.none": "Aucun dépôt ne correspond.",
   "clone.hosted.cloned": "Déjà cloné",
   "clone.hosted.private": "Privé",

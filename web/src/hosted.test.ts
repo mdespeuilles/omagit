@@ -3,9 +3,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Hosted, HostedRepo } from "./ipc";
 
-const backend = vi.hoisted(() => ({ answer: null as unknown, calls: 0 }));
+const backend = vi.hoisted(() => ({
+  answer: null as unknown,
+  calls: 0,
+  forges: { github: true, gitlab: [] as string[] },
+  asked: [] as string[],
+}));
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (command: string) => {
+  invoke: (command: string, args?: { host?: string }) => {
+    if (command === "forges") return Promise.resolve(backend.forges);
+    if (command === "gitlab_repositories") {
+      backend.asked.push(args?.host ?? "");
+      return Promise.resolve({ ...LIST, host: args?.host, repos: [repo("team/api")] });
+    }
     if (command !== "github_repositories") return Promise.resolve(null);
     backend.calls += 1;
     return backend.answer instanceof Error
@@ -45,6 +55,8 @@ beforeEach(() => {
   localStorage.clear();
   backend.calls = 0;
   backend.answer = LIST;
+  backend.forges = { github: true, gitlab: [] };
+  backend.asked = [];
   vi.resetModules();
 });
 
@@ -105,5 +117,42 @@ describe("the list", () => {
     await hosted.loadHosted(true, 2_000);
     expect(hosted.hosted.list?.repos).toHaveLength(3);
     expect(hosted.hosted.error).toContain("Bad credentials");
+  });
+});
+
+describe("the sources", () => {
+  it("are GitHub when there is a gh, then each GitLab host glab knows", async () => {
+    const { sources } = await import("./hosted");
+    expect(sources({ github: true, gitlab: ["git.example.com"] })).toEqual([
+      "github",
+      "gitlab:git.example.com",
+    ]);
+    expect(sources({ github: false, gitlab: [] })).toEqual([]);
+  });
+
+  it("starts on GitLab when there is no gh, and asks that host", async () => {
+    backend.forges = { github: false, gitlab: ["git.example.com"] };
+    const hosted = await import("./hosted");
+    await hosted.loadHosted(false, 1_000);
+    expect(hosted.hosted.source).toBe("gitlab:git.example.com");
+    expect(backend.asked).toEqual(["git.example.com"]);
+    expect(backend.calls).toBe(0);
+    expect(hosted.hosted.list?.repos.map((r) => r.full_name)).toEqual(["team/api"]);
+  });
+
+  it("keeps each source's list apart", async () => {
+    backend.forges = { github: true, gitlab: ["git.example.com"] };
+    const hosted = await import("./hosted");
+    await hosted.loadHosted(false, 1_000);
+    expect(hosted.hosted.list?.repos).toHaveLength(3);
+    await hosted.chooseSource("gitlab:git.example.com");
+    expect(hosted.hosted.list?.repos).toHaveLength(1);
+  });
+
+  it("says there is nothing to search with when there is neither client", async () => {
+    backend.forges = { github: false, gitlab: [] };
+    const hosted = await import("./hosted");
+    await hosted.loadHosted();
+    expect(hosted.hosted.error).toBe("gh-missing");
   });
 });

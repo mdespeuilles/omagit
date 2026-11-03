@@ -75,6 +75,135 @@ pub fn github(journal: &Journal, cancel: &Cancel) -> Result<Hosted, String> {
     })
 }
 
+/// Which forges this machine can be asked about: whether there is a `gh`,
+/// and the GitLab hosts `glab` is configured for.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct Forges {
+    pub github: bool,
+    pub gitlab: Vec<String>,
+}
+
+pub fn forges() -> Forges {
+    Forges {
+        github: locate("gh").is_some(),
+        gitlab: if locate("glab").is_some() {
+            glab_config()
+                .map(|text| gitlab_hosts(&text))
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        },
+    }
+}
+
+/// `glab`'s configuration file, where its own documentation says it lives.
+fn glab_config() -> Option<String> {
+    let dir = std::env::var_os("GLAB_CONFIG_DIR")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("XDG_CONFIG_HOME").map(|dir| PathBuf::from(dir).join("glab-cli"))
+        })
+        .or_else(|| {
+            std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config/glab-cli"))
+        })?;
+    std::fs::read_to_string(dir.join("config.yml")).ok()
+}
+
+/// The keys under `hosts:` in `glab`'s YAML. Read by indentation rather than
+/// with a YAML parser: the file's shape is `glab`'s own and fixed, and a whole
+/// parser for one list of names would be most of a dependency for nothing.
+fn gitlab_hosts(config: &str) -> Vec<String> {
+    let mut hosts = Vec::new();
+    let mut inside = false;
+    let mut indent = None;
+    for line in config.lines() {
+        if line.trim().is_empty() || line.trim_start().starts_with('#') {
+            continue;
+        }
+        let depth = line.len() - line.trim_start().len();
+        if depth == 0 {
+            inside = line.trim_end() == "hosts:";
+            indent = None;
+            continue;
+        }
+        if !inside {
+            continue;
+        }
+        let level = *indent.get_or_insert(depth);
+        if depth == level
+            && let Some(name) = line.trim().strip_suffix(':')
+        {
+            hosts.push(name.trim_matches(['"', '\'']).to_owned());
+        }
+    }
+    hosts
+}
+
+/// Every project the signed-in user is a member of on `host`, most recently
+/// active first.
+pub fn gitlab(host: &str, journal: &Journal, cancel: &Cancel) -> Result<Hosted, String> {
+    let glab = locate("glab").ok_or_else(|| "glab-missing".to_owned())?;
+    let home = std::env::temp_dir();
+    let output = cli::program(&glab, journal, &home)
+        .args([
+            "api",
+            "--hostname",
+            host,
+            "--paginate",
+            "projects?membership=true&per_page=100&order_by=last_activity_at",
+        ])
+        .timeout(DEADLINE)
+        .run(cancel)
+        .map_err(|error| error.to_string())?;
+    let repos = parse_gitlab(&output.text())?;
+    let protocol = cli::program(&glab, journal, &home)
+        .args(["config", "get", "git_protocol", "--host", host])
+        .timeout(Duration::from_secs(5))
+        .run(cancel)
+        .map(|output| output.text().trim().to_owned())
+        .unwrap_or_default();
+    Ok(Hosted {
+        host: host.to_owned(),
+        ssh: protocol != "https",
+        repos,
+    })
+}
+
+/// GitLab's projects, as one or several JSON arrays back to back — which is
+/// what `--paginate` prints, a page at a time.
+fn parse_gitlab(text: &str) -> Result<Vec<HostedRepo>, String> {
+    #[derive(Deserialize)]
+    struct Project {
+        path_with_namespace: String,
+        description: Option<String>,
+        visibility: Option<String>,
+        #[serde(default)]
+        archived: bool,
+        forked_from_project: Option<serde_json::Value>,
+        last_activity_at: Option<String>,
+        ssh_url_to_repo: String,
+        http_url_to_repo: String,
+    }
+    let mut repos = Vec::new();
+    for page in serde_json::Deserializer::from_str(text).into_iter::<Vec<Project>>() {
+        for project in page.map_err(|error| error.to_string())? {
+            repos.push(HostedRepo {
+                full_name: project.path_with_namespace,
+                description: project.description.filter(|text| !text.trim().is_empty()),
+                private: project.visibility.as_deref() != Some("public"),
+                fork: project
+                    .forked_from_project
+                    .is_some_and(|value| !value.is_null()),
+                archived: project.archived,
+                pushed_at: project.last_activity_at,
+                ssh_url: project.ssh_url_to_repo,
+                clone_url: project.http_url_to_repo,
+            });
+        }
+    }
+    Ok(repos)
+}
+
 /// One JSON object per line, which is what `--jq` with `--paginate` prints.
 fn parse(text: &str) -> Result<Vec<HostedRepo>, String> {
     text.lines()
@@ -153,6 +282,28 @@ mod tests {
         let hosted = github(&Journal::new(), &Cancel::new()).unwrap();
         assert!(!hosted.repos.is_empty());
         eprintln!("{} repositories, ssh: {}", hosted.repos.len(), hosted.ssh);
+    }
+
+    #[test]
+    fn reads_gitlab_pages_printed_back_to_back() {
+        let text = concat!(
+            r#"[{"path_with_namespace":"team/api","description":"","visibility":"private","archived":false,"last_activity_at":"2026-11-01T10:00:00Z","ssh_url_to_repo":"git@git.example.com:team/api.git","http_url_to_repo":"https://git.example.com/team/api.git"}]"#,
+            r#"[{"path_with_namespace":"me/fork","description":"Mine","visibility":"public","archived":true,"forked_from_project":{"id":1},"last_activity_at":null,"ssh_url_to_repo":"git@git.example.com:me/fork.git","http_url_to_repo":"https://git.example.com/me/fork.git"}]"#,
+            "\n",
+        );
+        let repos = parse_gitlab(text).unwrap();
+        assert_eq!(repos.len(), 2);
+        assert_eq!(repos[0].full_name, "team/api");
+        assert!(repos[0].private && !repos[0].fork);
+        assert_eq!(repos[0].description, None, "an empty description is none");
+        assert!(!repos[1].private && repos[1].fork && repos[1].archived);
+    }
+
+    #[test]
+    fn finds_the_hosts_in_glabs_configuration() {
+        let config = "git_protocol: ssh\nhosts:\n    gitlab.com:\n        token: x\n        api_protocol: https\n    git.example.com:\n        token: y\nno_prompt: false\n";
+        assert_eq!(gitlab_hosts(config), ["gitlab.com", "git.example.com"]);
+        assert!(gitlab_hosts("editor: vim\n").is_empty());
     }
 
     #[test]

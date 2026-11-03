@@ -830,14 +830,14 @@ export const strings = {
 
   // ── Cloning from GitHub (v2) ────────────────────────────────────────────────
   "clone.hosted.title": "GitHub",
-  "clone.hosted.search": "Search your GitHub repositories…",
+  "clone.hosted.search": "Search your repositories…",
   "clone.hosted.count.one": "{n} repository",
   "clone.hosted.count.other": "{n} repositories",
   "clone.hosted.refresh": "Refresh",
   "clone.hosted.refreshing": "Refreshing…",
-  "clone.hosted.loading": "Asking gh for your repositories…",
+  "clone.hosted.loading": "Asking for your repositories…",
   "clone.hosted.missing":
-    "Install the GitHub CLI (gh) and run “gh auth login” to search your repositories here. A URL below works without it.",
+    "Install the GitHub CLI (gh) and run “gh auth login”, or glab and “glab auth login” for a GitLab, to search your repositories here. A URL below works without either.",
   "clone.hosted.none": "No repository matches.",
   "clone.hosted.cloned": "Already cloned",
   "clone.hosted.private": "Private",

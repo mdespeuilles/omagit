@@ -408,6 +408,9 @@ export type HostedRepo = {
   clone_url: string;
 };
 
+/// Which forges the machine can be asked about.
+export type Forges = { github: boolean; gitlab: string[] };
+
 /// A forge's list, and whether its client clones over SSH.
 export type Hosted = { host: string; ssh: boolean; repos: HostedRepo[] };
 
@@ -540,6 +543,8 @@ export const api = {
   checkRemote: (url: string) => invoke<void>("check_remote", { url }),
   cloneRepository: (request: CloneRequest) => invoke<RepoSummary>("clone_repository", { request }),
   githubRepositories: () => invoke<Hosted>("github_repositories"),
+  gitlabRepositories: (host: string) => invoke<Hosted>("gitlab_repositories", { host }),
+  forges: () => invoke<Forges>("forges"),
   commitPlaces: (path: string, id: string) => invoke<Places>("commit_places", { path, id }),
   branchMap: (path: string) => invoke<BranchMap | null>("branch_map", { path }),
   branchCommits: (path: string, branch: string, onto: string, limit: number) =>
