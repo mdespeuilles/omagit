@@ -428,6 +428,14 @@ pub fn divergence(
     Ok(divergence.as_ref().map(dto::divergence))
 }
 
+/// Every repository the user's `gh` can see, for the clone dialog's search.
+/// `"gh-missing"` when there is no `gh` to ask: the dialog says how to get one.
+#[tauri::command(async)]
+pub fn github_repositories(state: State<'_, AppState>) -> Answer<crate::hosted::Hosted> {
+    let journal = state.journal().clone();
+    crate::hosted::github(&journal, &state.cancel())
+}
+
 /// The working copy, one row per path.
 #[tauri::command(async)]
 pub fn status(state: State<'_, AppState>, path: String) -> Answer<Vec<dto::StatusRow>> {

@@ -785,4 +785,20 @@ export const strings: Record<keyof typeof reference, string> = {
   "dash.changes.other": "{n} fichiers modifiés",
   "dash.never": "jamais vérifié",
   "dash.checked": "vérifié {ago}",
+
+  // ── Cloner depuis GitHub (v2) ───────────────────────────────────────────────
+  "clone.hosted.title": "GitHub",
+  "clone.hosted.search": "Chercher dans tes dépôts GitHub…",
+  "clone.hosted.count.one": "{n} dépôt",
+  "clone.hosted.count.other": "{n} dépôts",
+  "clone.hosted.refresh": "Actualiser",
+  "clone.hosted.refreshing": "Actualisation…",
+  "clone.hosted.loading": "Demande de tes dépôts à gh…",
+  "clone.hosted.missing":
+    "Installe la CLI GitHub (gh) et lance « gh auth login » pour chercher tes dépôts ici. Une URL ci-dessous fonctionne sans.",
+  "clone.hosted.none": "Aucun dépôt ne correspond.",
+  "clone.hosted.cloned": "Déjà cloné",
+  "clone.hosted.private": "Privé",
+  "clone.hosted.fork": "Fork",
+  "clone.hosted.archived": "Archivé",
 };

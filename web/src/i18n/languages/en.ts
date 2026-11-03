@@ -827,4 +827,20 @@ export const strings = {
   "dash.changes.other": "{n} changed files",
   "dash.never": "never checked",
   "dash.checked": "checked {ago}",
+
+  // ── Cloning from GitHub (v2) ────────────────────────────────────────────────
+  "clone.hosted.title": "GitHub",
+  "clone.hosted.search": "Search your GitHub repositories…",
+  "clone.hosted.count.one": "{n} repository",
+  "clone.hosted.count.other": "{n} repositories",
+  "clone.hosted.refresh": "Refresh",
+  "clone.hosted.refreshing": "Refreshing…",
+  "clone.hosted.loading": "Asking gh for your repositories…",
+  "clone.hosted.missing":
+    "Install the GitHub CLI (gh) and run “gh auth login” to search your repositories here. A URL below works without it.",
+  "clone.hosted.none": "No repository matches.",
+  "clone.hosted.cloned": "Already cloned",
+  "clone.hosted.private": "Private",
+  "clone.hosted.fork": "Fork",
+  "clone.hosted.archived": "Archived",
 } as const;

@@ -376,6 +376,21 @@ export type Target =
 
 export type Made = { id: Oid; notes: string };
 
+/// One repository on a forge, as the clone dialog searches it.
+export type HostedRepo = {
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  fork: boolean;
+  archived: boolean;
+  pushed_at: string | null;
+  ssh_url: string;
+  clone_url: string;
+};
+
+/// A forge's list, and whether its client clones over SSH.
+export type Hosted = { host: string; ssh: boolean; repos: HostedRepo[] };
+
 /// Everything the clone dialog collected.
 ///
 /// `parent` is the folder the clone is created *in*: `git clone <url> <dir>`
@@ -504,6 +519,7 @@ export const api = {
   cloneDirectory: (url: string) => invoke<string | null>("clone_directory", { url }),
   checkRemote: (url: string) => invoke<void>("check_remote", { url }),
   cloneRepository: (request: CloneRequest) => invoke<RepoSummary>("clone_repository", { request }),
+  githubRepositories: () => invoke<Hosted>("github_repositories"),
 
   // Integrating one branch into another (M7). Both can stop half-way on a
   // conflict; `abortOperation` is the way out, and it reads what is running

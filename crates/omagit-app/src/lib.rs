@@ -11,6 +11,7 @@ pub mod commands;
 pub mod dto;
 pub mod editor;
 pub mod edits;
+pub mod hosted;
 pub mod log;
 pub mod logging;
 pub mod menu;
@@ -99,6 +100,7 @@ pub fn run() {
             commands::close_repository,
             commands::summary,
             commands::divergence,
+            commands::github_repositories,
             commands::status,
             commands::file_diff,
             commands::stage,

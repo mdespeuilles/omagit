@@ -54,6 +54,8 @@ describe("the catalogues", () => {
           "card.description",
           "card.remotes",
           "clone.destination",
+          "clone.hosted.fork",
+          "clone.hosted.title",
           "clone.url",
           "commit.amend",
           "commit.noVerify",

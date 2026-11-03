@@ -10,22 +10,86 @@
 // invocation, a repository whose credentials no helper can supply fails rather
 // than prompting, so this tests authentication and not just the network.
 
-import { computed, onMounted, onBeforeUnmount, ref } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import {
   app,
   browseCloneParent,
   cloneBlocker,
   closeClone,
+  openRepository,
   setCloneGroup,
   setCloneName,
   setCloneOption,
   setCloneUrl,
   startClone,
 } from "../state";
-import { t, worded } from "../i18n";
-import { tildify } from "../format";
+import { count, t, worded } from "../i18n";
+import { ago, tildify } from "../format";
+import { hosted, loadHosted, remoteKey, search } from "../hosted";
+import type { HostedRepo } from "../ipc";
 
 const url = ref<HTMLInputElement | null>(null);
+
+// ── Searching the user's GitHub (DESIGN v2, board "Clone") ─────────────────
+
+const finder = ref<HTMLInputElement | null>(null);
+const results = ref<HTMLElement | null>(null);
+const query = ref("");
+const cursor = ref(0);
+/// How many matches are drawn. The search is over all of them; drawing two
+/// hundred buttons to show eight is work nobody sees.
+const SHOWN = 60;
+
+const found = computed(() => search(hosted.list?.repos ?? [], query.value).slice(0, SHOWN));
+watch(query, () => (cursor.value = 0));
+
+/// Where each repository already in the library came from, by remote, so a
+/// row can say "already cloned" and open that one instead.
+const cloned = computed(() => {
+  const by = new Map<string, string>();
+  for (const [path, held] of Object.entries(app.library)) {
+    if (held.status !== "ready") continue;
+    for (const remote of held.value.remotes) if (remote.url) by.set(remoteKey(remote.url), path);
+  }
+  return by;
+});
+const clonedAt = (repo: HostedRepo) => cloned.value.get(remoteKey(repo.ssh_url)) ?? null;
+const urlOf = (repo: HostedRepo) => (hosted.list?.ssh === false ? repo.clone_url : repo.ssh_url);
+
+function pick(repo: HostedRepo): void {
+  const there = clonedAt(repo);
+  if (there) {
+    closeClone();
+    void openRepository(there);
+    return;
+  }
+  setCloneUrl(urlOf(repo));
+}
+
+function onFinderKey(event: KeyboardEvent): void {
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const step = event.key === "ArrowDown" ? 1 : -1;
+    cursor.value = Math.min(Math.max(cursor.value + step, 0), Math.max(found.value.length - 1, 0));
+    results.value?.children[cursor.value]?.scrollIntoView({ block: "nearest" });
+  } else if (event.key === "Enter") {
+    // The first Enter picks; the second, with the URL already filled from the
+    // same row, clones — the form's own submit.
+    const repo = found.value[cursor.value];
+    if (repo && (clonedAt(repo) || urlOf(repo) !== form.value?.url)) {
+      event.preventDefault();
+      pick(repo);
+    }
+  } else if (event.key === "Escape" && query.value) {
+    // One level at a time: the search first, the dialog after.
+    event.stopPropagation();
+    query.value = "";
+  }
+}
+
+function pushed(repo: HostedRepo): string {
+  return repo.pushed_at ? ago(Date.parse(repo.pushed_at) / 1000) : "";
+}
 
 const form = computed(() => app.clone);
 const blocker = computed(() => (form.value ? cloneBlocker(form.value) : t("clone.nothing")));
@@ -56,9 +120,10 @@ function onKey(event: KeyboardEvent): void {
 }
 
 onMounted(() => {
-  // On the URL, because it is the only field with nothing in it that can be
-  // guessed — everything below fills itself in from what is typed here.
-  url.value?.focus();
+  // On the search, which is how most clones start; on the URL when there is
+  // no `gh` to search with — it is the only field nothing can guess.
+  void loadHosted();
+  (hosted.error === "gh-missing" ? url : finder).value?.focus();
   window.addEventListener("keydown", onKey);
 });
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
@@ -74,6 +139,68 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       @submit.prevent="startClone()"
     >
       <div class="dialog-head">{{ t("clone.title") }}</div>
+
+      <div class="clone-finder">
+        <div class="clone-finder-head">
+          <span class="dialog-label">{{ t("clone.hosted.title") }}</span>
+          <span v-if="hosted.list" class="ov-muted">
+            {{ count("clone.hosted.count", hosted.list.repos.length) }}
+          </span>
+          <span class="spacer" />
+          <button type="button" class="link" :disabled="hosted.loading" @click="loadHosted(true)">
+            {{ hosted.loading ? t("clone.hosted.refreshing") : t("clone.hosted.refresh") }}
+          </button>
+        </div>
+        <input
+          ref="finder"
+          v-model="query"
+          type="search"
+          spellcheck="false"
+          autocomplete="off"
+          :placeholder="t('clone.hosted.search')"
+          @keydown="onFinderKey"
+        />
+        <p v-if="hosted.error === 'gh-missing'" class="ov-muted clone-finder-note">
+          {{ t("clone.hosted.missing") }}
+        </p>
+        <p v-else-if="hosted.error && !hosted.list" class="pane-error clone-finder-note">
+          {{ hosted.error }}
+        </p>
+        <p v-else-if="!hosted.list" class="ov-muted clone-finder-note">
+          {{ t("clone.hosted.loading") }}
+        </p>
+        <p v-else-if="found.length === 0" class="ov-muted clone-finder-note">
+          {{ t("clone.hosted.none") }}
+        </p>
+        <ul v-else ref="results" class="clone-results">
+          <li v-for="(repo, at) in found" :key="repo.full_name">
+            <button
+              type="button"
+              class="clone-result"
+              :class="{ active: at === cursor, picked: urlOf(repo) === form?.url }"
+              @click="pick(repo)"
+              @mouseenter="cursor = at"
+            >
+              <span class="clone-result-name">
+                <span class="ov-muted">{{ repo.full_name.split("/")[0] }}/</span
+                ><strong>{{ repo.full_name.split("/")[1] }}</strong>
+              </span>
+              <span class="clone-result-tags">
+                <span v-if="clonedAt(repo)" class="ov-pill success">{{
+                  t("clone.hosted.cloned")
+                }}</span>
+                <span v-if="repo.private" class="ov-pill">{{ t("clone.hosted.private") }}</span>
+                <span v-if="repo.fork" class="ov-pill">{{ t("clone.hosted.fork") }}</span>
+                <span v-if="repo.archived" class="ov-pill warning">{{
+                  t("clone.hosted.archived")
+                }}</span>
+              </span>
+              <span class="clone-result-description ov-muted">{{ repo.description }}</span>
+              <span class="clone-result-when ov-muted">{{ pushed(repo) }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
 
       <div class="dialog-body">
         <label class="dialog-label" for="clone-url">{{ t("clone.url") }}</label>
