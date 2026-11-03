@@ -454,10 +454,17 @@ fn execute(spawn: Spawn<'_>, cancel: &Cancel) -> Result<Output> {
         // them on `stderr`: a merge that conflicts explains itself on `stdout`
         // — "CONFLICT (content): Merge conflict in shared.txt" — and reporting
         // only `stderr` would hand the user an error with nothing in it.
-        let said = if stderr.is_empty() {
-            String::from_utf8_lossy(&stdout).trim().to_owned()
-        } else {
-            stderr
+        //
+        // Both when both have something. `stderr` alone is not enough either:
+        // with `rerere.enabled`, a conflicting merge puts "Recorded preimage
+        // for 'shared.txt'" on `stderr` and the CONFLICT line that says what
+        // happened on `stdout`, and keeping only the first showed the user a
+        // note about a cache instead of the conflict.
+        let printed = String::from_utf8_lossy(&stdout).trim().to_owned();
+        let said = match (stderr.is_empty(), printed.is_empty()) {
+            (true, _) => printed,
+            (false, true) => stderr,
+            (false, false) => format!("{stderr}\n{printed}"),
         };
         Err(GitError::CommandFailed {
             command: command_line.to_owned(),

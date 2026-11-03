@@ -21,7 +21,7 @@ use omagit_git::{FileDiff, RepoPath, Repository};
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 fn entry_diff(repo: &Repository, path: &str, staged: bool) -> FileDiff {

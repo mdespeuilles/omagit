@@ -9,7 +9,7 @@ use omagit_git::stash;
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 /// A repository with one commit and one modified file — the ordinary thing to

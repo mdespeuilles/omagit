@@ -17,7 +17,7 @@ use omagit_git::ops::network::{self, PushForce};
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 /// A bare repository, and a clone of it with `origin` pointing back.

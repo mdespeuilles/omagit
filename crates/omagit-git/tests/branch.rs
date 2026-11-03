@@ -11,7 +11,7 @@ use omagit_git::ops::branch;
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 /// A repository on `main` with one commit, and a `feature` branch ahead of it.

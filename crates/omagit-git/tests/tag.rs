@@ -15,7 +15,7 @@ use omagit_git::refs::Refs;
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 /// A repository with two commits, so a tag can be put somewhere that is not

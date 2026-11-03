@@ -15,7 +15,7 @@ use omagit_git::{Cancel, GitError, MINIMUM_GIT_VERSION};
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("the tests need a git in PATH")
+    support::isolated_git()
 }
 
 #[test]

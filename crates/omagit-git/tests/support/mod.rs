@@ -276,3 +276,49 @@ pub fn scripted() -> TestRepo {
     repo.git(&["merge", "--no-ff", "-m", "M: merge feature", "feature"]);
     repo
 }
+
+/// The `git` the operations under test run, cut off from the machine.
+///
+/// The fixtures above already run without the developer's configuration; the
+/// operations did not, and it showed: a global `pull.rebase` answered the
+/// question a test was asking git to refuse, `rerere.enabled` put a note on
+/// `stderr` where a conflict was expected, and a French locale translated the
+/// words the assertions look for. A wrapper script, because `Git` runs a
+/// program and not an environment: it is the same `git`, with the global and
+/// system configurations cut off and the messages in English.
+pub fn isolated_git() -> omagit_git::cli::Git {
+    static WRAPPER: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    let wrapper = WRAPPER.get_or_init(|| {
+        let dir = std::env::temp_dir().join(format!("omagit-test-git-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("a directory for the wrapper");
+        let path = dir.join("git");
+        std::fs::write(
+            &path,
+            "#!/bin/sh\n\
+             GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+             LC_ALL=C LANGUAGE=C exec git \"$@\"\n",
+        )
+        .expect("the wrapper is written");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+                .expect("the wrapper is executable");
+        }
+        path
+    });
+    // Retried: a process another test forks while the script is still open
+    // for writing holds that descriptor until it execs, and running a file
+    // open for writing is `ETXTBSY` on Linux. The window is milliseconds.
+    let mut attempt = 0;
+    loop {
+        match omagit_git::cli::Git::detect_at(wrapper) {
+            Ok(git) => return git,
+            Err(_) if attempt < 40 => {
+                attempt += 1;
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            Err(error) => panic!("git is installed; these tests need it: {error}"),
+        }
+    }
+}

@@ -8,7 +8,7 @@ use omagit_git::repo::Operation;
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 /// `main` and `feature`, each with a commit the other does not have, in files
@@ -149,8 +149,10 @@ fn a_conflicting_merge_stops_and_the_repository_says_so() {
     // conflict on **stdout**, so an error carrying only `stderr` would reach
     // the user empty — which is what it did before `cli.rs` learned to fall
     // back.
+    // In the machine's language, so French is accepted too.
+    let said = refused.to_string().to_lowercase();
     assert!(
-        refused.to_string().contains("conflict") || refused.to_string().contains("CONFLICT"),
+        said.contains("conflict") || said.contains("conflit"),
         "git says what happened: {refused}"
     );
 

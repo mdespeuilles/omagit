@@ -11,7 +11,7 @@ use omagit_git::status::{Conflict, Status, StatusOptions};
 use support::{TestRepo, never};
 
 fn git() -> Git {
-    Git::detect().expect("git is installed; these tests need it")
+    support::isolated_git()
 }
 
 /// `main` and `feature`, both changing the same line of the same file.
