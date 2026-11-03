@@ -244,9 +244,12 @@ fn continuing_with_a_path_still_unmerged_is_refused_in_gits_own_words() {
     let refused =
         integrate::resume(&git(), &repo.open(), Operation::Merge, &never()).expect_err("unmerged");
 
+    // Git's own words are in the machine's language: the English and French
+    // ones are both accepted, since this is about who refuses, not the wording.
     let said = refused.to_string();
+    let lower = said.to_lowercase();
     assert!(
-        said.contains("shared.txt") || said.to_lowercase().contains("conflict"),
+        said.contains("shared.txt") || lower.contains("conflict") || lower.contains("conflit"),
         "it names the file in the way: {said}"
     );
     assert_eq!(
