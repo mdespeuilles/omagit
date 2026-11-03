@@ -16,6 +16,7 @@ import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
 import Notice from "./components/Notice.vue";
 import Overview from "./components/Overview.vue";
+import BranchMap from "./components/BranchMap.vue";
 import Palette from "./components/Palette.vue";
 import Dashboard from "./components/Dashboard.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
@@ -102,6 +103,7 @@ const widths = {
       <!-- The front page (DESIGN v2): no middle column and no diff, the whole
            width for where the branch stands. -->
       <Overview v-if="app.screen === 'overview'" />
+      <BranchMap v-else-if="app.screen === 'map'" />
 
       <template v-else-if="app.screen === 'history'">
         <section class="pane" :style="{ width: `${paneWidth('history', widths.history)}px` }">

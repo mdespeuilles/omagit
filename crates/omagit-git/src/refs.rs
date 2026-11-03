@@ -371,6 +371,101 @@ pub fn head_divergence(
     }))
 }
 
+/// One branch on the map, measured against the trunk.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MapBranch {
+    pub name: String,
+    pub head: bool,
+    /// When its tip was authored, in Unix seconds.
+    pub tip_time: i64,
+    /// When the commit it shares with the trunk was authored — where it
+    /// "left" main. `None` for a branch with no history in common.
+    pub base_time: Option<i64>,
+    /// Commits it has that the trunk does not.
+    pub ahead: usize,
+    /// Commits the trunk has that it does not.
+    pub behind: usize,
+}
+
+/// Every local branch against the trunk (DESIGN v2's branch map).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BranchMap {
+    pub trunk: String,
+    pub trunk_time: i64,
+    pub branches: Vec<MapBranch>,
+}
+
+/// The names a trunk goes by, in the order one is chosen when several exist.
+const TRUNKS: [&str; 4] = ["main", "master", "trunk", "develop"];
+
+/// Every local branch measured against the trunk: where it left it, how far
+/// ahead and behind it is. `None` when no branch is called like a trunk — a
+/// map with no main line has nothing to draw the others against.
+pub fn branch_map(repo: &Repository, cancel: &Cancel) -> Result<Option<BranchMap>> {
+    assert_off_render_thread();
+    let gix = repo.gix();
+    let head_branch = match repo.head()? {
+        crate::Head::Branch { branch, .. } => Some(branch),
+        _ => None,
+    };
+    let platform = gix
+        .references()
+        .map_err(|error| GitError::backend("listing references", error))?;
+    let mut tips = Vec::new();
+    for reference in platform
+        .local_branches()
+        .map_err(|error| GitError::backend("listing branches", error))?
+        .filter_map(std::result::Result::ok)
+    {
+        cancel.check()?;
+        if let Some(commit) = reference.target().try_id().map(ToOwned::to_owned) {
+            tips.push((short_ref_name(reference.name().as_bstr()), commit));
+        }
+    }
+    let Some((trunk, trunk_tip)) = TRUNKS
+        .iter()
+        .find_map(|name| tips.iter().find(|(branch, _)| branch == name).cloned())
+    else {
+        return Ok(None);
+    };
+    let time =
+        |id: ObjectId| -> Result<i64> { Ok(crate::history::commit(repo, id)?.author.time.seconds) };
+
+    let mut branches = Vec::new();
+    for (name, tip) in tips.into_iter().filter(|(name, _)| *name != trunk) {
+        cancel.check()?;
+        let base = gix.merge_base(tip, trunk_tip).ok().map(|id| id.detach());
+        branches.push(MapBranch {
+            head: head_branch.as_deref() == Some(name.as_str()),
+            tip_time: time(tip)?,
+            base_time: base.map(time).transpose()?,
+            ahead: count_exclusive(&gix, tip, trunk_tip, cancel)?,
+            behind: count_exclusive(&gix, trunk_tip, tip, cancel)?,
+            name,
+        });
+    }
+    Ok(Some(BranchMap {
+        trunk_time: time(trunk_tip)?,
+        trunk,
+        branches,
+    }))
+}
+
+/// The commits on `branch` that the trunk `onto` does not have, newest first.
+pub fn branch_commits(
+    repo: &Repository,
+    branch: &str,
+    onto: &str,
+    limit: usize,
+    cancel: &Cancel,
+) -> Result<Vec<crate::Commit>> {
+    assert_off_render_thread();
+    let gix = repo.gix();
+    let tip = tip_of(repo, branch)?;
+    let hidden = tip_of(repo, onto)?;
+    exclusive_commits(repo, &gix, tip, hidden, limit, cancel)
+}
+
 /// The commits reachable from `tip` and not from `hidden`, newest first.
 fn exclusive_commits(
     repo: &Repository,

@@ -444,13 +444,55 @@ pub struct Divergence {
     pub incoming: Vec<LastCommit>,
 }
 
-pub fn divergence(divergence: &omagit_git::Divergence) -> Divergence {
-    let row = |commit: &omagit_git::Commit| LastCommit {
+/// One commit, as the short rows of the overview and the map draw it.
+pub fn last_commit(commit: &omagit_git::Commit) -> LastCommit {
+    LastCommit {
         id: commit.id.into(),
         summary: commit.summary.clone(),
         author: commit.author.name.clone(),
         when: commit.author.time.seconds,
-    };
+    }
+}
+
+/// Every local branch against the trunk (the branch map).
+#[derive(Debug, serde::Serialize)]
+pub struct BranchMap {
+    pub trunk: String,
+    pub trunk_time: i64,
+    pub branches: Vec<MapBranch>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct MapBranch {
+    pub name: String,
+    pub head: bool,
+    pub tip_time: i64,
+    pub base_time: Option<i64>,
+    pub ahead: usize,
+    pub behind: usize,
+}
+
+pub fn branch_map(map: &omagit_git::BranchMap) -> BranchMap {
+    BranchMap {
+        trunk: map.trunk.clone(),
+        trunk_time: map.trunk_time,
+        branches: map
+            .branches
+            .iter()
+            .map(|branch| MapBranch {
+                name: branch.name.clone(),
+                head: branch.head,
+                tip_time: branch.tip_time,
+                base_time: branch.base_time,
+                ahead: branch.ahead,
+                behind: branch.behind,
+            })
+            .collect(),
+    }
+}
+
+pub fn divergence(divergence: &omagit_git::Divergence) -> Divergence {
+    let row = last_commit;
     Divergence {
         upstream: divergence.upstream.clone(),
         outgoing: divergence.outgoing.iter().map(row).collect(),

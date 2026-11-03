@@ -59,7 +59,7 @@ pub use error::{GitError, Result};
 pub use graph::{Graph, Row as GraphRow};
 pub use history::{Civil, Commit, HistoryQuery, Signature, Time, Walk};
 pub use paths::RepoPath;
-pub use refs::{Branch, Divergence, Refs, Remote, Tag, Tracking};
+pub use refs::{Branch, BranchMap, Divergence, MapBranch, Refs, Remote, Tag, Tracking};
 pub use repo::{Head, Operation, Repository};
 pub use stash::Stash;
 pub use status::{Conflict, StageChange, Status, StatusEntry, StatusOptions, WorktreeChange};

@@ -86,7 +86,7 @@ export function again<T>(state: Async<T>): Async<T> {
 /// them, which reads as though the settings belonged to that repository —
 /// reported as confusing. They are the application's, they are a form rather
 /// than a browse, and a form over the window is a dialog.
-export type Screen = "repositories" | "overview" | "working-copy" | "history" | "stashes";
+export type Screen = "repositories" | "overview" | "working-copy" | "history" | "map" | "stashes";
 
 /// A write that did not happen: what was asked, and what came back.
 export type Failure = { what: string; said: string };

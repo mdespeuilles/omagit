@@ -38,6 +38,7 @@ export type Fixture = {
 
 import { isFiltered } from "./ipc";
 import type {
+  BranchMap,
   BranchRow,
   CommitDetail,
   Comparison,
@@ -178,6 +179,8 @@ export class Repository {
   /// Les distants déclarés. Vide par défaut : un dépôt sans distant est un cas
   /// que la fenêtre doit dessiner, pas une exception.
   remotes: { name: string; url: string }[] = [];
+  /// What the branch map draws, or `null` for a repository with no trunk.
+  map: BranchMap | null = null;
   /// The branches every commit is on, as `commit_places` answers.
   places: Places = { local: ["main"], remote: [] };
   /// When the summary says the last fetch was, in Unix seconds, or never.
@@ -704,6 +707,10 @@ export class Repository {
         if (this.holdHistoryMore) await this.holdHistoryMore;
         return page;
       }
+      case "branch_map":
+        return this.map;
+      case "branch_commits":
+        return [];
       case "commit_places":
         return { local: [...this.places.local], remote: [...this.places.remote] } satisfies Places;
       case "commit_detail":

@@ -81,6 +81,15 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
         <span class="pane-head-spacer" />
         <span v-if="stashes > 0" class="sidebar-count mono">{{ stashes }}</span>
       </button>
+
+      <button
+        class="row sidebar-row"
+        :class="{ selected: app.screen === 'map' }"
+        @click="showScreen('map')"
+      >
+        <Glyph name="map" class="sidebar-glyph" />
+        <span>{{ t("sidebar.map") }}</span>
+      </button>
     </template>
 
     <!-- It takes the height that is left and scrolls inside it, so the rows

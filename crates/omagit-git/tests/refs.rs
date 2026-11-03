@@ -213,3 +213,50 @@ fn a_bare_repository_still_lists_its_branches() {
     .expect("references are readable without a work tree");
     assert!(refs.branches.iter().any(|branch| branch.name == "main"));
 }
+
+#[test]
+fn the_map_measures_every_branch_against_the_trunk() {
+    let fixture = TestRepo::new();
+    fixture.commit_file("a.txt", "a\n", "seed");
+    fixture.branch("feature");
+    fixture.commit_file("f1.txt", "1\n", "feature one");
+    fixture.commit_file("f2.txt", "2\n", "feature two");
+    fixture.checkout("main");
+    fixture.commit_file("m.txt", "m\n", "main moves on");
+
+    let repo = Repository::open(fixture.path()).expect("opens");
+    let map = omagit_git::refs::branch_map(&repo, &never())
+        .expect("reads")
+        .expect("main is a trunk");
+    assert_eq!(map.trunk, "main");
+    let [feature] = map.branches.as_slice() else {
+        panic!("one branch besides the trunk: {:?}", map.branches);
+    };
+    assert_eq!(
+        (feature.name.as_str(), feature.ahead, feature.behind),
+        ("feature", 2, 1)
+    );
+    assert!(feature.base_time.is_some());
+    assert!(!feature.head);
+
+    let commits =
+        omagit_git::refs::branch_commits(&repo, "feature", "main", 10, &never()).expect("reads");
+    let summaries: Vec<_> = commits
+        .iter()
+        .map(|commit| commit.summary.as_str())
+        .collect();
+    assert_eq!(summaries.len(), 2);
+    assert!(summaries.contains(&"feature one") && summaries.contains(&"feature two"));
+}
+
+#[test]
+fn a_repository_with_no_trunk_has_no_map() {
+    let fixture = TestRepo::new();
+    fixture.commit_file("a.txt", "a\n", "seed");
+    fixture.git(&["branch", "-m", "work"]);
+    let repo = Repository::open(fixture.path()).expect("opens");
+    assert_eq!(
+        omagit_git::refs::branch_map(&repo, &never()).expect("reads"),
+        None
+    );
+}

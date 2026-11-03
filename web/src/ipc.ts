@@ -54,6 +54,17 @@ export type Counts = {
 
 export type LastCommit = { id: Oid; summary: string; author: string; when: number };
 
+/// Every local branch against the trunk (the branch map).
+export type MapBranch = {
+  name: string;
+  head: boolean;
+  tip_time: number;
+  base_time: number | null;
+  ahead: number;
+  behind: number;
+};
+export type BranchMap = { trunk: string; trunk_time: number; branches: MapBranch[] };
+
 /// The branches one commit is on: local ones, and remote-tracking ones as
 /// `origin/main`.
 export type Places = { local: string[]; remote: string[] };
@@ -525,6 +536,9 @@ export const api = {
   cloneRepository: (request: CloneRequest) => invoke<RepoSummary>("clone_repository", { request }),
   githubRepositories: () => invoke<Hosted>("github_repositories"),
   commitPlaces: (path: string, id: string) => invoke<Places>("commit_places", { path, id }),
+  branchMap: (path: string) => invoke<BranchMap | null>("branch_map", { path }),
+  branchCommits: (path: string, branch: string, onto: string, limit: number) =>
+    invoke<LastCommit[]>("branch_commits", { path, branch, onto, limit }),
 
   // Integrating one branch into another (M7). Both can stop half-way on a
   // conflict; `abortOperation` is the way out, and it reads what is running

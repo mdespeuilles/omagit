@@ -4458,3 +4458,200 @@ button.switcher-row.current .switcher-name {
 .detail-places .ov-chip {
   height: 22px;
 }
+
+/* ── The branch map (DESIGN v2) ──────────────────────────────────────────── */
+
+.bmap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  min-height: 0;
+}
+.bmap-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.bmap-controls {
+  display: flex;
+  gap: 10px;
+}
+
+/* Two or four choices side by side, one of them on. */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+.segmented button {
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+.segmented button.on {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.bmap-card {
+  padding: 8px 0 10px;
+}
+.bmap-empty {
+  padding: 12px 20px;
+}
+.bmap-axis,
+.bmap-row {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 18px;
+  padding: 0 24px 0 20px;
+}
+.bmap-axis {
+  height: 26px;
+  border-bottom: 1px solid var(--border);
+}
+.bmap-track {
+  position: relative;
+  height: 100%;
+  min-height: 22px;
+}
+.bmap-tick {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.bmap-tick::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  height: 4px;
+  border-left: 1px solid var(--border);
+}
+
+button.bmap-row {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--text);
+}
+button.bmap-row:hover {
+  background: var(--surface-hover);
+}
+button.bmap-row.selected {
+  background: var(--surface-raised);
+}
+.bmap-row.merged,
+.bmap-row.idle {
+  color: var(--text-muted);
+}
+.bmap-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bmap-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bmap-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-meta);
+}
+.bmap-sub .ov-pill {
+  height: 17px;
+  padding: 0 7px;
+}
+
+/* A faint copy of the trunk under each row, so every branch reads as leaving
+   it and the eye can follow the time across. */
+.bmap-trunk-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed var(--border);
+}
+.bmap-line {
+  position: absolute;
+  top: calc(50% - 2px);
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--chip);
+}
+.bmap-row.idle .bmap-line {
+  opacity: 0.45;
+}
+.bmap-fork,
+.bmap-tip,
+.bmap-merge {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.bmap-fork {
+  background: var(--surface);
+  border: 2px solid var(--chip);
+}
+.bmap-tip {
+  background: var(--chip);
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.bmap-merge {
+  width: 9px;
+  height: 9px;
+  background: var(--text-dim);
+}
+.bmap-trunk {
+  height: 44px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.bmap-trunk .bmap-line {
+  top: calc(50% - 3px);
+  height: 6px;
+}
+
+.bmap-side {
+  flex: 0 0 340px;
+  overflow-y: auto;
+  padding: 24px 22px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.bmap-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bmap-side .ov-list {
+  align-self: stretch;
+  gap: 10px;
+}

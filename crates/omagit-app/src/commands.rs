@@ -436,6 +436,30 @@ pub fn github_repositories(state: State<'_, AppState>) -> Answer<crate::hosted::
     crate::hosted::github(&journal, &state.cancel())
 }
 
+/// Every local branch against the trunk, for the branch map.
+#[tauri::command(async)]
+pub fn branch_map(state: State<'_, AppState>, path: String) -> Answer<Option<dto::BranchMap>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let map = omagit_git::refs::branch_map(&open.repo, &state.cancel()).map_err(say)?;
+    Ok(map.as_ref().map(dto::branch_map))
+}
+
+/// The commits `branch` has that `onto` does not, newest first.
+#[tauri::command(async)]
+pub fn branch_commits(
+    state: State<'_, AppState>,
+    path: String,
+    branch: String,
+    onto: String,
+    limit: usize,
+) -> Answer<Vec<dto::LastCommit>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let commits =
+        omagit_git::refs::branch_commits(&open.repo, &branch, &onto, limit, &state.cancel())
+            .map_err(say)?;
+    Ok(commits.iter().map(dto::last_commit).collect())
+}
+
 /// The working copy, one row per path.
 #[tauri::command(async)]
 pub fn status(state: State<'_, AppState>, path: String) -> Answer<Vec<dto::StatusRow>> {

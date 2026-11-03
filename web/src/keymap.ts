@@ -191,6 +191,15 @@ export const ACTIONS: Action[] = [
     run: () => store.showScreen("stashes"),
   },
   {
+    id: "screen.map",
+    label: "action.screen.map",
+    binding: "Primary+5",
+    where: "repository",
+    menu: "view",
+    enabled: inRepository,
+    run: () => store.showScreen("map"),
+  },
+  {
     id: "network.fetch",
     label: "action.network.fetch",
     binding: "Primary+F",

@@ -22,6 +22,10 @@ const PATHS = {
   overview:
     '<path d="M2.75 2.75h4.5v4.5h-4.5z"/><path d="M8.75 2.75h4.5v4.5h-4.5z"/>' +
     '<path d="M2.75 8.75h4.5v4.5h-4.5z"/><path d="M8.75 8.75h4.5v4.5h-4.5z"/>',
+  /// The branch map: a trunk with a branch leaving it and coming back.
+  map:
+    '<path d="M2 12.5h12"/><path d="M4 12.5c0-5 1.5-7 4.5-7h3"/>' +
+    '<circle cx="12.5" cy="5.5" r="1.5"/>',
   /// The working copy: a file, because that is what is changing.
   "working-copy": '<path d="M4.5 2.5h5l3 3v8h-8z"/><path d="M9.5 2.5v3h3"/>',
   /// History: a clock. It was `⌸`, an APL symbol, which reads as a table.
