@@ -112,3 +112,21 @@ describe("checking every repository at once", () => {
     expect(state.app.writeError).toBeNull();
   });
 });
+
+describe("one fact, one value", () => {
+  it("writes the open repository's fresh summary where the Repositories screen reads it", async () => {
+    const state = await opened((repo) => (repo.fetchedAt = null));
+    backend.current.call = ((call) => async (command: string, args: Record<string, unknown>) => {
+      // The fetch is what moves the date, as git writing FETCH_HEAD does.
+      if (command === "fetch") backend.current.fetchedAt = NOW;
+      return call(command, args);
+    })(backend.current.call.bind(backend.current));
+
+    await state.fetchIfStale(NOW);
+    for (let i = 0; i < 20; i += 1) await new Promise((resume) => setTimeout(resume, 0));
+
+    const held = state.app.library["/repo"];
+    expect(held?.status === "ready" && held.value.fetched_at).toBe(NOW);
+    expect(state.app.summary?.fetched_at).toBe(NOW);
+  });
+});

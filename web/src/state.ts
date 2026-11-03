@@ -587,6 +587,34 @@ export async function readLibrary(): Promise<void> {
   await Promise.all(state.repositories.map((row) => readSummary(row)));
 }
 
+/// The open repository's summary, written where the Repositories screen reads
+/// it too. Two copies of one fact drifted: the overview said "up to date,
+/// checked four minutes ago" while the dashboard, read at start-up, still said
+/// "56 to pull, checked half an hour ago" about the same branch.
+function holdSummary(path: string, summary: RepoSummary): void {
+  state.summary = summary;
+  if (path in state.library || state.repositories.some((row) => row.path === path)) {
+    state.library[path] = { status: "ready", value: summary };
+  }
+}
+
+/// Re-read every repository's summary without blanking the rows first: going
+/// back to the Repositories screen should show what is true now, and a list
+/// flashing "…" on every visit to say so is worse than a moment of the old one.
+export async function refreshSummaries(): Promise<void> {
+  await Promise.all(
+    state.repositories
+      .filter((row) => !row.missing && row.path !== state.open)
+      .map(async (row) => {
+        try {
+          state.library[row.path] = { status: "ready", value: await api.summary(row.path) };
+        } catch (error) {
+          state.library[row.path] = { status: "failed", error: message(error) };
+        }
+      }),
+  );
+}
+
 async function readSummary(row: LibraryRow): Promise<void> {
   if (row.missing) {
     // Not an error to be reported: DESIGN §4 says the row stays and says
@@ -875,7 +903,7 @@ export async function openRepository(path: string): Promise<void> {
     if (state.open !== path) return;
 
     state.status = { status: "ready", value: rows };
-    state.summary = summary;
+    holdSummary(path, summary);
     state.committer = committer;
     void readDivergence(path);
     void readSides(summary.operation);
@@ -1012,6 +1040,9 @@ export function showScreen(screen: Screen): void {
     return;
   }
 
+  // Coming back to the Repositories screen: what was read about the others
+  // may have moved since — a pull in a terminal, a fetch in another tab.
+  if (screen === "repositories" && state.screen !== "repositories") void refreshSummaries();
   state.screen = screen;
 
   // History is read when it is first looked at rather than when a repository
@@ -2957,7 +2988,7 @@ async function settle(marked = refsMark()): Promise<void> {
     const [rows, summary] = await Promise.all([api.status(path), api.summary(path)]);
     if (state.open !== path) return;
     state.status = { status: "ready", value: rows };
-    state.summary = summary;
+    holdSummary(path, summary);
     void readDivergence(path);
     void readSides(summary.operation);
     void refreshJournal();

@@ -100,7 +100,12 @@ function group(entry: Triaged): string {
       <p v-else-if="sorted.needs.length === 0" class="synced">{{ t("dash.allGood") }}</p>
       <ul v-else class="dash-needs">
         <li v-for="entry in sorted.needs" :key="entry.row.path" class="dash-need">
-          <button class="dash-name" @click="showCard(entry.row.path)">{{ entry.row.name }}</button>
+          <span class="dash-who">
+            <button class="dash-name" @click="showCard(entry.row.path)">
+              {{ entry.row.name }}
+            </button>
+            <span class="dash-meta ov-muted">{{ group(entry) }} · {{ fetched(entry) }}</span>
+          </span>
           <span class="ov-chip mono" :style="{ '--chip': branchColor(entry.summary.head) }">
             {{ entry.summary.head }}
           </span>
@@ -116,7 +121,6 @@ function group(entry: Triaged): string {
               count("dash.changes", changed(entry))
             }}</span>
           </span>
-          <span class="dash-meta ov-muted">{{ group(entry) }} · {{ fetched(entry) }}</span>
           <button @click="openRepository(entry.row.path)">{{ t("dash.open") }}</button>
         </li>
       </ul>
