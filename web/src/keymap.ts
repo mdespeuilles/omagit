@@ -155,9 +155,18 @@ export const ACTIONS: Action[] = [
     run: () => store.showScreen("repositories"),
   },
   {
+    id: "screen.overview",
+    label: "action.screen.overview",
+    binding: "Primary+1",
+    where: "repository",
+    menu: "view",
+    enabled: inRepository,
+    run: () => store.showScreen("overview"),
+  },
+  {
     id: "screen.workingCopy",
     label: "action.screen.workingCopy",
-    binding: "Primary+1",
+    binding: "Primary+2",
     where: "repository",
     menu: "view",
     enabled: inRepository,
@@ -166,7 +175,7 @@ export const ACTIONS: Action[] = [
   {
     id: "screen.history",
     label: "action.screen.history",
-    binding: "Primary+2",
+    binding: "Primary+3",
     where: "repository",
     menu: "view",
     enabled: inRepository,
@@ -175,7 +184,7 @@ export const ACTIONS: Action[] = [
   {
     id: "screen.stashes",
     label: "action.screen.stashes",
-    binding: "Primary+3",
+    binding: "Primary+4",
     where: "repository",
     menu: "view",
     enabled: inRepository,

@@ -22,6 +22,7 @@ import {
   zoneActive,
 } from "../state";
 import { count, t } from "../i18n";
+import { statusBadge } from "../format";
 import { rowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
@@ -48,27 +49,6 @@ function toggle(row: StatusRow): void {
 /// them; anything else opens on the working tree.
 function open(row: StatusRow): void {
   void selectFile(row.path, row.staged !== null);
-}
-
-/// The letter a status badge shows, and the class that colours it.
-///
-/// Board 01 §06: a letter *and* a colour, never a colour alone — the badge has
-/// to survive greyscale, and "which of these is the deletion" is a question a
-/// hue cannot answer for everyone.
-function badge(row: StatusRow): { letter: string; kind: string } {
-  if (row.conflict) return { letter: "U", kind: "conflict" };
-  const change = row.unstaged ?? row.staged ?? "";
-  const letters: Record<string, string> = {
-    modified: "M",
-    added: "A",
-    deleted: "D",
-    renamed: "R",
-    copied: "C",
-    "type-changed": "T",
-    untracked: "?",
-    ignored: "!",
-  };
-  return { letter: letters[change] ?? "•", kind: change };
 }
 
 /// What each side's button says, and what its title explains.
@@ -190,8 +170,8 @@ function stop(path: string): 0 | -1 {
           {{ mark(item) === "all" ? "✓" : mark(item) === "partial" ? "–" : "" }}
         </button>
 
-        <span class="badge" :class="badge(item).kind" :title="item.code">
-          {{ badge(item).letter }}
+        <span class="badge" :class="statusBadge(item).kind" :title="item.code">
+          {{ statusBadge(item).letter }}
         </span>
         <span class="file-path mono">
           <span class="dir">{{ directory(item.path) }}</span>

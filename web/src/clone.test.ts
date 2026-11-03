@@ -196,7 +196,7 @@ describe("cloning", () => {
     // Straight into it: a clone that finished and left you looking at the same
     // list you started from has made you find it yourself.
     expect(state.app.open).toBe("/home/dev/src/omarchy-themes");
-    expect(state.app.screen).toBe("working-copy");
+    expect(state.app.screen).toBe("overview");
     expect(state.app.repositories.some((row) => row.name === "omarchy-themes")).toBe(true);
   });
 

@@ -18,6 +18,10 @@ defineProps<{ name: keyof typeof PATHS }>();
 /// The shapes. Each is the inside of a 16×16 `viewBox`; stroke and size come
 /// from CSS, so one rule moves them all.
 const PATHS = {
+  /// The overview: four tiles, because it is the page the others are pieces of.
+  overview:
+    '<path d="M2.75 2.75h4.5v4.5h-4.5z"/><path d="M8.75 2.75h4.5v4.5h-4.5z"/>' +
+    '<path d="M2.75 8.75h4.5v4.5h-4.5z"/><path d="M8.75 8.75h4.5v4.5h-4.5z"/>',
   /// The working copy: a file, because that is what is changing.
   "working-copy": '<path d="M4.5 2.5h5l3 3v8h-8z"/><path d="M9.5 2.5v3h3"/>',
   /// History: a clock. It was `⌸`, an APL symbol, which reads as a table.

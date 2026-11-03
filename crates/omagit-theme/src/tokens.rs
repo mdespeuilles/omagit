@@ -142,6 +142,10 @@ impl DensityMode {
 /// Six entries and no more. A screen that needs a seventh size needs a reason
 /// first.
 pub mod text {
+    /// The one sentence a screen leads with — the overview's state (DESIGN v2).
+    /// 600. Added with the redesign: the six below were all sized for chrome,
+    /// and a front page needs one size that is not.
+    pub const DISPLAY: f32 = 24.0;
     /// A dialog's title. 600.
     pub const TITLE: f32 = 16.0;
     /// A panel's title. 500.

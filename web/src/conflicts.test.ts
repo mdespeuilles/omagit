@@ -39,6 +39,9 @@ async function stopped(
   const state = await import("./state");
   await state.boot();
   await state.openRepository("/repo");
+  // A repository opens on its overview (DESIGN v2); these tests are about
+  // the working copy.
+  state.showScreen("working-copy");
   await settled(state);
   return state;
 }

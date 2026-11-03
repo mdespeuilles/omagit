@@ -25,6 +25,7 @@ import {
   type CommitDetail,
   type Comparison,
   type DiffRow,
+  type Divergence,
   type FileRow,
   type HistoryQuery,
   type HistoryRow,
@@ -84,7 +85,7 @@ export function again<T>(state: Async<T>): Async<T> {
 /// them, which reads as though the settings belonged to that repository —
 /// reported as confusing. They are the application's, they are a form rather
 /// than a browse, and a form over the window is a dialog.
-export type Screen = "repositories" | "working-copy" | "history" | "stashes";
+export type Screen = "repositories" | "overview" | "working-copy" | "history" | "stashes";
 
 /// A write that did not happen: what was asked, and what came back.
 export type Failure = { what: string; said: string };
@@ -210,6 +211,9 @@ type State = {
   /// the one expensive read on that path — `Summary` avoids it for the same
   /// reason.
   refs: Async<Refs>;
+  /// `HEAD` against its upstream, commit by commit, for the overview's state
+  /// card. `null` when there is no upstream, or until it has been read.
+  divergence: Divergence | null;
   /// Which branch prefixes are folded away, by name.
   collapsed: Record<string, boolean>;
   /// How wide each resizable column has been dragged, in unscaled pixels.
@@ -455,6 +459,7 @@ const state = reactive<State>({
   running: null,
   stopping: false,
   refs: idle(),
+  divergence: null,
   collapsed: {},
   panes: {},
   clone: null,
@@ -805,7 +810,9 @@ export async function dropRepository(): Promise<void> {
 
 export async function openRepository(path: string): Promise<void> {
   state.open = path;
-  state.screen = "working-copy";
+  // The overview first (DESIGN v2): where the branch stands is the question
+  // every visit starts with, and the working copy is one click — or ⌘2 — away.
+  state.screen = "overview";
   // The tab is what makes the second repository reachable without going back
   // through the Dépôts screen. Added here rather than at the call sites, so
   // every way in — a click, a drop, the palette, `⏎` on a row — leaves one.
@@ -828,6 +835,7 @@ export async function openRepository(path: string): Promise<void> {
   state.compare = idle();
   state.compareFrom = null;
   state.refs = idle();
+  state.divergence = null;
   state.stashes = idle();
   state.stash = null;
   state.stashFiles = idle();
@@ -853,6 +861,7 @@ export async function openRepository(path: string): Promise<void> {
     state.status = { status: "ready", value: rows };
     state.summary = summary;
     state.committer = committer;
+    void readDivergence(path);
     void readSides(summary.operation);
     if (template) state.message = template;
     void refreshJournal();
@@ -1401,6 +1410,32 @@ async function overNetwork(what: string, run: () => Promise<string>): Promise<vo
   // holds: the call just made was to that remote, and this one is a `ls-remote`
   // beside it.
   void readRemoteTags();
+}
+
+/// How many commits of each side the overview names. More than this and the
+/// card says "and n more" — it is a summary, History is the list.
+const DIVERGENCE_SHOWN = 5;
+
+/// Re-read the commits on each side of the divergence. Cheap next to the
+/// counts the summary already paid for, and only one branch's worth.
+async function readDivergence(path: string): Promise<void> {
+  try {
+    const divergence = await api.divergence(path, DIVERGENCE_SHOWN);
+    if (state.open === path) state.divergence = divergence;
+  } catch (error) {
+    // The card falls back to the counts; nothing else depends on this.
+    void api.log("warn", `divergence: ${message(error)}`);
+    if (state.open === path) state.divergence = null;
+  }
+}
+
+/// Pull with the reconciliation chosen on the spot, without asking: the
+/// overview offers "rebase" and "merge" as two buttons, so the button *is*
+/// the answer the question in `pullRemote` would have asked for.
+export function pullWith(how: "merge" | "rebase"): void {
+  const path = state.open;
+  if (!path) return;
+  void overNetwork("Pull", () => api.pull(path, how));
 }
 
 export function fetchRemote(remote = ""): void {
@@ -2797,6 +2832,7 @@ async function settle(marked = refsMark()): Promise<void> {
     if (state.open !== path) return;
     state.status = { status: "ready", value: rows };
     state.summary = summary;
+    void readDivergence(path);
     void readSides(summary.operation);
     void refreshJournal();
     // A checkout, a branch created or deleted: the tree is what changed.

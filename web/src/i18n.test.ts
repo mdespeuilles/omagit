@@ -69,6 +69,8 @@ describe("the catalogues", () => {
           "history.message",
           "menu.services",
           "menu.zoom",
+          "overview.branch.active",
+          "overview.branches",
           "palette.actions",
           "palette.branches",
           "palette.close",

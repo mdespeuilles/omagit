@@ -98,6 +98,7 @@ pub fn run() {
             commands::move_repository,
             commands::close_repository,
             commands::summary,
+            commands::divergence,
             commands::status,
             commands::file_diff,
             commands::stage,

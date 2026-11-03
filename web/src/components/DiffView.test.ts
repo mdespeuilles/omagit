@@ -19,6 +19,9 @@ async function drawn(files: Fixture[]) {
   const state = await import("../state");
   await state.boot();
   await state.openRepository("/repo");
+  // A repository opens on its overview (DESIGN v2); these tests are about
+  // the working copy.
+  state.showScreen("working-copy");
   const DiffView = (await import("./DiffView.vue")).default;
   return { state, diff: mount(DiffView) };
 }

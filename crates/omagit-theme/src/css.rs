@@ -147,8 +147,9 @@ fn geometry(d: &Density) -> [(&'static str, f32); 7] {
 /// The type scale of DESIGN-TOKENS §8, so a stylesheet never has to name a
 /// size. It does not change with density: the two modes change how much room
 /// things have, not how big the letters are.
-fn type_scale() -> [(&'static str, f32); 5] {
+fn type_scale() -> [(&'static str, f32); 6] {
     [
+        ("text-display", text::DISPLAY),
         ("text-title", text::TITLE),
         ("text-panel", text::PANEL),
         ("text-body", text::BODY),
@@ -205,8 +206,8 @@ mod tests {
     fn every_token_reaches_the_stylesheet() {
         let css = variables(&embedded::tokyo_night(), DensityMode::Compact);
         // The eighteen colours, two on-fills, the eight lanes, the seven
-        // metrics, five sizes, five radii, two fonts.
-        assert_eq!(css.matches("--").count(), 18 + 2 + 8 + 7 + 5 + 5 + 2);
+        // metrics, six sizes, five radii, two fonts.
+        assert_eq!(css.matches("--").count(), 18 + 2 + 8 + 7 + 6 + 5 + 2);
         assert!(css.contains("--surface-raised: #283457;"));
         assert!(css.contains("--lane-0: #"));
         assert!(css.contains("--row-height: 26px;"));

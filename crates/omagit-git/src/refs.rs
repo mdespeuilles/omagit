@@ -319,6 +319,89 @@ fn tracking_of(
     }))
 }
 
+/// Both sides of `HEAD`'s divergence from its upstream, so a screen can name
+/// the commits instead of only counting them: "3 to push" is a number, the
+/// three summaries are the reason to look.
+#[derive(Clone, Debug, Default)]
+pub struct Divergence {
+    /// `origin/main`.
+    pub upstream: String,
+    /// On the branch, not on the upstream — what a push would send. Newest
+    /// first, at most the limit asked for.
+    pub outgoing: Vec<crate::Commit>,
+    /// On the upstream, not on the branch — what a pull would bring.
+    pub incoming: Vec<crate::Commit>,
+}
+
+/// `HEAD`'s divergence, commit by commit. `None` when `HEAD` is not on a branch
+/// with an upstream that exists — the cases the tracking line already names.
+pub fn head_divergence(
+    repo: &Repository,
+    limit: usize,
+    cancel: &Cancel,
+) -> Result<Option<Divergence>> {
+    assert_off_render_thread();
+    let gix = repo.gix();
+    let Some(reference) = gix
+        .head_ref()
+        .map_err(|error| GitError::backend("reading HEAD", error))?
+    else {
+        return Ok(None);
+    };
+    let Some(local) = reference.target().try_id().map(ToOwned::to_owned) else {
+        return Ok(None);
+    };
+    let Some(Ok(upstream_ref)) = reference.remote_tracking_ref_name(gix::remote::Direction::Fetch)
+    else {
+        return Ok(None);
+    };
+    let upstream = short_ref_name(upstream_ref.as_ref().as_bstr());
+    let Some(remote) = gix
+        .try_find_reference(upstream_ref.as_ref())
+        .map_err(|error| GitError::backend("resolving the upstream branch", error))?
+        .and_then(|mut reference| reference.peel_to_id().ok())
+        .map(|id| id.detach())
+    else {
+        return Ok(None);
+    };
+    Ok(Some(Divergence {
+        upstream,
+        outgoing: exclusive_commits(repo, &gix, local, remote, limit, cancel)?,
+        incoming: exclusive_commits(repo, &gix, remote, local, limit, cancel)?,
+    }))
+}
+
+/// The commits reachable from `tip` and not from `hidden`, newest first.
+fn exclusive_commits(
+    repo: &Repository,
+    gix: &gix::Repository,
+    tip: ObjectId,
+    hidden: ObjectId,
+    limit: usize,
+    cancel: &Cancel,
+) -> Result<Vec<crate::Commit>> {
+    if tip == hidden || limit == 0 {
+        return Ok(Vec::new());
+    }
+    let walk = gix
+        .rev_walk(Some(tip))
+        .with_hidden(Some(hidden))
+        .all()
+        .map_err(|error| GitError::backend("listing a divergence", error))?;
+    let mut commits = Vec::new();
+    for info in walk {
+        cancel.check()?;
+        let info = info.map_err(|error| GitError::backend("listing a divergence", error))?;
+        commits.push(crate::history::commit(repo, info.id)?);
+    }
+    // The walk's order is the graph's, not the clock's; a reader expects the
+    // newest at the top. Sorted on all of them before cutting, so the limit
+    // keeps the newest rather than whichever the walk met first.
+    commits.sort_by_key(|commit| std::cmp::Reverse(commit.author.time.seconds));
+    commits.truncate(limit);
+    Ok(commits)
+}
+
 /// How many commits are reachable from `tip` but not from `hidden`.
 ///
 /// `git rev-list --count tip ^hidden`, through `gix`'s hidden-tip traversal.

@@ -84,7 +84,7 @@ describe("the repository tabs", () => {
     // The one you were on before it, which is what a strip of tabs means by
     // "the neighbour" — never the far end, never the list.
     expect(state.app.open).toBe("/other");
-    expect(state.app.screen).toBe("working-copy");
+    expect(state.app.screen).toBe("overview");
   });
 
   it("goes back to the list when the last tab closes", async () => {

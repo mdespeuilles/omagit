@@ -42,6 +42,11 @@ pub struct Summary {
     /// Who a commit made here would be attributed to, and whether that comes
     /// from this repository or from the global configuration.
     pub committer: Option<Identity>,
+    /// When this repository last heard from a remote, in Unix seconds: the
+    /// modification time of `FETCH_HEAD`, which every fetch and pull rewrites.
+    /// `None` when it never has. The ahead/behind counts are only as true as
+    /// this is recent, so a screen that shows them has to show this too.
+    pub fetched_at: Option<i64>,
 }
 
 impl Summary {
@@ -75,8 +80,22 @@ impl Summary {
             remotes,
             activity: Activity::load(repo, cancel)?,
             committer: identity(repo),
+            fetched_at: last_fetch(repo),
         })
     }
+}
+
+/// The modification time of `FETCH_HEAD`, in the common directory so that a
+/// linked worktree reports its repository's fetches rather than none.
+fn last_fetch(repo: &Repository) -> Option<i64> {
+    let modified = std::fs::metadata(repo.gix().common_dir().join("FETCH_HEAD"))
+        .and_then(|metadata| metadata.modified())
+        .ok()?;
+    let seconds = modified
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_secs();
+    i64::try_from(seconds).ok()
 }
 
 /// The working copy in numbers — what the sidebar row and the card's Status

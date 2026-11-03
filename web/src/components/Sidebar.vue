@@ -43,6 +43,15 @@ const stashes = computed(() => app.summary?.stashes ?? 0);
     <template v-if="!isCollapsed('workspace')">
       <button
         class="row sidebar-row"
+        :class="{ selected: app.screen === 'overview' }"
+        @click="showScreen('overview')"
+      >
+        <Glyph name="overview" class="sidebar-glyph" />
+        <span>{{ t("sidebar.overview") }}</span>
+      </button>
+
+      <button
+        class="row sidebar-row"
         :class="{ selected: app.screen === 'working-copy' }"
         @click="showScreen('working-copy')"
       >

@@ -15,6 +15,7 @@ import DiffView from "./components/DiffView.vue";
 import HistoryList from "./components/HistoryList.vue";
 import Journal from "./components/Journal.vue";
 import Notice from "./components/Notice.vue";
+import Overview from "./components/Overview.vue";
 import Palette from "./components/Palette.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
@@ -96,7 +97,11 @@ const widths = {
         <Splitter pane="sidebar" :size="paneWidth('sidebar', widths.sidebar)" :min="200" />
       </section>
 
-      <template v-if="app.screen === 'history'">
+      <!-- The front page (DESIGN v2): no middle column and no diff, the whole
+           width for where the branch stands. -->
+      <Overview v-if="app.screen === 'overview'" />
+
+      <template v-else-if="app.screen === 'history'">
         <section class="pane" :style="{ width: `${paneWidth('history', widths.history)}px` }">
           <HistoryList />
           <Splitter pane="history" :size="paneWidth('history', widths.history)" :min="360" />

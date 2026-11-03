@@ -273,6 +273,8 @@ pub struct RepoSummary {
     pub activity: Vec<u32>,
     pub commits: u32,
     pub committer: Option<Identity>,
+    /// When a remote was last heard from, in Unix seconds; `None` if never.
+    pub fetched_at: Option<i64>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -409,6 +411,29 @@ pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
             initials: who.initials(),
             inherited: who.inherited,
         }),
+        fetched_at: summary.fetched_at,
+    }
+}
+
+/// `HEAD` against its upstream, commit by commit (the overview's state card).
+#[derive(Debug, serde::Serialize)]
+pub struct Divergence {
+    pub upstream: String,
+    pub outgoing: Vec<LastCommit>,
+    pub incoming: Vec<LastCommit>,
+}
+
+pub fn divergence(divergence: &omagit_git::Divergence) -> Divergence {
+    let row = |commit: &omagit_git::Commit| LastCommit {
+        id: commit.id.into(),
+        summary: commit.summary.clone(),
+        author: commit.author.name.clone(),
+        when: commit.author.time.seconds,
+    };
+    Divergence {
+        upstream: divergence.upstream.clone(),
+        outgoing: divergence.outgoing.iter().map(row).collect(),
+        incoming: divergence.incoming.iter().map(row).collect(),
     }
 }
 

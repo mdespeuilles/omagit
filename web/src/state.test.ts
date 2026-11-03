@@ -37,6 +37,9 @@ async function open(files: Fixture[]): Promise<typeof import("./state")> {
   // Start-up stops at the Repositories screen (SPEC §12); these tests are about
   // what a repository's screens do once one is open.
   await state.openRepository("/repo");
+  // A repository opens on its overview (DESIGN v2); these tests are about
+  // the working copy.
+  state.showScreen("working-copy");
   return state;
 }
 

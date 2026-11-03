@@ -33,6 +33,20 @@ export function when(seconds: number, now = new Date()): string {
     : otherYear().format(then);
 }
 
+/// `il y a 4 min`, `il y a 3 jours` — elapsed time, for things whose age is
+/// the point: when the remote was last asked, how long a branch has slept.
+/// `when` is for dates a reader places on a calendar; this is for "how stale".
+export function ago(seconds: number, now = Date.now()): string {
+  const elapsed = Math.max(0, Math.round(now / 1000 - seconds));
+  const format = new Intl.RelativeTimeFormat(language.value, { numeric: "auto" });
+  if (elapsed < 60) return t("date.justNow");
+  if (elapsed < 3600) return format.format(-Math.round(elapsed / 60), "minute");
+  if (elapsed < 86_400) return format.format(-Math.round(elapsed / 3600), "hour");
+  if (elapsed < 30 * 86_400) return format.format(-Math.round(elapsed / 86_400), "day");
+  if (elapsed < 365 * 86_400) return format.format(-Math.round(elapsed / (30 * 86_400)), "month");
+  return format.format(-Math.round(elapsed / (365 * 86_400)), "year");
+}
+
 /// The whole thing, for a tooltip — where the short form is never enough.
 export function exact(seconds: number): string {
   return full().format(new Date(seconds * 1000));
@@ -76,4 +90,42 @@ function pad(value: number): string {
 export function tildify(path: string): string {
   const home = /^(\/(?:Users|home)\/[^/]+)(\/|$)/.exec(path);
   return home ? `~${path.slice(home[1]!.length)}` : path;
+}
+
+/// Which of the eight lane colours a branch wears, everywhere it is drawn
+/// (DESIGN v2: a branch keeps its colour across the overview, the map and the
+/// history). Derived from the name alone so it never changes between reads;
+/// the trunk always takes the first, so `main` looks the same in every
+/// repository.
+export function laneOf(branch: string): number {
+  const name = branch.replace(/^[^/]+\/(?=(main|master|trunk)$)/, "");
+  if (name === "main" || name === "master" || name === "trunk") return 0;
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.codePointAt(0)!) >>> 0;
+  return 1 + (hash % 7);
+}
+
+/// The letter a status badge shows, and the class that colours it.
+///
+/// Board 01 §06: a letter *and* a colour, never a colour alone — the badge has
+/// to survive greyscale, and "which of these is the deletion" is a question a
+/// hue cannot answer for everyone. Shared by the file list and the overview.
+export function statusBadge(row: {
+  conflict: string | null;
+  staged: string | null;
+  unstaged: string | null;
+}): { letter: string; kind: string } {
+  if (row.conflict) return { letter: "U", kind: "conflict" };
+  const change = row.unstaged ?? row.staged ?? "";
+  const letters: Record<string, string> = {
+    modified: "M",
+    added: "A",
+    deleted: "D",
+    renamed: "R",
+    copied: "C",
+    "type-changed": "T",
+    untracked: "?",
+    ignored: "!",
+  };
+  return { letter: letters[change] ?? "•", kind: change };
 }

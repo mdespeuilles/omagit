@@ -495,6 +495,8 @@ export class Repository {
           conflict: file.conflict ?? null,
           code: file.conflict ? "UU" : `${file.staged ? "M" : " "}${file.unstaged ? "M" : " "}`,
         })) satisfies StatusRow[];
+      case "divergence":
+        return null;
       case "summary": {
         const path = args["path"] as string;
         const answer = this.summary(path);
@@ -859,6 +861,7 @@ export class Repository {
       committer: this.committer
         ? { name: "Test", email: "test@omagit.test", initials: "T", inherited: false }
         : null,
+      fetched_at: null,
     };
   }
 

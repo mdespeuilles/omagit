@@ -54,6 +54,9 @@ export type Counts = {
 
 export type LastCommit = { id: Oid; summary: string; author: string; when: number };
 
+/// `HEAD` against its upstream, commit by commit, newest first on each side.
+export type Divergence = { upstream: string; outgoing: LastCommit[]; incoming: LastCommit[] };
+
 export type RemoteRow = { name: string; url: string | null };
 
 export type Identity = {
@@ -95,6 +98,8 @@ export type RepoSummary = {
   activity: number[];
   commits: number;
   committer: Identity | null;
+  /// When a remote was last heard from (Unix seconds), or never.
+  fetched_at: number | null;
 };
 
 /// One reference drawn beside a commit. Four kinds because DESIGN §5 draws
@@ -473,6 +478,8 @@ export const api = {
     invoke<void>("move_repository", { path, group, index }),
   closeRepository: (path: string) => invoke<void>("close_repository", { path }),
   summary: (path: string) => invoke<RepoSummary>("summary", { path }),
+  divergence: (path: string, limit: number) =>
+    invoke<Divergence | null>("divergence", { path, limit }),
   status: (path: string) => invoke<StatusRow[]>("status", { path }),
   fileDiff: (path: string, file: string, staged: boolean) =>
     invoke<Diff | null>("file_diff", { path, file, staged }),

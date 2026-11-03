@@ -3711,3 +3711,438 @@ div.settings-row {
   font-size: var(--text-meta);
   color: var(--text-muted);
 }
+
+/* ── The overview (DESIGN v2) ────────────────────────────────────────────── */
+
+/* Direction has a colour (DESIGN v2): what leaves is `info`, what arrives is
+   `warning`. Aliases rather than new tokens, so a theme cannot make them drift
+   apart from the status colours they are. */
+:root {
+  --ahead: var(--info);
+  --behind: var(--warning);
+}
+.ahead {
+  color: var(--ahead);
+  font-weight: 600;
+}
+.behind {
+  color: var(--behind);
+  font-weight: 600;
+}
+.synced {
+  color: var(--success);
+  font-weight: 600;
+}
+.warning {
+  color: var(--warning);
+}
+
+.overview {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ov-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.ov-label {
+  font-size: var(--text-meta);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.ov-label.ahead {
+  color: var(--ahead);
+}
+.ov-label.behind {
+  color: var(--behind);
+}
+.ov-muted {
+  color: var(--text-muted);
+}
+.ov-section {
+  font-size: var(--text-panel);
+  font-weight: 600;
+}
+
+/* A branch, as a pill in its lane's colour. `--chip` is set per element. */
+.ov-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--chip, var(--accent)) 16%, transparent);
+  color: var(--chip, var(--accent));
+  font-size: var(--text-mono);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ov-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+/* The remote's copy of a branch: the same colour, drawn as an outline — it is
+   the same line of work, somewhere else. */
+.ov-chip.remote {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip, var(--accent)) 55%, transparent);
+}
+
+.ov-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-meta);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  --tone: var(--text-muted);
+}
+.ov-pill.success {
+  --tone: var(--success);
+}
+.ov-pill.ahead {
+  --tone: var(--ahead);
+}
+.ov-pill.behind,
+.ov-pill.warning {
+  --tone: var(--warning);
+}
+.ov-pill.danger {
+  --tone: var(--danger);
+}
+.ov-pill.info {
+  --tone: var(--info);
+}
+.ov-pill.accent {
+  --tone: var(--accent);
+}
+
+/* The state card: the sentence on the left, the drawing on the right; they
+   stack when the window is narrow. */
+.ov-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 24px 26px;
+}
+.ov-state-text {
+  flex: 1 1 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.ov-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ov-arrows {
+  display: inline-flex;
+  gap: 6px;
+  font-size: var(--text-body);
+}
+.ov-title {
+  margin: 4px 0 0;
+  font-size: var(--text-display);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.ov-detail {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--text-body);
+  color: var(--text-muted);
+}
+.ov-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ov-actions button {
+  height: 34px;
+  padding: 0 16px;
+}
+.ov-name {
+  display: flex;
+  gap: 8px;
+}
+.ov-name input {
+  height: 34px;
+  width: 220px;
+}
+.ov-fetched {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+.ov-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.ov-fetched.stale .ov-dot {
+  background: var(--warning);
+}
+.ov-fetched.stale {
+  color: var(--warning);
+}
+.ov-fetched button.link {
+  height: auto;
+  padding: 0;
+}
+
+.ov-state-drawing {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-left: 32px;
+  border-left: 1px solid var(--border);
+}
+.ov-svg {
+  width: 100%;
+  height: 120px;
+}
+.ov-svg path {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.ov-svg .line-ahead {
+  stroke: var(--ahead);
+}
+/* What has not arrived yet is drawn dotted: it exists, but not here. */
+.ov-svg .line-behind {
+  stroke: var(--behind);
+  stroke-dasharray: 1 6;
+}
+.ov-svg .line-synced {
+  stroke: var(--success);
+}
+.ov-svg .node-base {
+  fill: var(--surface);
+  stroke: var(--text-muted);
+  stroke-width: 2.5;
+}
+.ov-svg .node-ahead {
+  fill: var(--ahead);
+}
+.ov-svg .node-behind {
+  fill: var(--behind);
+}
+.ov-svg .node-synced {
+  fill: var(--success);
+}
+
+.ov-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
+}
+.ov-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ov-commit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  min-width: 0;
+}
+.ov-hash {
+  color: var(--text-muted);
+  flex: none;
+}
+.ov-subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ov-who {
+  flex-basis: 100%;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+.ov-more {
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+
+/* The three cards. */
+.ov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+.ov-small {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  min-width: 0;
+}
+.ov-small-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ov-small-head button.link {
+  height: auto;
+  padding: 0;
+  font-weight: 500;
+}
+.ov-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ov-number {
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.ov-files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ov-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ov-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ov-last-subject {
+  font-weight: 500;
+}
+
+/* The branches. */
+.ov-branches {
+  overflow: hidden;
+}
+.ov-branches-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 8px;
+}
+.ov-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ov-table th {
+  text-align: left;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.ov-table td {
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.ov-table td > span + span {
+  margin-left: 6px;
+}
+.ov-table tr:last-child td {
+  border-bottom: 0;
+}
+.ov-table .right {
+  text-align: right;
+}
+.ov-empty {
+  margin: 0;
+  padding: 4px 18px 18px;
+}
+
+/* ── The branch pill (DESIGN v2) ─────────────────────────────────────────── */
+
+/* The branch in its lane's colour, then where it stands against its upstream,
+   then a dot when the working copy holds changes. Always in the topbar, so the
+   two questions nobody could answer at a glance — which branch, how far from
+   the remote — are answered on every screen. */
+button.branch-pill {
+  height: 30px;
+  gap: 8px;
+  padding: 0 12px 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  font-weight: 500;
+}
+.branch-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chip, var(--accent));
+  flex: none;
+}
+.branch-pill-state {
+  display: inline-flex;
+  gap: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+.branch-pill.detached {
+  border-style: dashed;
+  border-color: var(--warning);
+}
+.branch-pill.detached .branch-pill-state {
+  color: var(--warning);
+}
+.branch-pill.busy {
+  border-color: var(--danger);
+}
+.branch-pill.busy .branch-pill-state {
+  color: var(--danger);
+}
+.branch-pill-dirty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+}

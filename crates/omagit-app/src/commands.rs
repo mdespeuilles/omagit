@@ -414,6 +414,20 @@ pub fn summary(state: State<'_, AppState>, path: String) -> Answer<dto::RepoSumm
     Ok(dto::summary(&open.path, &summary))
 }
 
+/// The commits on each side of `HEAD`'s divergence from its upstream, at most
+/// `limit` per side. `None` when there is no upstream to diverge from.
+#[tauri::command(async)]
+pub fn divergence(
+    state: State<'_, AppState>,
+    path: String,
+    limit: usize,
+) -> Answer<Option<dto::Divergence>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let divergence =
+        omagit_git::refs::head_divergence(&open.repo, limit, &state.cancel()).map_err(say)?;
+    Ok(divergence.as_ref().map(dto::divergence))
+}
+
 /// The working copy, one row per path.
 #[tauri::command(async)]
 pub fn status(state: State<'_, AppState>, path: String) -> Answer<Vec<dto::StatusRow>> {

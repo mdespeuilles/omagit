@@ -44,7 +44,7 @@ import {
   openSettings,
   showScreen,
 } from "../state";
-import { tildify } from "../format";
+import { laneOf, tildify } from "../format";
 import { ACTIONS, binding, hint } from "../keymap";
 import { t } from "../i18n";
 import Glyph from "./Glyph.vue";
@@ -109,24 +109,34 @@ const crumb = computed(() => t("topbar.repositories"));
 /// topbar's whole shape.
 const inRepository = computed(() => app.screen !== "repositories" && app.open !== null);
 
-/// The second line of the repository block: where it is, and where HEAD is.
-const where = computed(() => {
+/// The second line of the repository block: where it is on disk. Where HEAD
+/// is moved out of it into the branch pill (DESIGN v2) — as a suffix to a path
+/// it was the one thing everybody needed and nobody read.
+const where = computed(() => (app.summary ? tildify(app.summary.path) : ""));
+
+/// The branch pill: the branch in its lane's colour, then where it stands.
+const pill = computed(() => {
   const summary = app.summary;
-  if (!summary) return "";
-  const head = summary.operation ?? summary.head;
-  const tracking = summary.tracking;
-  const divergence =
-    tracking && !tracking.gone
-      ? [
-          tracking.ahead > 0 ? `↑${tracking.ahead}` : "",
-          tracking.behind > 0 ? `↓${tracking.behind}` : "",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      : "";
-  return [tildify(summary.path), [head, divergence].filter(Boolean).join(" ")]
-    .filter(Boolean)
-    .join(" · ");
+  if (!summary) return null;
+  const label =
+    summary.head_kind === "detached"
+      ? (summary.last_commit?.id.short ?? summary.head)
+      : summary.head;
+  return {
+    label,
+    lane: `var(--lane-${laneOf(summary.head)})`,
+    detached: summary.head_kind === "detached",
+    operation: summary.operation,
+    local: summary.head_kind === "branch" && !summary.tracking,
+    gone: !!summary.tracking?.gone,
+    dirty:
+      summary.counts.modified +
+        summary.counts.added +
+        summary.counts.deleted +
+        summary.counts.renamed +
+        summary.counts.conflicted >
+      0,
+  };
 });
 </script>
 
@@ -156,9 +166,33 @@ const where = computed(() => {
       </button>
       <span class="topbar-rule" />
       <span class="topbar-repo" data-tauri-drag-region>
-        <span class="topbar-repo-name mono">{{ app.summary.name }}</span>
+        <span class="topbar-repo-name">{{ app.summary.name }}</span>
         <span class="topbar-repo-where mono">{{ where }}</span>
       </span>
+      <!-- Where HEAD is, and where it stands, always in sight (DESIGN v2). -->
+      <button
+        v-if="pill"
+        class="branch-pill"
+        :class="{ detached: pill.detached, busy: !!pill.operation }"
+        :style="{ '--chip': pill.lane }"
+        :title="t('sidebar.overview')"
+        @click="showScreen('overview')"
+      >
+        <span class="branch-pill-dot" />
+        <span class="mono">{{ pill.label }}</span>
+        <span class="branch-pill-state">
+          <template v-if="pill.operation">{{ pill.operation }}</template>
+          <template v-else-if="pill.detached">{{ t("overview.pill.detached") }}</template>
+          <template v-else-if="pill.local">{{ t("overview.branch.local") }}</template>
+          <template v-else-if="pill.gone">{{ t("overview.branch.gone") }}</template>
+          <template v-else>
+            <span v-if="ahead > 0" class="ahead">↑{{ ahead }}</span>
+            <span v-if="behind > 0" class="behind">↓{{ behind }}</span>
+            <span v-if="ahead === 0 && behind === 0" class="synced">✓</span>
+          </template>
+        </span>
+        <span v-if="pill.dirty" class="branch-pill-dirty" :title="t('overview.workingCopy')" />
+      </button>
     </template>
 
     <template v-else>
