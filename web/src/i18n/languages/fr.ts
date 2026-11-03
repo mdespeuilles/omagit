@@ -852,4 +852,13 @@ export const strings: Record<keyof typeof reference, string> = {
   "history.unpushed": "pas encore poussé",
   "history.baseShort": "base commune",
   "history.base": "base commune avec {upstream}",
+  "map.fold": "Replier les suites de commits",
+  "map.run.one": "{n} commit",
+  "map.run.other": "{n} commits",
+  "map.unfold": "Cliquer pour déplier",
+  "map.legend.commit": "commit",
+  "map.legend.merge": "merge",
+  "map.legend.tag": "tag",
+  "map.legend.runPill": "n commits",
+  "map.legend.run": "suite repliée, cliquer pour déplier",
 };

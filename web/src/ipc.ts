@@ -62,12 +62,16 @@ export type MapBranch = {
   base_time: number | null;
   ahead: number;
   behind: number;
+  /// Its own commits, newest first, for the dots along its line.
+  commits: MapCommit[];
 };
+export type MapCommit = { time: number; merge: boolean };
 export type BranchMap = {
   trunk: string;
   trunk_time: number;
   branches: MapBranch[];
   tags: { name: string; time: number }[];
+  trunk_commits: MapCommit[];
 };
 
 /// The branches one commit is on: local ones, and remote-tracking ones as

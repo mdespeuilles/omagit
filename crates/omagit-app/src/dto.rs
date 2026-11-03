@@ -463,6 +463,24 @@ pub struct BranchMap {
     pub trunk_time: i64,
     pub branches: Vec<MapBranch>,
     pub tags: Vec<MapTag>,
+    pub trunk_commits: Vec<MapCommit>,
+}
+
+/// A dot on the map.
+#[derive(Debug, serde::Serialize)]
+pub struct MapCommit {
+    pub time: i64,
+    pub merge: bool,
+}
+
+fn map_commits(commits: &[omagit_git::MapCommit]) -> Vec<MapCommit> {
+    commits
+        .iter()
+        .map(|commit| MapCommit {
+            time: commit.time,
+            merge: commit.merge,
+        })
+        .collect()
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -479,12 +497,14 @@ pub struct MapBranch {
     pub base_time: Option<i64>,
     pub ahead: usize,
     pub behind: usize,
+    pub commits: Vec<MapCommit>,
 }
 
 pub fn branch_map(map: &omagit_git::BranchMap) -> BranchMap {
     BranchMap {
         trunk: map.trunk.clone(),
         trunk_time: map.trunk_time,
+        trunk_commits: map_commits(&map.trunk_commits),
         branches: map
             .branches
             .iter()
@@ -495,6 +515,7 @@ pub fn branch_map(map: &omagit_git::BranchMap) -> BranchMap {
                 base_time: branch.base_time,
                 ahead: branch.ahead,
                 behind: branch.behind,
+                commits: map_commits(&branch.commits),
             })
             .collect(),
         tags: map

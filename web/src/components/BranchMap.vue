@@ -14,6 +14,8 @@ import { api, type BranchMap, type LastCommit } from "../ipc";
 import { ago, branchColor, when } from "../format";
 import { app, checkoutBranch } from "../state";
 import { count, t } from "../i18n";
+import { fold, type Dot } from "../runs";
+import MapDots from "./MapDots.vue";
 
 const DAY = 24 * 60 * 60;
 const RANGES = [
@@ -129,6 +131,29 @@ const months = computed(() => {
   return ticks.length > 8 ? ticks.filter((_, at) => at % 2 === 0) : ticks;
 });
 
+// ── Folded runs ─────────────────────────────────────────────────────────────
+
+/// Whether bursts of commits are drawn as one "n commits" pill.
+const folding = ref(true);
+/// The runs clicked open, which stay open when the range changes.
+const opened = ref(new Set<string>());
+function unfold(key: string): void {
+  opened.value = new Set([...opened.value, key]);
+}
+/// Two dots nearer than this share a run: a dot and a half on a track of
+/// ordinary size, so dots that would touch fold instead.
+const RUN_GAP = 2.4;
+const RUN_MIN = 3;
+function dotsOf(line: string, dots: readonly Dot[]) {
+  return fold(dots, x, start.value, {
+    gap: RUN_GAP,
+    min: RUN_MIN,
+    fold: folding.value,
+    open: opened.value,
+    line,
+  });
+}
+
 const current = computed(
   () => map.value?.branches.find((branch) => branch.name === selected.value) ?? null,
 );
@@ -145,6 +170,12 @@ const current = computed(
           </p>
         </div>
         <div class="bmap-controls">
+          <label class="toggle">
+            <input v-model="folding" type="checkbox" /><span class="check" aria-hidden="true"
+              >✓</span
+            >
+            {{ t("map.fold") }}
+          </label>
           <div class="segmented">
             <button :class="{ on: !everything }" @click="everything = false">
               {{ t("map.open") }}
@@ -227,6 +258,7 @@ const current = computed(
                 class="bmap-fork"
                 :style="{ left: `${x(branch.base_time ?? branch.tip_time)}%` }"
               />
+              <MapDots :pieces="dotsOf(branch.name, branch.commits)" @open="unfold" />
               <span class="bmap-tip" :style="{ left: `${x(branch.tip_time)}%` }" />
             </template>
             <span v-else class="bmap-merge" :style="{ left: `${x(branch.tip_time)}%` }" />
@@ -240,6 +272,7 @@ const current = computed(
           </span>
           <span class="bmap-track">
             <span class="bmap-line" :style="{ left: '0%', width: `${x(map.trunk_time)}%` }" />
+            <MapDots :pieces="dotsOf(map.trunk, map.trunk_commits)" @open="unfold" />
             <span class="bmap-tip" :style="{ left: `${x(map.trunk_time)}%` }" />
             <template v-for="tag in tags" :key="tag.name">
               <span class="bmap-tag" :style="{ left: `${x(tag.time)}%` }" :title="tag.name" />
@@ -252,6 +285,16 @@ const current = computed(
             </template>
           </span>
         </div>
+      </div>
+
+      <div v-if="map" class="bmap-legend">
+        <span><span class="bmap-dot legend" />{{ t("map.legend.commit") }}</span>
+        <span><span class="bmap-dot merge legend" />{{ t("map.legend.merge") }}</span>
+        <span><span class="bmap-tag legend" />{{ t("map.legend.tag") }}</span>
+        <span
+          ><span class="bmap-run legend">{{ t("map.legend.runPill") }}</span
+          >{{ t("map.legend.run") }}</span
+        >
       </div>
     </section>
 

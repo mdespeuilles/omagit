@@ -389,7 +389,22 @@ pub struct MapBranch {
     pub ahead: usize,
     /// Commits the trunk has that it does not.
     pub behind: usize,
+    /// Its own commits — the `ahead` ones — newest first, at most
+    /// [`MAP_COMMITS`], for the dots along its line.
+    pub commits: Vec<MapCommit>,
 }
+
+/// One commit on the map: when it was authored, and whether it is a merge.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MapCommit {
+    pub time: i64,
+    pub merge: bool,
+}
+
+/// How many commits a line on the map carries at most. The dots are there to
+/// show rhythm — a burst, a pause — and past a few hundred they are a solid
+/// line anyway; the counts beside each branch stay exact.
+pub const MAP_COMMITS: usize = 300;
 
 /// Every local branch against the trunk (DESIGN v2's branch map).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -400,6 +415,9 @@ pub struct BranchMap {
     /// Every tag that points at a commit, and when that commit was authored,
     /// for the marks along the trunk.
     pub tags: Vec<(String, i64)>,
+    /// The trunk's own line, first parents from its tip, newest first, at
+    /// most [`MAP_COMMITS`].
+    pub trunk_commits: Vec<MapCommit>,
 }
 
 /// The names a trunk goes by, in the order one is chosen when several exist.
@@ -443,6 +461,7 @@ pub fn branch_map(repo: &Repository, cancel: &Cancel) -> Result<Option<BranchMap
         cancel.check()?;
         let base = gix.merge_base(tip, trunk_tip).ok().map(|id| id.detach());
         branches.push(MapBranch {
+            commits: map_commits(repo, &gix, tip, Some(trunk_tip), false, cancel)?,
             head: head_branch.as_deref() == Some(name.as_str()),
             tip_time: time(tip)?,
             base_time: base.map(time).transpose()?,
@@ -468,10 +487,44 @@ pub fn branch_map(repo: &Repository, cancel: &Cancel) -> Result<Option<BranchMap
     }
     Ok(Some(BranchMap {
         trunk_time: time(trunk_tip)?,
+        trunk_commits: map_commits(repo, &gix, trunk_tip, None, true, cancel)?,
         trunk,
         branches,
         tags,
     }))
+}
+
+/// The commits from `tip` — down first parents only for the trunk, or all of
+/// them not reachable from `hidden` for a branch — newest first, capped.
+fn map_commits(
+    repo: &Repository,
+    gix: &gix::Repository,
+    tip: ObjectId,
+    hidden: Option<ObjectId>,
+    first_parent: bool,
+    cancel: &Cancel,
+) -> Result<Vec<MapCommit>> {
+    if hidden == Some(tip) {
+        return Ok(Vec::new());
+    }
+    let mut platform = gix.rev_walk(Some(tip)).with_hidden(hidden);
+    if first_parent {
+        platform = platform.first_parent_only();
+    }
+    let walk = platform
+        .all()
+        .map_err(|error| GitError::backend("drawing the branch map", error))?;
+    let mut commits = Vec::new();
+    for info in walk.take(MAP_COMMITS) {
+        cancel.check()?;
+        let info = info.map_err(|error| GitError::backend("drawing the branch map", error))?;
+        commits.push(MapCommit {
+            time: crate::history::commit(repo, info.id)?.author.time.seconds,
+            merge: info.parent_ids.len() > 1,
+        });
+    }
+    commits.sort_by_key(|commit| std::cmp::Reverse(commit.time));
+    Ok(commits)
 }
 
 /// The commits on `branch` that the trunk `onto` does not have, newest first.

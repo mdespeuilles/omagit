@@ -894,4 +894,13 @@ export const strings = {
   "history.unpushed": "not pushed yet",
   "history.baseShort": "common base",
   "history.base": "common base with {upstream}",
+  "map.fold": "Fold runs of commits",
+  "map.run.one": "{n} commit",
+  "map.run.other": "{n} commits",
+  "map.unfold": "Click to unfold",
+  "map.legend.commit": "commit",
+  "map.legend.merge": "merge",
+  "map.legend.tag": "tag",
+  "map.legend.runPill": "n commits",
+  "map.legend.run": "folded run, click to unfold",
 } as const;

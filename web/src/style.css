@@ -4514,7 +4514,18 @@ button.switcher-row.current .switcher-name {
 }
 .bmap-controls {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
+}
+.bmap-controls .toggle {
+  white-space: nowrap;
+}
+.bmap-main .dash-head {
+  flex-wrap: wrap;
+}
+.bmap-main .dash-title {
+  white-space: nowrap;
 }
 
 /* Two or four choices side by side, one of them on. */
@@ -4722,4 +4733,69 @@ button.bmap-row.selected {
 .danger-text {
   color: var(--danger);
   font-weight: 600;
+}
+
+/* The commits along a line of the map, and the runs folded into a pill. */
+.bmap-dot {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--chip);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.bmap-dot.merge {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--chip);
+}
+.bmap-run {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 20px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1.5px var(--chip);
+  font-size: var(--text-meta);
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+}
+.bmap-run:hover,
+.bmap-run:focus-visible {
+  background: color-mix(in srgb, var(--chip) 22%, var(--surface-raised));
+  outline: 0;
+}
+
+.bmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  align-items: center;
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+  --chip: var(--text-muted);
+}
+.bmap-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.bmap-legend .legend {
+  position: static;
+  transform: none;
+}
+.bmap-legend .bmap-tag.legend {
+  transform: rotate(45deg);
+  border-color: var(--text-muted);
+}
+.bmap-legend .bmap-run.legend {
+  height: 18px;
+  cursor: default;
 }

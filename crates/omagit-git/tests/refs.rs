@@ -236,6 +236,13 @@ fn the_map_measures_every_branch_against_the_trunk() {
         (feature.name.as_str(), feature.ahead, feature.behind),
         ("feature", 2, 1)
     );
+    assert_eq!(feature.commits.len(), 2, "its own two, not main's");
+    assert!(
+        feature.commits[0].time >= feature.commits[1].time,
+        "newest first"
+    );
+    assert_eq!(map.trunk_commits.len(), 2, "seed, and main moving on");
+    assert!(map.trunk_commits.iter().all(|commit| !commit.merge));
     assert!(feature.base_time.is_some());
     assert!(!feature.head);
     assert!(map.tags.is_empty());
