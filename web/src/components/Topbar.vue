@@ -31,7 +31,7 @@
 // The window buttons that go with it are `Caption.vue`, at the edge the backend
 // names.
 
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import Caption from "./Caption.vue";
 import {
   addRepository,
@@ -45,9 +45,18 @@ import {
   showScreen,
 } from "../state";
 import { branchColor, tildify } from "../format";
+import BranchSwitcher from "./BranchSwitcher.vue";
 import { ACTIONS, binding, hint } from "../keymap";
 import { t } from "../i18n";
 import Glyph from "./Glyph.vue";
+
+/// The branch switcher under the pill. Closed when the repository changes:
+/// a list of another repository's branches is the wrong list.
+const switching = ref(false);
+watch(
+  () => app.open,
+  () => (switching.value = false),
+);
 
 const modifier = computed(() => app.platform?.modifier_label ?? "Ctrl");
 
@@ -170,29 +179,32 @@ const pill = computed(() => {
         <span class="topbar-repo-where mono">{{ where }}</span>
       </span>
       <!-- Where HEAD is, and where it stands, always in sight (DESIGN v2). -->
-      <button
-        v-if="pill"
-        class="branch-pill"
-        :class="{ detached: pill.detached, busy: !!pill.operation }"
-        :style="{ '--chip': pill.lane }"
-        :title="t('sidebar.overview')"
-        @click="showScreen('overview')"
-      >
-        <span class="branch-pill-dot" />
-        <span class="mono">{{ pill.label }}</span>
-        <span class="branch-pill-state">
-          <template v-if="pill.operation">{{ pill.operation }}</template>
-          <template v-else-if="pill.detached">{{ t("overview.pill.detached") }}</template>
-          <template v-else-if="pill.local">{{ t("overview.branch.local") }}</template>
-          <template v-else-if="pill.gone">{{ t("overview.branch.gone") }}</template>
-          <template v-else>
-            <span v-if="ahead > 0" class="ahead">↑{{ ahead }}</span>
-            <span v-if="behind > 0" class="behind">↓{{ behind }}</span>
-            <span v-if="ahead === 0 && behind === 0" class="synced">✓</span>
-          </template>
-        </span>
-        <span v-if="pill.dirty" class="branch-pill-dirty" :title="t('overview.workingCopy')" />
-      </button>
+      <span v-if="pill" class="branch-anchor">
+        <button
+          class="branch-pill"
+          :class="{ detached: pill.detached, busy: !!pill.operation }"
+          :style="{ '--chip': pill.lane }"
+          :title="t('switcher.title')"
+          :aria-expanded="switching"
+          @click="switching = !switching"
+        >
+          <span class="branch-pill-dot" />
+          <span class="mono">{{ pill.label }}</span>
+          <span class="branch-pill-state">
+            <template v-if="pill.operation">{{ pill.operation }}</template>
+            <template v-else-if="pill.detached">{{ t("overview.pill.detached") }}</template>
+            <template v-else-if="pill.local">{{ t("overview.branch.local") }}</template>
+            <template v-else-if="pill.gone">{{ t("overview.branch.gone") }}</template>
+            <template v-else>
+              <span v-if="ahead > 0" class="ahead">↑{{ ahead }}</span>
+              <span v-if="behind > 0" class="behind">↓{{ behind }}</span>
+              <span v-if="ahead === 0 && behind === 0" class="synced">✓</span>
+            </template>
+          </span>
+          <span v-if="pill.dirty" class="branch-pill-dirty" :title="t('overview.workingCopy')" />
+        </button>
+        <BranchSwitcher v-if="switching" @close="switching = false" />
+      </span>
     </template>
 
     <template v-else>

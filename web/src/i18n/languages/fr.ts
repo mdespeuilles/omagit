@@ -801,4 +801,11 @@ export const strings: Record<keyof typeof reference, string> = {
   "clone.hosted.private": "Privé",
   "clone.hosted.fork": "Fork",
   "clone.hosted.archived": "Archivé",
+
+  // ── Le sélecteur de branche (v2) ────────────────────────────────────────────
+  "switcher.title": "Changer de branche",
+  "switcher.search": "Branche où aller, ou un nouveau nom…",
+  "switcher.create": "Créer {name} ici et y basculer",
+  "switcher.overview": "Vue d'ensemble →",
+  "switcher.keys": "↑↓ choisir · ⏎ basculer · Échap fermer",
 };

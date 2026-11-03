@@ -843,4 +843,11 @@ export const strings = {
   "clone.hosted.private": "Private",
   "clone.hosted.fork": "Fork",
   "clone.hosted.archived": "Archived",
+
+  // ── The branch switcher (v2) ────────────────────────────────────────────────
+  "switcher.title": "Switch branch",
+  "switcher.search": "Branch to switch to, or a new name…",
+  "switcher.create": "Create {name} from here and switch to it",
+  "switcher.overview": "Overview →",
+  "switcher.keys": "↑↓ choose · ⏎ switch · Esc close",
 } as const;
