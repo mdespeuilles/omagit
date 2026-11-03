@@ -238,6 +238,7 @@ fn the_map_measures_every_branch_against_the_trunk() {
     );
     assert!(feature.base_time.is_some());
     assert!(!feature.head);
+    assert!(map.tags.is_empty());
 
     let commits =
         omagit_git::refs::branch_commits(&repo, "feature", "main", 10, &never()).expect("reads");
@@ -259,4 +260,19 @@ fn a_repository_with_no_trunk_has_no_map() {
         omagit_git::refs::branch_map(&repo, &never()).expect("reads"),
         None
     );
+}
+
+#[test]
+fn the_map_places_tags_at_their_commit() {
+    let fixture = TestRepo::new();
+    fixture.commit_file("a.txt", "a\n", "seed");
+    fixture.git(&["tag", "v0.1.0"]);
+    fixture.git(&["tag", "-a", "v0.2.0", "-m", "annotated"]);
+    let repo = Repository::open(fixture.path()).expect("opens");
+    let map = omagit_git::refs::branch_map(&repo, &never())
+        .expect("reads")
+        .expect("a trunk");
+    let names: Vec<_> = map.tags.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(names, ["v0.1.0", "v0.2.0"]);
+    assert!(map.tags.iter().all(|(_, at)| *at == map.trunk_time));
 }

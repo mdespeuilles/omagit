@@ -886,4 +886,9 @@ export const strings = {
   "map.mergedLong": "Everything on it is in {trunk}",
   "map.checkout": "Switch to it",
   "map.commits": "Its commits",
+  "map.checking": "Checking whether it merges into {trunk}…",
+  "map.checkFailed": "Couldn't check the merge (git 2.38 or newer is needed).",
+  "map.clean": "Merges into {trunk} without a conflict",
+  "map.conflicts.one": "Would conflict with {trunk} on {n} file",
+  "map.conflicts.other": "Would conflict with {trunk} on {n} files",
 } as const;

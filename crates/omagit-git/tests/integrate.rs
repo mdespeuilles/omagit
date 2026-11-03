@@ -287,3 +287,35 @@ fn merge_and_rebase_are_recorded_as_destructive() {
             .any(|entry| entry.destructive && entry.command.contains("merge"))
     );
 }
+
+#[test]
+fn a_merge_is_checked_without_touching_anything() {
+    let clean = diverged();
+    let before = clean.git(&["rev-parse", "HEAD"]);
+    let conflicts = integrate::merge_check(&git(), &clean.open(), "feature", "main", &never())
+        .expect("checked");
+    assert!(
+        conflicts.is_empty(),
+        "two different files merge cleanly: {conflicts:?}"
+    );
+    assert_eq!(
+        clean.git(&["rev-parse", "HEAD"]),
+        before,
+        "and no ref moved"
+    );
+
+    let clashing = conflicting();
+    let conflicts = integrate::merge_check(&git(), &clashing.open(), "feature", "main", &never())
+        .expect("checked");
+    assert_eq!(conflicts, ["shared.txt"]);
+    assert_eq!(
+        clashing.open().operation(),
+        None,
+        "and no merge was left half done"
+    );
+    assert_eq!(
+        clashing.git(&["status", "--porcelain"]),
+        "",
+        "nor the working tree touched"
+    );
+}

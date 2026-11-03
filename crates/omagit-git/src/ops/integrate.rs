@@ -63,6 +63,48 @@ pub fn merge(
         .map(|output| output.text().trim().to_owned())
 }
 
+/// Whether merging `branch` into `onto` would stop on a conflict, and on
+/// which files — without touching the working tree, the index or any ref.
+///
+/// `git merge-tree --write-tree` does the whole merge in the object database
+/// and says which paths conflicted; nothing it writes is referenced, so it is
+/// a read in every sense that matters (the branch map's "merges cleanly into
+/// main"). It exits 1 on a conflict, which `cli.rs` turns into an error; that
+/// one is read back as the answer it is. An empty list means clean.
+///
+/// Needs git 2.38. An older one fails with its own usage message, which the
+/// map shows as "could not check" rather than as a verdict.
+pub fn merge_check(
+    git: &Git,
+    repo: &Repository,
+    branch: &str,
+    onto: &str,
+    cancel: &Cancel,
+) -> Result<Vec<String>> {
+    let answer = super::at(git, repo)?
+        .args(["merge-tree", "--write-tree", "--name-only", "--no-messages"])
+        .arg(onto)
+        .arg(branch)
+        .run(cancel);
+    match answer {
+        Ok(_) => Ok(Vec::new()),
+        Err(GitError::CommandFailed { command, stderr }) => {
+            let mut lines = stderr
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty());
+            // The first line of a conflicted answer is the tree it wrote.
+            match lines.next() {
+                Some(tree) if tree.len() >= 40 && tree.bytes().all(|b| b.is_ascii_hexdigit()) => {
+                    Ok(lines.map(ToOwned::to_owned).collect())
+                }
+                _ => Err(GitError::CommandFailed { command, stderr }),
+            }
+        }
+        Err(error) => Err(error),
+    }
+}
+
 /// Replay the current branch's commits on top of `onto`.
 ///
 /// Never interactive. `rebase -i` is a conversation with an editor, and there

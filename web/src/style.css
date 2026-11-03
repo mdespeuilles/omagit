@@ -4655,3 +4655,35 @@ button.bmap-row.selected {
   align-self: stretch;
   gap: 10px;
 }
+
+/* A tag on the trunk: a small diamond with its name above. */
+.bmap-tag {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--surface);
+  border: 1.5px solid var(--warning);
+}
+.bmap-tag-name {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: var(--text-meta);
+  color: var(--warning);
+  white-space: nowrap;
+}
+.bmap-tag-name.end {
+  transform: translateX(-100%);
+}
+.bmap-check {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.danger-text {
+  color: var(--danger);
+  font-weight: 600;
+}

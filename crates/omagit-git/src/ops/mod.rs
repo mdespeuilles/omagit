@@ -29,7 +29,7 @@ pub mod tag;
 
 pub use branch::{checkout, checkout_detached, containing, create, delete, merged, rename};
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
-pub use integrate::{MergeOptions, abort, merge, rebase, resume};
+pub use integrate::{MergeOptions, abort, merge, merge_check, rebase, resume};
 pub use network::{
     CloneOptions, Push, PushForce, Reconcile, Step, clone, directory_for, fetch, pull, push,
     reachable, reconcile_configured,

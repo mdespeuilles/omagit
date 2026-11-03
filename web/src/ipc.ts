@@ -63,7 +63,12 @@ export type MapBranch = {
   ahead: number;
   behind: number;
 };
-export type BranchMap = { trunk: string; trunk_time: number; branches: MapBranch[] };
+export type BranchMap = {
+  trunk: string;
+  trunk_time: number;
+  branches: MapBranch[];
+  tags: { name: string; time: number }[];
+};
 
 /// The branches one commit is on: local ones, and remote-tracking ones as
 /// `origin/main`.
@@ -539,6 +544,8 @@ export const api = {
   branchMap: (path: string) => invoke<BranchMap | null>("branch_map", { path }),
   branchCommits: (path: string, branch: string, onto: string, limit: number) =>
     invoke<LastCommit[]>("branch_commits", { path, branch, onto, limit }),
+  mergeCheck: (path: string, branch: string, onto: string) =>
+    invoke<string[]>("merge_check", { path, branch, onto }),
 
   // Integrating one branch into another (M7). Both can stop half-way on a
   // conflict; `abortOperation` is the way out, and it reads what is running

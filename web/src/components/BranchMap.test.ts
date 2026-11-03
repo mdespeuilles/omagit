@@ -18,9 +18,10 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve(null) 
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 
-async function drawn(map: Repository["map"]) {
+async function drawn(map: Repository["map"], conflicts: string[] = []) {
   backend.current = new Repository([]);
   backend.current.map = map;
+  backend.current.conflictsOnMerge = conflicts;
   vi.resetModules();
   const state = await import("../state");
   await state.boot();
@@ -45,6 +46,7 @@ describe("the branch map", () => {
     const { view } = await drawn({
       trunk: "main",
       trunk_time: NOW,
+      tags: [],
       branches: [branch("old", 2, 20), branch("merged", 0, 3), branch("new", 1, 1, true)],
     });
     const names = view.findAll(".bmap-row .bmap-name").map((row) => row.text());
@@ -57,6 +59,7 @@ describe("the branch map", () => {
     const { view } = await drawn({
       trunk: "main",
       trunk_time: NOW,
+      tags: [],
       branches: [branch("old", 2, 20), branch("merged", 0, 3)],
     });
     await view.findAll(".segmented")[0]!.findAll("button")[1]!.trigger("click");
@@ -68,5 +71,14 @@ describe("the branch map", () => {
     const { view } = await drawn(null);
     expect(view.find(".bmap-card").exists()).toBe(false);
     expect(view.text()).toMatch(/main, master/);
+  });
+
+  it("says whether the selected branch merges into the trunk, and on which files it would not", async () => {
+    backend.current = new Repository([]);
+    const { view } = await drawn(
+      { trunk: "main", trunk_time: NOW, tags: [], branches: [branch("new", 1, 1, true)] },
+      ["src/a.rs"],
+    );
+    expect(view.find(".bmap-check").text()).toContain("src/a.rs");
   });
 });

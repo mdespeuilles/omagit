@@ -59,12 +59,26 @@ watch(
   () => void read(),
 );
 
+/// Whether the selected branch would merge into the trunk: the files it would
+/// conflict on, `[]` for clean, `"failed"` when git could not say (older than
+/// 2.38), `null` while asking.
+const conflicts = ref<string[] | "failed" | null>(null);
+
 watch([selected, map], async () => {
   const path = app.open;
   const branch = selected.value;
   const trunk = map.value?.trunk;
   commits.value = null;
+  conflicts.value = null;
   if (!path || !branch || !trunk) return;
+  void (async () => {
+    try {
+      const files = await api.mergeCheck(path, branch, trunk);
+      if (selected.value === branch) conflicts.value = files;
+    } catch {
+      if (selected.value === branch) conflicts.value = "failed";
+    }
+  })();
   try {
     const list = await api.branchCommits(path, branch, trunk, 30);
     if (selected.value === branch) commits.value = list;
@@ -72,6 +86,11 @@ watch([selected, map], async () => {
     commits.value = [];
   }
 });
+
+/// The tags inside the range, for the marks along the trunk.
+const tags = computed(() =>
+  (map.value?.tags ?? []).filter((tag) => tag.time >= start.value && tag.time <= now),
+);
 
 const now = Math.floor(Date.now() / 1000);
 const open = computed(() => map.value?.branches.filter((branch) => branch.ahead > 0) ?? []);
@@ -222,6 +241,15 @@ const current = computed(
           <span class="bmap-track">
             <span class="bmap-line" :style="{ left: '0%', width: `${x(map.trunk_time)}%` }" />
             <span class="bmap-tip" :style="{ left: `${x(map.trunk_time)}%` }" />
+            <template v-for="tag in tags" :key="tag.name">
+              <span class="bmap-tag" :style="{ left: `${x(tag.time)}%` }" :title="tag.name" />
+              <span
+                class="bmap-tag-name mono"
+                :class="{ end: x(tag.time) > 90 }"
+                :style="{ left: `${x(tag.time)}%` }"
+                >{{ tag.name }}</span
+              >
+            </template>
           </span>
         </div>
       </div>
@@ -245,6 +273,25 @@ const current = computed(
             {{ count("map.behind", current.behind, { trunk: map.trunk }) }}
           </li>
         </ul>
+        <p v-if="current.ahead > 0" class="bmap-check">
+          <span v-if="conflicts === null" class="ov-muted">{{
+            t("map.checking", { trunk: map.trunk })
+          }}</span>
+          <span v-else-if="conflicts === 'failed'" class="ov-muted">{{
+            t("map.checkFailed")
+          }}</span>
+          <span v-else-if="conflicts.length === 0" class="synced">
+            ✓ {{ t("map.clean", { trunk: map.trunk }) }}
+          </span>
+          <template v-else>
+            <span class="danger-text">
+              ✗ {{ count("map.conflicts", conflicts.length, { trunk: map.trunk }) }}
+            </span>
+            <span v-for="file in conflicts.slice(0, 5)" :key="file" class="mono ov-muted">{{
+              file
+            }}</span>
+          </template>
+        </p>
         <button v-if="!current.head" class="primary" @click="checkoutBranch(current.name)">
           {{ t("map.checkout") }}
         </button>

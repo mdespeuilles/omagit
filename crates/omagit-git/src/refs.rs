@@ -393,6 +393,9 @@ pub struct BranchMap {
     pub trunk: String,
     pub trunk_time: i64,
     pub branches: Vec<MapBranch>,
+    /// Every tag that points at a commit, and when that commit was authored,
+    /// for the marks along the trunk.
+    pub tags: Vec<(String, i64)>,
 }
 
 /// The names a trunk goes by, in the order one is chosen when several exist.
@@ -444,10 +447,26 @@ pub fn branch_map(repo: &Repository, cancel: &Cancel) -> Result<Option<BranchMap
             name,
         });
     }
+    let mut tags = Vec::new();
+    for mut reference in platform
+        .tags()
+        .map_err(|error| GitError::backend("listing tags", error))?
+        .filter_map(std::result::Result::ok)
+    {
+        cancel.check()?;
+        let name = short_ref_name(reference.name().as_bstr());
+        // A tag of a tree or a blob has no time to be placed at; it is left off.
+        if let Ok(id) = reference.peel_to_id()
+            && let Ok(at) = time(id.detach())
+        {
+            tags.push((name, at));
+        }
+    }
     Ok(Some(BranchMap {
         trunk_time: time(trunk_tip)?,
         trunk,
         branches,
+        tags,
     }))
 }
 

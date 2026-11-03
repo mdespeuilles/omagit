@@ -179,6 +179,8 @@ export class Repository {
   /// Les distants déclarés. Vide par défaut : un dépôt sans distant est un cas
   /// que la fenêtre doit dessiner, pas une exception.
   remotes: { name: string; url: string }[] = [];
+  /// The files `merge_check` says a merge would conflict on.
+  conflictsOnMerge: string[] = [];
   /// What the branch map draws, or `null` for a repository with no trunk.
   map: BranchMap | null = null;
   /// The branches every commit is on, as `commit_places` answers.
@@ -711,6 +713,8 @@ export class Repository {
         return this.map;
       case "branch_commits":
         return [];
+      case "merge_check":
+        return [...this.conflictsOnMerge];
       case "commit_places":
         return { local: [...this.places.local], remote: [...this.places.remote] } satisfies Places;
       case "commit_detail":

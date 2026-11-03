@@ -844,4 +844,9 @@ export const strings: Record<keyof typeof reference, string> = {
   "map.mergedLong": "Tout ce qu'elle contient est dans {trunk}",
   "map.checkout": "Basculer dessus",
   "map.commits": "Ses commits",
+  "map.checking": "Vérification du merge dans {trunk}…",
+  "map.checkFailed": "Impossible de vérifier le merge (il faut git 2.38 ou plus récent).",
+  "map.clean": "Se merge dans {trunk} sans conflit",
+  "map.conflicts.one": "Entrerait en conflit avec {trunk} sur {n} fichier",
+  "map.conflicts.other": "Entrerait en conflit avec {trunk} sur {n} fichiers",
 };

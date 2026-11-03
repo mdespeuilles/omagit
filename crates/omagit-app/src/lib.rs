@@ -104,6 +104,7 @@ pub fn run() {
             commands::commit_places,
             commands::branch_map,
             commands::branch_commits,
+            commands::merge_check,
             commands::status,
             commands::file_diff,
             commands::stage,

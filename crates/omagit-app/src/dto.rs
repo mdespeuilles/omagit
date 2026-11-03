@@ -460,6 +460,13 @@ pub struct BranchMap {
     pub trunk: String,
     pub trunk_time: i64,
     pub branches: Vec<MapBranch>,
+    pub tags: Vec<MapTag>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct MapTag {
+    pub name: String,
+    pub time: i64,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -486,6 +493,14 @@ pub fn branch_map(map: &omagit_git::BranchMap) -> BranchMap {
                 base_time: branch.base_time,
                 ahead: branch.ahead,
                 behind: branch.behind,
+            })
+            .collect(),
+        tags: map
+            .tags
+            .iter()
+            .map(|(name, time)| MapTag {
+                name: name.clone(),
+                time: *time,
             })
             .collect(),
     }

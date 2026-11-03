@@ -444,6 +444,20 @@ pub fn branch_map(state: State<'_, AppState>, path: String) -> Answer<Option<dto
     Ok(map.as_ref().map(dto::branch_map))
 }
 
+/// The files merging `branch` into `onto` would conflict on; empty for a
+/// merge that would go through. Nothing is touched.
+#[tauri::command(async)]
+pub fn merge_check(
+    state: State<'_, AppState>,
+    path: String,
+    branch: String,
+    onto: String,
+) -> Answer<Vec<String>> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    omagit_git::ops::merge_check(&git, &open.repo, &branch, &onto, &state.cancel()).map_err(say)
+}
+
 /// The commits `branch` has that `onto` does not, newest first.
 #[tauri::command(async)]
 pub fn branch_commits(
