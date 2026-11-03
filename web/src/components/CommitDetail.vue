@@ -19,6 +19,17 @@ import Splitter from "./Splitter.vue";
 
 const detail = computed(() => (app.commit.status === "ready" ? app.commit.value : null));
 
+/// `Maxence d'Espeuilles` → `MD`, as the list's avatars show it.
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => [...word][0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
 /// How many branches of each kind the detail names before "and n more".
 const PLACES_SHOWN = 6;
 const places = computed(() =>
@@ -171,8 +182,13 @@ const panelStyle = computed(() =>
         <p class="detail-summary">{{ detail.summary }}</p>
         <pre v-if="detail.body" class="detail-body mono">{{ detail.body }}</pre>
 
-        <p class="detail-who">
-          <span class="mono">{{ detail.author.name }}</span>
+        <p class="detail-who detail-author">
+          <span
+            class="avatar commit-avatar"
+            :style="{ '--chip': branchColor(detail.author.name) }"
+            >{{ initials(detail.author.name) }}</span
+          >
+          <span class="detail-author-name">{{ detail.author.name }}</span>
           <span class="dim">&lt;{{ detail.author.email }}&gt;</span>
           <span class="dim" :title="authored(detail.author.when, detail.author.offset)">
             {{ when(detail.author.when) }}

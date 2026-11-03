@@ -150,8 +150,15 @@ function dotX(index: number, total: number, from: number, to: number): number {
 
 // ── The commit lists ────────────────────────────────────────────────────────
 
-const outgoing = computed<readonly LastCommit[]>(() => app.divergence?.outgoing ?? []);
-const incoming = computed<readonly LastCommit[]>(() => app.divergence?.incoming ?? []);
+/// How many commits of each side the card names. More than this and it says
+/// "and n more" — it is a summary, History is the list.
+const SHOWN = 5;
+const outgoing = computed<readonly LastCommit[]>(() =>
+  (app.divergence?.outgoing ?? []).slice(0, SHOWN),
+);
+const incoming = computed<readonly LastCommit[]>(() =>
+  (app.divergence?.incoming ?? []).slice(0, SHOWN),
+);
 
 // ── Detached: a name for the branch that keeps the commit ──────────────────
 

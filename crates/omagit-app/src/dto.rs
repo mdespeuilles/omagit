@@ -442,6 +442,8 @@ pub struct Divergence {
     pub upstream: String,
     pub outgoing: Vec<LastCommit>,
     pub incoming: Vec<LastCommit>,
+    /// Where the two sides parted, for the history's "common base" mark.
+    pub base: Option<Oid>,
 }
 
 /// One commit, as the short rows of the overview and the map draw it.
@@ -512,6 +514,7 @@ pub fn divergence(divergence: &omagit_git::Divergence) -> Divergence {
         upstream: divergence.upstream.clone(),
         outgoing: divergence.outgoing.iter().map(row).collect(),
         incoming: divergence.incoming.iter().map(row).collect(),
+        base: divergence.base.map(Into::into),
     }
 }
 

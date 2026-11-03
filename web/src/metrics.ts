@@ -44,3 +44,10 @@ export function lineHeight(): number {
 export function doubleRowHeight(): number {
   return 2 * lineHeight() + (cache["row-padding"] || 6);
 }
+
+/// A commit in the History list (DESIGN v2): two lines with air around them,
+/// so the message reads as a sentence rather than a cell — 52px compact, as
+/// the board draws it, and more in comfortable.
+export function commitRowHeight(): number {
+  return 2 * lineHeight() + 3 * (cache["row-padding"] || 6);
+}

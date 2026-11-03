@@ -891,4 +891,7 @@ export const strings = {
   "map.clean": "Merges into {trunk} without a conflict",
   "map.conflicts.one": "Would conflict with {trunk} on {n} file",
   "map.conflicts.other": "Would conflict with {trunk} on {n} files",
+  "history.unpushed": "not pushed yet",
+  "history.baseShort": "common base",
+  "history.base": "common base with {upstream}",
 } as const;

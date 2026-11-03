@@ -849,4 +849,7 @@ export const strings: Record<keyof typeof reference, string> = {
   "map.clean": "Se merge dans {trunk} sans conflit",
   "map.conflicts.one": "Entrerait en conflit avec {trunk} sur {n} fichier",
   "map.conflicts.other": "Entrerait en conflit avec {trunk} sur {n} fichiers",
+  "history.unpushed": "pas encore poussé",
+  "history.baseShort": "base commune",
+  "history.base": "base commune avec {upstream}",
 };

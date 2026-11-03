@@ -276,3 +276,24 @@ fn the_map_places_tags_at_their_commit() {
     assert_eq!(names, ["v0.1.0", "v0.2.0"]);
     assert!(map.tags.iter().all(|(_, at)| *at == map.trunk_time));
 }
+
+#[test]
+fn a_divergence_names_both_sides_and_where_they_parted() {
+    let (fixture, _origin) = with_upstream();
+    let base = fixture.git(&["rev-parse", "HEAD"]);
+    // The upstream moves on by one commit, made elsewhere and fetched...
+    fixture.commit_file("theirs.txt", "t\n", "theirs");
+    fixture.git(&["push", "origin", "main"]);
+    fixture.git(&["reset", "--hard", "HEAD~1"]);
+    // ...and the branch by two of its own.
+    fixture.commit_file("c.txt", "c\n", "ours one");
+    fixture.commit_file("d.txt", "d\n", "ours two");
+
+    let divergence = omagit_git::refs::head_divergence(&fixture.open(), 10, &never())
+        .expect("reads")
+        .expect("main has an upstream");
+    assert_eq!(divergence.upstream, "origin/main");
+    assert_eq!(divergence.outgoing.len(), 2);
+    assert_eq!(divergence.incoming.len(), 1);
+    assert_eq!(divergence.base.map(|id| id.to_string()), Some(base));
+}

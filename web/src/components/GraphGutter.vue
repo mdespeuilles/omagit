@@ -29,13 +29,24 @@ type Topology = {
   merge: boolean;
 };
 
-const props = defineProps<{ row: Topology; height: number }>();
+const props = defineProps<{
+  row: Topology;
+  height: number;
+  head?: boolean;
+  /// How many lanes the column is sized for, the same on every row so the
+  /// text beside the graph starts at one place down the whole list.
+  columns?: number;
+}>();
 
-/// Distance between two lanes, and the left margin before the first.
-const LANE = 12;
-const EDGE = 8;
-/// Board 05's node: a filled disc, hollow for a merge.
-const RADIUS = 3.5;
+/// Distance between two lanes, and the left margin before the first. Wider
+/// than board 05 drew it (DESIGN v2): thicker lines need the room, and lanes
+/// that touch read as one.
+const LANE = 16;
+const EDGE = 14;
+/// A filled disc, hollow for a merge; the commit HEAD is on, larger and ringed,
+/// so "you are here" is findable in the graph alone.
+const RADIUS = 4.5;
+const HEAD_RADIUS = 6.5;
 
 const x = (lane: number): number => EDGE + lane * LANE;
 const mid = computed(() => props.height / 2);
@@ -43,11 +54,17 @@ const mid = computed(() => props.height / 2);
 /// The gutter is as wide as the row needs and no wider. `width` is how many
 /// lanes are open across this row, which `omagit_git::graph` computes as it
 /// goes so no second pass is needed to size the column.
-const width = computed(() => EDGE * 2 + Math.max(props.row.width, 1) * LANE);
+const width = computed(
+  () => EDGE * 2 + (Math.max(props.columns ?? 0, props.row.width, 1) - 1) * LANE,
+);
 
 /// A lane's colour. The lane palette never reads the theme — only its lightness
 /// and chroma do (DESIGN-TOKENS §6) — and wraps at eight.
-const colour = (lane: number): string => `var(--lane-${lane % 8})`;
+///
+/// Except the first: it is the line HEAD's first parents walk down, the
+/// branch you are on, and it takes the accent as the trunk does on the
+/// overview and the map rather than lane 0, which reads as red.
+const colour = (lane: number): string => (lane === 0 ? "var(--accent)" : `var(--lane-${lane % 8})`);
 
 /// A line from `(from, top)` down to `(to, mid)`, bent rather than diagonal.
 ///
@@ -109,10 +126,10 @@ function leaving(to: number): string {
          reader has to see without following a line. -->
     <circle
       class="gutter-node"
-      :class="{ merge: row.merge }"
+      :class="{ merge: row.merge, head }"
       :cx="x(row.lane)"
       :cy="mid"
-      :r="RADIUS"
+      :r="head ? HEAD_RADIUS : RADIUS"
       :stroke="colour(row.lane)"
       :fill="row.merge ? 'var(--bg)' : colour(row.lane)"
     />

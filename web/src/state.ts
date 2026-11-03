@@ -1532,15 +1532,17 @@ async function overNetwork(what: string, run: () => Promise<string>): Promise<vo
   void readRemoteTags();
 }
 
-/// How many commits of each side the overview names. More than this and the
-/// card says "and n more" — it is a summary, History is the list.
-const DIVERGENCE_SHOWN = 5;
+/// How many commits of each side are read. The overview names only the first
+/// few; History marks every one of them as "not pushed yet", so it asks for
+/// more than a card would show. Beyond this, the marks stop — a branch two
+/// hundred commits ahead has a different problem.
+const DIVERGENCE_READ = 200;
 
 /// Re-read the commits on each side of the divergence. Cheap next to the
 /// counts the summary already paid for, and only one branch's worth.
 async function readDivergence(path: string): Promise<void> {
   try {
-    const divergence = await api.divergence(path, DIVERGENCE_SHOWN);
+    const divergence = await api.divergence(path, DIVERGENCE_READ);
     if (state.open === path) state.divergence = divergence;
   } catch (error) {
     // The card falls back to the counts; nothing else depends on this.

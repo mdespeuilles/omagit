@@ -7,7 +7,7 @@
 // it has, which is what `nearEnd` is for.
 
 import { computed } from "vue";
-import { when, exact } from "../format";
+import { branchColor, when, exact } from "../format";
 import {
   app,
   clearFilters,
@@ -25,19 +25,24 @@ import {
 import { count, t } from "../i18n";
 import GraphGutter from "./GraphGutter.vue";
 import HistoryFilters from "./HistoryFilters.vue";
-import { doubleRowHeight } from "../metrics";
+import { commitRowHeight } from "../metrics";
 import VirtualList from "./VirtualList.vue";
 
-/// Two lines per commit.
-///
-/// Board 05 draws one, and this is a deliberate departure from it: on a real
-/// history the single line has six things competing for it — author, refs,
-/// date, hash and message — and the message, which is what the list is read
-/// for, is the one that loses. Two lines give the message the whole of the
-/// second one.
-const ROW_HEIGHT = doubleRowHeight();
+/// Two lines per commit (DESIGN v2): the message on the first, because it is
+/// what the list is read for; who, which hash and which branches on the
+/// second, smaller.
+const ROW_HEIGHT = commitRowHeight();
 
 const rows = computed(() => (app.history.status === "ready" ? app.history.value : []));
+/// The widest the graph gets in what is loaded, capped: one octopus merge
+/// across twenty lanes should not push every message off the screen.
+const MAX_COLUMNS = 8;
+const columns = computed(() =>
+  Math.min(
+    MAX_COLUMNS,
+    rows.value.reduce((widest, row) => Math.max(widest, row.width), 1),
+  ),
+);
 
 /// `Maxence d'Espeuilles` → `MD`. The first letters of the first two words,
 /// which is what board 01's avatar shows.
@@ -46,6 +51,24 @@ function initials(name: string): string {
     .map((word) => [...word][0] ?? "")
     .join("")
     .toUpperCase();
+}
+
+/// The commits HEAD has that its upstream does not — marked "not pushed yet"
+/// — and where the two parted, marked when they have both moved on. From the
+/// divergence the overview already read, so no second walk.
+const unpushed = computed(() => new Set(app.divergence?.outgoing.map((c) => c.id.full) ?? []));
+const parted = computed(() => {
+  const tracking = app.summary?.tracking;
+  if (!tracking || tracking.ahead === 0 || tracking.behind === 0) return null;
+  return app.divergence?.base?.full ?? null;
+});
+
+/// The colour a label wears: its branch's, the same as on the overview and the
+/// map; a remote branch wears the local name's colour, outlined.
+function labelColour(label: { name: string; kind: string }): string {
+  if (label.kind === "tag") return "var(--warning)";
+  if (label.kind === "remote") return branchColor(label.name.slice(label.name.indexOf("/") + 1));
+  return branchColor(label.name);
 }
 
 /// A plain click opens a commit; a shift-click compares it with the marked one.
@@ -162,27 +185,47 @@ function open(id: string, extend: boolean): void {
           open(item.id.full, $event.shiftKey);
         "
       >
-        <GraphGutter v-if="item.graph" :row="item" :height="ROW_HEIGHT" />
+        <GraphGutter
+          v-if="item.graph"
+          :row="item"
+          :height="ROW_HEIGHT"
+          :head="item.labels.some((label) => label.kind === 'head')"
+          :columns="columns"
+        />
         <span v-else class="gutter-none" />
-        <span class="avatar mono" :title="item.author">{{ initials(item.author) }}</span>
+        <span
+          class="avatar commit-avatar"
+          :title="item.author"
+          :style="{ '--chip': branchColor(item.author) }"
+          >{{ initials(item.author) }}</span
+        >
         <span class="commit-lines">
-          <span class="commit-line-top">
-            <span class="commit-author">{{ item.author }}</span>
-            <span class="pane-head-spacer" />
-            <span class="commit-when" :title="exact(item.when)">{{ when(item.when) }}</span>
-          </span>
-          <span class="commit-line-bottom">
+          <span class="commit-summary" :class="{ unpushed: unpushed.has(item.id.full) }">{{
+            item.summary
+          }}</span>
+          <span class="commit-meta">
             <span class="commit-hash mono">{{ item.id.short }}</span>
+            <span class="commit-author">{{ item.author }}</span>
             <span
               v-for="label in item.labels"
               :key="label.kind + label.name"
               class="ref"
               :class="label.kind"
+              :style="{ '--chip': labelColour(label) }"
               >{{ label.name }}</span
             >
-            <span class="commit-summary">{{ item.summary }}</span>
+            <span v-if="unpushed.has(item.id.full)" class="commit-mark ahead">{{
+              t("history.unpushed")
+            }}</span>
+            <span
+              v-if="parted === item.id.full"
+              class="commit-mark behind"
+              :title="t('history.base', { upstream: app.summary?.tracking?.upstream ?? '' })"
+              >{{ t("history.baseShort") }}</span
+            >
           </span>
         </span>
+        <span class="commit-when" :title="exact(item.when)">{{ when(item.when) }}</span>
       </div>
     </VirtualList>
 

@@ -331,6 +331,9 @@ pub struct Divergence {
     pub outgoing: Vec<crate::Commit>,
     /// On the upstream, not on the branch — what a pull would bring.
     pub incoming: Vec<crate::Commit>,
+    /// The last commit both sides share, where the two lines of work parted.
+    /// `None` when they share nothing.
+    pub base: Option<ObjectId>,
 }
 
 /// `HEAD`'s divergence, commit by commit. `None` when `HEAD` is not on a branch
@@ -368,6 +371,7 @@ pub fn head_divergence(
         upstream,
         outgoing: exclusive_commits(repo, &gix, local, remote, limit, cancel)?,
         incoming: exclusive_commits(repo, &gix, remote, local, limit, cancel)?,
+        base: gix.merge_base(local, remote).ok().map(|id| id.detach()),
     }))
 }
 

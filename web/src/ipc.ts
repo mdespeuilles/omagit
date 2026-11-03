@@ -75,7 +75,13 @@ export type BranchMap = {
 export type Places = { local: string[]; remote: string[] };
 
 /// `HEAD` against its upstream, commit by commit, newest first on each side.
-export type Divergence = { upstream: string; outgoing: LastCommit[]; incoming: LastCommit[] };
+export type Divergence = {
+  upstream: string;
+  outgoing: LastCommit[];
+  incoming: LastCommit[];
+  /// Where the two sides parted, or `null` when they share nothing.
+  base: Oid | null;
+};
 
 export type RemoteRow = { name: string; url: string | null };
 
