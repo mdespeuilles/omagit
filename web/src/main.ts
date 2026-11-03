@@ -13,6 +13,7 @@ import {
   boot,
   checkForUpdate,
   watchProgress,
+  watchRemote,
   watchRepository,
   watchTheme,
   watchUpdate,
@@ -61,6 +62,8 @@ watchTheme().catch(report);
 // And the repositories themselves: a client that only refreshes when clicked is
 // wrong every time you touch a terminal (SPEC §10).
 watchRepository().catch(report);
+// And the remote: the overview's counts are only as fresh as the last fetch.
+watchRemote();
 // Whether a newer build is out (M10). Last, independent, and logged rather than
 // drawn on failure: this is the one thing in the window nobody asked for, so it
 // may not delay the repository appearing and it may not paint over anything

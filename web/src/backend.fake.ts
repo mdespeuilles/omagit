@@ -177,6 +177,8 @@ export class Repository {
   /// Les distants déclarés. Vide par défaut : un dépôt sans distant est un cas
   /// que la fenêtre doit dessiner, pas une exception.
   remotes: { name: string; url: string }[] = [];
+  /// When the summary says the last fetch was, in Unix seconds, or never.
+  fetchedAt: number | null = null;
   /// Held open so a test can watch the overlay while an operation runs.
   holdNetwork: Promise<void> | null = null;
   /// The same, for a write: held open so a test can see the window while one is
@@ -855,13 +857,13 @@ export class Repository {
       },
       last_commit: null,
       stashes: this.stashes.length,
-      remotes: [],
+      remotes: this.remotes.map((row) => ({ name: row.name, url: row.url })),
       activity: [],
       commits: 0,
       committer: this.committer
         ? { name: "Test", email: "test@omagit.test", initials: "T", inherited: false }
         : null,
-      fetched_at: null,
+      fetched_at: this.fetchedAt,
     };
   }
 

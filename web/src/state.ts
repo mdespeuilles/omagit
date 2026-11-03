@@ -866,6 +866,9 @@ export async function openRepository(path: string): Promise<void> {
     if (template) state.message = template;
     void refreshJournal();
     void readRefs();
+    // Opening a repository nobody fetched this week should not show last
+    // week's counts for half a minute.
+    void fetchIfStale();
 
     // Open on a file rather than on an empty panel: the first row is what the
     // reader is going to click anyway.
@@ -1273,6 +1276,8 @@ async function refreshJournal(): Promise<void> {
 /// back at the end, which is exactly what the user is waiting to hear about.
 export async function watchProgress(): Promise<void> {
   await listen<Progress>("progress", (event) => {
+    // A background fetch reports like any other; it is not drawn.
+    if (quietly) return;
     state.running = event.payload;
   });
 }
@@ -1384,8 +1389,59 @@ export async function watchTheme(): Promise<void> {
   });
 }
 
+// ── Keeping the counts honest (DESIGN v2) ──────────────────────────────────
+//
+// "2 to pull" is only as true as the last fetch, and nobody fetches by hand
+// often enough for the overview to be believed. So the open repository is
+// fetched in the background when its last fetch is older than this, while the
+// window is in front. Silently: no overlay, no note. A failure is logged and
+// waited out — a laptop on a train is not an error to draw every five minutes.
+
+/// How old a fetch may get before the window makes a new one, in seconds.
+export const FETCH_EVERY = 5 * 60;
+/// How often the window asks itself the question, in milliseconds.
+const FETCH_CHECK = 30_000;
+/// The background fetch in flight, which a click on Fetch, Pull or Push waits
+/// for rather than being turned away by the backend's one-at-a-time rule.
+let quietly: Promise<void> | null = null;
+/// When each repository was last tried, so a failing one waits a whole period.
+const tried = new Map<string, number>();
+
+/// Fetch the open repository if its counts have gone stale. Exported so a test
+/// can run the check without waiting for the clock.
+export async function fetchIfStale(now = Math.floor(Date.now() / 1000)): Promise<void> {
+  const path = state.open;
+  const summary = state.summary;
+  if (!path || !summary || quietly || state.running || state.gitUnusable) return;
+  if (summary.remotes.length === 0) return;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+  const last = Math.max(summary.fetched_at ?? 0, tried.get(path) ?? 0);
+  if (now - last < FETCH_EVERY) return;
+  tried.set(path, now);
+  quietly = (async () => {
+    try {
+      await api.fetch(path, "");
+    } catch (error) {
+      void api.log("info", `background fetch of ${path}: ${message(error)}`);
+      return;
+    } finally {
+      quietly = null;
+    }
+    if (state.open === path && !state.running) await settle();
+  })();
+  await quietly;
+}
+
+/// Ask every half minute whether the open repository needs a fetch.
+export function watchRemote(): void {
+  setInterval(() => void fetchIfStale(), FETCH_CHECK);
+}
+
 /// Run one network operation, with the overlay up for its duration.
 async function overNetwork(what: string, run: () => Promise<string>): Promise<void> {
+  // A background fetch holds the backend's one network slot; wait it out
+  // rather than have the click refused.
+  if (quietly) await quietly;
   if (state.running) return;
   state.running = { what, phase: "…", percent: null };
   state.stopping = false;
