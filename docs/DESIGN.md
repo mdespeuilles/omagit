@@ -24,6 +24,31 @@ Every board carries a live theme switcher (Tokyo Night, Gruvbox, Matte Black,
 light) and a density switcher; board 01 adds a "test without colour" toggle and
 board 02 a dimension overlay.
 
+> **Amendment v2 (2026-11-03) — the redesign.** A second canvas,
+> *omagit v2 — refonte UI* (https://claude.ai/artifact/GCJzjcV2TKt1XwNqkdbpfb),
+> supersedes the nine boards where they disagree; its brief is
+> `docs/design/BRIEF-v2.md`. What it changes in this document:
+>
+> - **Not square any more.** Radii are tokens (DESIGN-TOKENS §8 bis): 5 for a
+>   status letter or a checkbox, 8 for a button, a row or an input, 10 for a
+>   field group, 14 for a card or a dialog, fully round for a branch chip or a
+>   state pill. §1's "Square, always" and its single-shadow rule are retired: a
+>   floating surface (dialog, palette, popover) carries a soft shadow.
+> - **Mono only for Git literals.** The interface is Geist; Geist Mono is for
+>   hashes, branch names, paths and diff content, nothing else. Both are bundled.
+> - **A chosen row is a surface too.** The accent fill on sidebar, library and
+>   palette rows ("four more", item 1, kept it for choosers) is gone: every
+>   selection is `surface_raised`, and choosers' rows are inset and rounded.
+> - **Direction has a colour.** What leaves your machine (↑, ahead) is drawn in
+>   `info`; what arrives from the remote (↓, behind) in `warning`. The arrow
+>   carries it without colour.
+> - **The repository has a front page.** Opening a repository lands on an
+>   overview that states, in a sentence, the branch you are on and where it
+>   stands against its upstream — and offers the one action that state calls for.
+>
+> Kept as they were: hierarchy without hue, selected ≠ focused, the keyboard
+> zones of §5, the four palettes and the two densities.
+
 ---
 
 ## 1. The rules the boards exist to prove

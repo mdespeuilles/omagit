@@ -12,6 +12,8 @@
     "lint:css": "stylelint src/**/*.css"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2",
     "vue": "^3.5.42"

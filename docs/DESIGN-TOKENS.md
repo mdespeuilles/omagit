@@ -237,6 +237,20 @@ Graisses 400 / 500 / 600 uniquement.
 > Board 03 énonce les deux valeurs, et un nombre que les maquettes énoncent est
 > un token, pas une constante de composant.
 
+> **Amendement v2 (2026-11-03) — Geist, et des rayons.**
+>
+> | Token | Valeur |
+> |---|---|
+> | `font_ui` | `'Geist Variable', system-ui, -apple-system, 'Inter', sans-serif` |
+> | `font_mono` | `'Geist Mono Variable', 'JetBrains Mono', ui-monospace, monospace` |
+>
+> Les deux familles sont embarquées (`@fontsource-variable/geist`, `…/geist-mono`,
+> OFL-1.1) : le rendu ne dépend plus de ce que la machine a installé.
+>
+> **§8 bis — Rayons.** `--radius-small` 5, `--radius-control` 8,
+> `--radius-field` 10, `--radius-card` 14, `--radius-pill` 999. Comme l'échelle
+> de texte, la densité n'y touche pas. Un rayon littéral dans le CSS est un bug.
+
 **Usage de la monospace** : tout le Git littéral — hashes, noms de branches, chemins de
 fichiers, contenu de diff, messages de commit en vue détail, URLs de remotes.
 

@@ -155,11 +155,42 @@ pub mod text {
     pub const MONO: f32 = 12.5;
 }
 
-/// Typography — DESIGN-TOKENS §8. The mock-ups list `'Segoe UI Variable Text'`
-/// in the UI stack; Windows is out of scope, so it is dropped here.
+/// Typography — DESIGN-TOKENS §8, as amended for v2 (2026-11-03).
+///
+/// Geist for the interface and Geist Mono for Git literals, both bundled with
+/// the front end (`@fontsource-variable/*`), so Linux and macOS draw the same
+/// letters whatever the system has installed. The families after them are the
+/// fallback for a build that somehow ships without the files.
 pub mod font {
     /// Every Git literal — hashes, branch names, paths, diff content, remote
-    /// URLs — is set in the mono stack.
-    pub const MONO: &[&str] = &["JetBrains Mono", "ui-monospace", "monospace"];
-    pub const UI: &[&str] = &["system-ui", "-apple-system", "Inter", "sans-serif"];
+    /// URLs — is set in the mono stack. Nothing else is.
+    pub const MONO: &[&str] = &[
+        "Geist Mono Variable",
+        "JetBrains Mono",
+        "ui-monospace",
+        "monospace",
+    ];
+    pub const UI: &[&str] = &[
+        "Geist Variable",
+        "system-ui",
+        "-apple-system",
+        "Inter",
+        "sans-serif",
+    ];
+}
+
+/// Corner radii — DESIGN.md §1 as amended for v2 (2026-11-03), which ends
+/// "square, always". Five steps, named by what wears them, so a stylesheet
+/// never writes a literal radius.
+pub mod radius {
+    /// A status letter, a keyboard hint, a checkbox.
+    pub const SMALL: f32 = 5.0;
+    /// A button, a list row, an input.
+    pub const CONTROL: f32 = 8.0;
+    /// A field group, a diff block, a popover row.
+    pub const FIELD: f32 = 10.0;
+    /// A card, a dialog, the palette.
+    pub const CARD: f32 = 14.0;
+    /// A branch chip, a state pill: fully round ends.
+    pub const PILL: f32 = 999.0;
 }

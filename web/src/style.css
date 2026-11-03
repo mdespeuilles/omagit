@@ -40,14 +40,14 @@ body {
   background: var(--surface-raised);
 }
 
-/* Square everything (DESIGN §1): no radii anywhere, borders 1px, one shadow in
-   the whole app and only under a modal overlay. */
+/* Controls take the control radius (DESIGN §1, v2 amendment): rounded, never
+   pill-shaped, borders still 1px. Radii are tokens like everything else. */
 button,
 input[type="text"],
 input[type="search"],
 input[type="date"],
 textarea {
-  border-radius: 0;
+  border-radius: var(--radius-control);
   font: inherit;
   color: inherit;
   background: transparent;
@@ -169,6 +169,7 @@ button.primary .hint {
   color: var(--text-dim);
   background: var(--bg);
   border: 1px solid var(--border);
+  border-radius: var(--radius-small);
 }
 .check.all {
   background: var(--accent);
@@ -200,6 +201,7 @@ button.primary .hint {
   font-weight: 600;
   color: var(--text-muted);
   border: 1px solid var(--text-muted);
+  border-radius: var(--radius-small);
 }
 .badge.modified {
   color: var(--warning);
@@ -229,6 +231,12 @@ button.primary .hint {
   color: var(--on-danger);
   background: var(--danger);
   border-color: var(--danger);
+}
+/* v2: a tint of the letter's own colour instead of an outline. The letter
+   still carries the meaning without colour; the tint only makes it findable. */
+.badge:not(.conflict) {
+  border-color: transparent;
+  background: color-mix(in srgb, currentcolor 16%, transparent);
 }
 
 .mono {
@@ -524,7 +532,9 @@ button.icon.on {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  border-radius: var(--radius-control);
   height: var(--row-height);
   flex: none;
   padding: 0 10px;
@@ -778,14 +788,17 @@ button.icon.on {
    board 06). `--on-accent` rather than `--bg`, because a theme whose accent is
    dark would put near-black on near-black — the theme picks the readable one of
    the pair. */
+/* v2 (DESIGN §6, superseding "four more" item 1's exception for choosers):
+   a chosen row is a surface, like every other selection. The accent fill made
+   the selected row the loudest thing on screen, which it is not. */
 .sidebar-row.selected,
 .library-row.selected,
 .palette-row.selected,
 .settings-row.selected,
 .settings-swatch.selected {
-  background: var(--accent);
-  color: var(--on-accent);
-  --row-bg: var(--accent);
+  background: var(--surface-raised);
+  color: var(--text);
+  --row-bg: var(--surface-raised);
   font-weight: 500;
 }
 /* The dimmed half of a filled row takes the *fill's* text colour, faded — not
@@ -797,8 +810,7 @@ button.icon.on {
 .library-row.selected .library-state,
 .palette-row.selected .palette-detail,
 .palette-row.selected .palette-hint {
-  color: var(--on-accent);
-  opacity: 0.78;
+  color: var(--text-muted);
 }
 
 /* Hover, for every kind of row, here rather than beside each list — the same
@@ -822,8 +834,8 @@ button.icon.on {
 .palette-row.selected:hover,
 .settings-row.selected:hover,
 .settings-swatch.selected:hover {
-  background: color-mix(in srgb, var(--accent) 84%, var(--text));
-  color: var(--on-accent);
+  background: var(--surface-raised);
+  color: var(--text);
 }
 .file-row.selected:hover,
 .commit-row.selected:hover,
@@ -1225,8 +1237,9 @@ button.link.ok {
 /* ── The diff ────────────────────────────────────────────────────────────── */
 
 .tab {
-  height: 18px;
+  height: 20px;
   padding: 0 8px;
+  border-radius: var(--radius-small);
   font-size: var(--text-meta);
   color: var(--text-dim);
   border-color: transparent;
@@ -1449,7 +1462,8 @@ button.link.ok {
   padding: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 8px 32px color-mix(in oklab, var(--bg) 60%, transparent);
+  border-radius: var(--radius-card);
+  box-shadow: 0 18px 48px -12px rgb(0 0 0 / 45%);
 }
 
 .dialog-title {
@@ -1637,7 +1651,7 @@ select {
   background-position: right 6px center;
   background-size: 12px 12px;
   border: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: var(--radius-control);
 }
 select:focus {
   border-color: var(--border-focus);
@@ -1949,12 +1963,13 @@ select:focus {
 .ref {
   display: inline-flex;
   align-items: center;
-  height: 16px;
+  height: 18px;
   flex: none;
-  padding: 0 5px;
+  padding: 0 7px;
   font-family: var(--font-mono);
   font-size: var(--text-meta);
   border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   color: var(--text);
 }
 .ref.head {
@@ -2203,9 +2218,11 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  border-radius: var(--radius-control);
   height: 36px;
-  padding: 0 10px 0 26px;
+  padding: 0 10px 0 20px;
   border: 0;
   text-align: left;
   cursor: pointer;
@@ -3194,7 +3211,8 @@ select:focus {
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: 0 16px 48px rgb(0 0 0 / 45%);
+  border-radius: var(--radius-card);
+  box-shadow: 0 18px 48px -12px rgb(0 0 0 / 45%);
 }
 
 .palette-head {
@@ -3233,7 +3251,9 @@ select:focus {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  width: 100%;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  border-radius: var(--radius-control);
   padding: 0 10px;
   height: var(--row-height);
   border: 0;
@@ -3337,7 +3357,9 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  border-radius: var(--radius-control);
   height: var(--row-height);
   padding: 0 8px;
   border: 0;

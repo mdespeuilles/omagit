@@ -12,7 +12,7 @@
 
 use crate::color::Rgb;
 use crate::theme::Theme;
-use crate::tokens::{Density, DensityMode, Tokens, font, text};
+use crate::tokens::{Density, DensityMode, Tokens, font, radius, text};
 
 /// Every token, as `--name: value;` declarations for a `:root` block.
 ///
@@ -37,6 +37,9 @@ pub fn variables(theme: &Theme, density: DensityMode) -> String {
         push(&mut css, name, &format!("{value}px"));
     }
     for (name, value) in type_scale() {
+        push(&mut css, name, &format!("{value}px"));
+    }
+    for (name, value) in radii() {
         push(&mut css, name, &format!("{value}px"));
     }
 
@@ -154,6 +157,18 @@ fn type_scale() -> [(&'static str, f32); 5] {
     ]
 }
 
+/// The corner radii of DESIGN.md §1 (v2). Like the type scale, density does
+/// not touch them.
+fn radii() -> [(&'static str, f32); 5] {
+    [
+        ("radius-small", radius::SMALL),
+        ("radius-control", radius::CONTROL),
+        ("radius-field", radius::FIELD),
+        ("radius-card", radius::CARD),
+        ("radius-pill", radius::PILL),
+    ]
+}
+
 /// A CSS font stack, quoted where a family name needs it.
 fn stack(families: &[&str]) -> String {
     families
@@ -189,8 +204,9 @@ mod tests {
     #[test]
     fn every_token_reaches_the_stylesheet() {
         let css = variables(&embedded::tokyo_night(), DensityMode::Compact);
-        // The eighteen colours, the eight lanes, the six metrics, two fonts.
-        assert_eq!(css.matches("--").count(), 18 + 2 + 8 + 7 + 5 + 2);
+        // The eighteen colours, two on-fills, the eight lanes, the seven
+        // metrics, five sizes, five radii, two fonts.
+        assert_eq!(css.matches("--").count(), 18 + 2 + 8 + 7 + 5 + 5 + 2);
         assert!(css.contains("--surface-raised: #283457;"));
         assert!(css.contains("--lane-0: #"));
         assert!(css.contains("--row-height: 26px;"));
@@ -221,7 +237,7 @@ mod tests {
     fn a_family_with_a_space_is_quoted() {
         let css = variables(&embedded::tokyo_night(), DensityMode::Compact);
         assert!(
-            css.contains("'JetBrains Mono'"),
+            css.contains("'Geist Mono Variable'"),
             "an unquoted two-word family is a CSS syntax error"
         );
     }

@@ -1,5 +1,9 @@
 // The window's entry point.
 
+// The two families of DESIGN-TOKENS §8 (v2), bundled rather than asked of the
+// system: Linux and macOS draw the same letters, offline, whatever is installed.
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import { createApp } from "vue";
 import App from "./App.vue";
 import { api } from "./ipc";
