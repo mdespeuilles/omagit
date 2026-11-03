@@ -17,6 +17,7 @@ import Journal from "./components/Journal.vue";
 import Notice from "./components/Notice.vue";
 import Overview from "./components/Overview.vue";
 import Palette from "./components/Palette.vue";
+import Dashboard from "./components/Dashboard.vue";
 import RepositoryCard from "./components/RepositoryCard.vue";
 import RepositoryList from "./components/RepositoryList.vue";
 import Progress from "./components/Progress.vue";
@@ -88,7 +89,8 @@ const widths = {
         <RepositoryList />
         <Splitter pane="library" :size="paneWidth('library', widths.library)" :min="240" />
       </section>
-      <RepositoryCard />
+      <RepositoryCard v-if="app.card" />
+      <Dashboard v-else />
     </template>
 
     <template v-else>

@@ -197,6 +197,9 @@ type State = {
   /// is what asking for them together would cost.
   library: Record<string, Async<RepoSummary>>;
   /// Which card the Repositories screen is showing.
+  /// "Check everything" in progress on the Repositories screen: how many of
+  /// the repositories it set out to fetch are done.
+  checking: { done: number; total: number } | null;
   card: string | null;
   /// What the network is doing, while it is doing it. `null` when nothing is.
   running: Progress | null;
@@ -455,6 +458,7 @@ const state = reactive<State>({
   compare: idle(),
   compareFrom: null,
   library: {},
+  checking: null,
   card: null,
   running: null,
   stopping: false,
@@ -594,6 +598,12 @@ async function readSummary(row: LibraryRow): Promise<void> {
 
 export function showCard(path: string): void {
   state.card = path;
+}
+
+/// Back to the dashboard: the right of the Repositories screen with no
+/// repository picked.
+export function closeCard(): void {
+  state.card = null;
 }
 
 /// A pane's size, or the stylesheet's own when it has not been dragged.
@@ -1435,6 +1445,39 @@ export async function fetchIfStale(now = Math.floor(Date.now() / 1000)): Promise
 /// Ask every half minute whether the open repository needs a fetch.
 export function watchRemote(): void {
   setInterval(() => void fetchIfStale(), FETCH_CHECK);
+}
+
+/// Fetch every repository in `paths`, one at a time, and re-read each one's
+/// summary as it lands — the dashboard's "check everything".
+///
+/// One at a time because the backend runs one network operation at a time,
+/// and because twenty `ssh` handshakes at once is how a laptop learns what its
+/// agent's rate limit is. Holds the same slot as the background fetch, so a
+/// click on Push waits for the batch rather than being refused; a repository
+/// that fails is logged and passed over — one unreachable host is no reason to
+/// leave the other nineteen unchecked.
+export async function checkAll(paths: readonly string[]): Promise<void> {
+  if (state.checking || state.running || quietly || paths.length === 0) return;
+  state.checking = { done: 0, total: paths.length };
+  quietly = (async () => {
+    for (const path of paths) {
+      try {
+        await api.fetch(path, "");
+      } catch (error) {
+        void api.log("info", `check of ${path}: ${message(error)}`);
+      }
+      const row = state.repositories.find((entry) => entry.path === path);
+      if (row) await readSummary(row);
+      if (state.checking) state.checking.done += 1;
+    }
+  })();
+  try {
+    await quietly;
+  } finally {
+    quietly = null;
+    state.checking = null;
+  }
+  if (state.open && paths.includes(state.open)) await settle();
 }
 
 /// Run one network operation, with the overlay up for its duration.
@@ -2747,6 +2790,10 @@ export function activateInZone(): boolean {
 export function escapeLevel(): boolean {
   if (state.screen === "repositories" && state.libraryFilter !== "") {
     setLibraryFilter("");
+    return true;
+  }
+  if (state.screen === "repositories" && state.card !== null) {
+    state.card = null;
     return true;
   }
   if (state.screen === "history" && isFiltered(state.query)) {

@@ -7,7 +7,7 @@
 
 import { computed } from "vue";
 import { exact, tildify, when } from "../format";
-import { app, fileRepository, forgetRepository, openRepository } from "../state";
+import { app, closeCard, fileRepository, forgetRepository, openRepository } from "../state";
 import { count, t, worded, type Plural } from "../i18n";
 
 const row = computed(() => app.repositories.find((entry) => entry.path === app.card) ?? null);
@@ -97,6 +97,7 @@ const spark = computed(() => {
     <p v-if="!row" class="pane-empty">{{ t("card.none") }}</p>
 
     <template v-else>
+      <button class="link card-back" @click="closeCard()">← {{ t("dash.back") }}</button>
       <div class="card-head">
         <div class="card-identity">
           <div class="card-title">

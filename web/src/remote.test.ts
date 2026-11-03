@@ -89,3 +89,26 @@ describe("the background fetch", () => {
     expect(backend.current.calls.filter((call) => call.command === "push")).toHaveLength(1);
   });
 });
+
+describe("checking every repository at once", () => {
+  it("fetches each one in turn, re-reads it, and carries on past one that fails", async () => {
+    const state = await opened();
+    let calls = 0;
+    const call = backend.current.call.bind(backend.current);
+    backend.current.call = async (command, args) => {
+      if (command === "fetch" && (calls += 1) === 1) {
+        backend.current.calls.push({ command, args });
+        throw new Error("Could not resolve host");
+      }
+      return call(command, args);
+    };
+    await state.readLibrary();
+    backend.current.calls = [];
+
+    await state.checkAll(["/one", "/repo"]);
+
+    expect(fetches().map((call) => call.args["path"])).toEqual(["/one", "/repo"]);
+    expect(state.app.checking).toBeNull();
+    expect(state.app.writeError).toBeNull();
+  });
+});

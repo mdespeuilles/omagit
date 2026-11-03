@@ -4146,3 +4146,147 @@ button.branch-pill {
   border-radius: 50%;
   background: var(--warning);
 }
+
+/* ── The dashboard (DESIGN v2) ───────────────────────────────────────────── */
+
+.dashboard {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.dash-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dash-title {
+  margin: 0 0 2px;
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dash-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* The staleness band: the same warning tone as the overview's "checked three
+   days ago", because it is the same fact about many repositories. */
+.dash-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-field);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.dash-banner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.warning-banner {
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+}
+.dash-progress {
+  flex: 0 0 200px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+.dash-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.dash-section {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-section h2 {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.dash-needs {
+  list-style: none;
+  margin: 0 -20px;
+  padding: 0;
+}
+.dash-need {
+  display: grid;
+  /* Fixed tracks: each row is its own grid, so only fixed widths line the
+     columns up from one row to the next. */
+  grid-template-columns: 160px 190px 120px minmax(0, 1fr) 230px auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+}
+.dash-need > .ov-chip,
+.dash-need > .ov-pill {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button.dash-name {
+  justify-self: start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+}
+button.dash-name:hover {
+  color: var(--accent);
+}
+.dash-detail {
+  display: inline-flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+.dash-meta {
+  font-size: var(--text-meta);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-clean {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+button.dash-clean-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: var(--radius-pill);
+}
+.dash-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+button.card-back {
+  align-self: flex-start;
+  margin: 12px 16px 0;
+}
