@@ -92,17 +92,20 @@ export function tildify(path: string): string {
   return home ? `~${path.slice(home[1]!.length)}` : path;
 }
 
-/// Which of the eight lane colours a branch wears, everywhere it is drawn
-/// (DESIGN v2: a branch keeps its colour across the overview, the map and the
-/// history). Derived from the name alone so it never changes between reads;
-/// the trunk always takes the first, so `main` looks the same in every
-/// repository.
-export function laneOf(branch: string): number {
+/// The colour a branch wears everywhere it is drawn (DESIGN v2: a branch keeps
+/// its colour across the overview, the map and the history). Derived from the
+/// name alone so it never changes between reads. The trunk takes the accent, so
+/// `main` looks the same in every repository and never wears the lane that
+/// reads as red.
+///
+/// FNV-1a rather than the usual `* 31`: with only seven lanes to spread over,
+/// the weaker hash put three branches of four on the same colour.
+export function branchColor(branch: string): string {
   const name = branch.replace(/^[^/]+\/(?=(main|master|trunk)$)/, "");
-  if (name === "main" || name === "master" || name === "trunk") return 0;
-  let hash = 0;
-  for (const char of name) hash = (hash * 31 + char.codePointAt(0)!) >>> 0;
-  return 1 + (hash % 7);
+  if (name === "main" || name === "master" || name === "trunk") return "var(--accent)";
+  let hash = 0x811c9dc5;
+  for (const char of name) hash = Math.imul(hash ^ char.codePointAt(0)!, 0x01000193) >>> 0;
+  return `var(--lane-${1 + (hash % 7)})`;
 }
 
 /// The letter a status badge shows, and the class that colours it.

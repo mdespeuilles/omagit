@@ -25,7 +25,7 @@ import {
   pushBranch,
   showScreen,
 } from "../state";
-import { ago, laneOf, statusBadge, when } from "../format";
+import { ago, branchColor, statusBadge, when } from "../format";
 import { count, t } from "../i18n";
 import type { BranchRow, LastCommit } from "../ipc";
 
@@ -199,7 +199,7 @@ const hiddenBranches = computed(() =>
 );
 
 function laneStyle(name: string): Record<string, string> {
-  return { "--chip": `var(--lane-${laneOf(name)})` };
+  return { "--chip": branchColor(name) };
 }
 
 function branchStatus(row: BranchRow): { label: string; tone: string } {

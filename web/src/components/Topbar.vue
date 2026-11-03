@@ -44,7 +44,7 @@ import {
   openSettings,
   showScreen,
 } from "../state";
-import { laneOf, tildify } from "../format";
+import { branchColor, tildify } from "../format";
 import { ACTIONS, binding, hint } from "../keymap";
 import { t } from "../i18n";
 import Glyph from "./Glyph.vue";
@@ -124,7 +124,7 @@ const pill = computed(() => {
       : summary.head;
   return {
     label,
-    lane: `var(--lane-${laneOf(summary.head)})`,
+    lane: branchColor(summary.head),
     detached: summary.head_kind === "detached",
     operation: summary.operation,
     local: summary.head_kind === "branch" && !summary.tracking,
@@ -218,16 +218,19 @@ const pill = computed(() => {
         Fetch
       </button>
       <button
+        :class="{ primary: behind > 0 && ahead > 0 }"
         :disabled="busy || !!app.gitUnusable || !tracking"
         :title="tracking ? titled('Pull', 'network.pull') : t('topbar.noUpstream')"
         @click="pullRemote()"
       >
         Pull<span v-if="behind > 0" class="hint">↓{{ behind }}</span>
       </button>
-      <!-- Primary only when there is something to send: an accent-filled button
-           that does nothing is the loudest thing on the screen saying the least. -->
+      <!-- Primary only when there is something to send and the remote would take
+           it: an accent-filled button that does nothing is the loudest thing on
+           the screen saying the least. Diverged, the push is refused, so the
+           pull is the one to press. -->
       <button
-        :class="{ primary: ahead > 0 }"
+        :class="{ primary: ahead > 0 && behind === 0 }"
         :disabled="!!cannotPush"
         :title="cannotPush ?? titled('Push', 'network.push')"
         @click="pushBranch(false)"
