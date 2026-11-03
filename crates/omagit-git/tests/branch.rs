@@ -224,3 +224,17 @@ fn a_detached_checkout_says_so_and_is_marked_destructive() {
             .any(|entry| entry.destructive && entry.command.contains("--detach"))
     );
 }
+
+#[test]
+fn a_commit_lives_on_every_branch_whose_history_holds_it() {
+    let repo = two_branches();
+    let git = git();
+    let seed: gix::ObjectId = repo.git(&["rev-parse", "main"]).parse().expect("an id");
+    let feature: gix::ObjectId = repo.git(&["rev-parse", "feature"]).parse().expect("an id");
+
+    let everywhere = branch::containing(&git, &repo.open(), seed, &never()).expect("asked");
+    assert_eq!(everywhere, ["refs/heads/feature", "refs/heads/main"]);
+
+    let one = branch::containing(&git, &repo.open(), feature, &never()).expect("asked");
+    assert_eq!(one, ["refs/heads/feature"], "not yet in main");
+}

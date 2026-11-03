@@ -27,7 +27,7 @@ pub mod stage;
 pub mod stash;
 pub mod tag;
 
-pub use branch::{checkout, checkout_detached, create, delete, merged, rename};
+pub use branch::{checkout, checkout_detached, containing, create, delete, merged, rename};
 pub use commit::{Author, CommitOptions, CommitOutcome, commit, committer_identity, template};
 pub use integrate::{MergeOptions, abort, merge, rebase, resume};
 pub use network::{

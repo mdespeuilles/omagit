@@ -147,3 +147,31 @@ pub fn merged(
         .map(ToOwned::to_owned)
         .collect())
 }
+
+/// Where one commit lives: every branch, local and remote-tracking, whose
+/// history holds it.
+///
+/// What the history's detail answers with "in main, not yet on origin" (DESIGN
+/// v2) — the question nobody can answer from a graph once there are more than
+/// a few lanes. One process for every branch, like [`merged`], and for the
+/// same reason. Full ref names, so a local `origin/x` and the remote-tracking
+/// `origin/x` cannot be mistaken for each other; the symbolic `origin/HEAD`
+/// is left out, since it is another name for a branch already listed.
+pub fn containing(
+    git: &Git,
+    repo: &Repository,
+    commit: gix::ObjectId,
+    cancel: &Cancel,
+) -> Result<Vec<String>> {
+    let listed = super::at(git, repo)?
+        .args(["branch", "--all", "--format=%(refname)", "--contains"])
+        .arg(commit.to_string())
+        .run(cancel)?;
+    Ok(listed
+        .text()
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("refs/") && !line.ends_with("/HEAD"))
+        .map(ToOwned::to_owned)
+        .collect())
+}

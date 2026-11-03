@@ -101,6 +101,7 @@ pub fn run() {
             commands::summary,
             commands::divergence,
             commands::github_repositories,
+            commands::commit_places,
             commands::status,
             commands::file_diff,
             commands::stage,

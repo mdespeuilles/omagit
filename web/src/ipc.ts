@@ -54,6 +54,10 @@ export type Counts = {
 
 export type LastCommit = { id: Oid; summary: string; author: string; when: number };
 
+/// The branches one commit is on: local ones, and remote-tracking ones as
+/// `origin/main`.
+export type Places = { local: string[]; remote: string[] };
+
 /// `HEAD` against its upstream, commit by commit, newest first on each side.
 export type Divergence = { upstream: string; outgoing: LastCommit[]; incoming: LastCommit[] };
 
@@ -520,6 +524,7 @@ export const api = {
   checkRemote: (url: string) => invoke<void>("check_remote", { url }),
   cloneRepository: (request: CloneRequest) => invoke<RepoSummary>("clone_repository", { request }),
   githubRepositories: () => invoke<Hosted>("github_repositories"),
+  commitPlaces: (path: string, id: string) => invoke<Places>("commit_places", { path, id }),
 
   // Integrating one branch into another (M7). Both can stop half-way on a
   // conflict; `abortOperation` is the way out, and it reads what is running

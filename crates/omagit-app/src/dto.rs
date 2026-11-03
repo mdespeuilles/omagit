@@ -415,6 +415,27 @@ pub fn summary(path: &std::path::Path, summary: &Summary) -> RepoSummary {
     }
 }
 
+/// The branches one commit is on, by short name: local ones, and the
+/// remote-tracking ones as `origin/main`.
+#[derive(Debug, serde::Serialize)]
+pub struct Places {
+    pub local: Vec<String>,
+    pub remote: Vec<String>,
+}
+
+pub fn places(refs: &[String]) -> Places {
+    let mut local = Vec::new();
+    let mut remote = Vec::new();
+    for name in refs {
+        if let Some(short) = name.strip_prefix("refs/heads/") {
+            local.push(short.to_owned());
+        } else if let Some(short) = name.strip_prefix("refs/remotes/") {
+            remote.push(short.to_owned());
+        }
+    }
+    Places { local, remote }
+}
+
 /// `HEAD` against its upstream, commit by commit (the overview's state card).
 #[derive(Debug, serde::Serialize)]
 pub struct Divergence {

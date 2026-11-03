@@ -808,4 +808,9 @@ export const strings: Record<keyof typeof reference, string> = {
   "switcher.create": "Créer {name} ici et y basculer",
   "switcher.overview": "Vue d'ensemble →",
   "switcher.keys": "↑↓ choisir · ⏎ basculer · Échap fermer",
+
+  // ── Où vit un commit (v2) ───────────────────────────────────────────────────
+  "places.in": "Sur",
+  "places.nowhere": "aucune branche : seul un tag ou le reflog le retient",
+  "places.notPushed": "pas encore sur {upstream}",
 };

@@ -33,6 +33,7 @@ import {
   type Agents,
   type LibraryGroup,
   type LibraryRow,
+  type Places,
   type PlatformFacts,
   type Preferences,
   type Progress,
@@ -199,6 +200,10 @@ type State = {
   /// Which card the Repositories screen is showing.
   /// "Check everything" in progress on the Repositories screen: how many of
   /// the repositories it set out to fetch are done.
+  /// Which branches the selected commit is on (DESIGN v2's "where this
+  /// commit lives"). Read beside the detail, not with it: it is a `git`
+  /// process, and the message should not wait for it.
+  commitPlaces: Async<Places>;
   checking: { done: number; total: number } | null;
   card: string | null;
   /// What the network is doing, while it is doing it. `null` when nothing is.
@@ -459,6 +464,7 @@ const state = reactive<State>({
   compareFrom: null,
   library: {},
   checking: null,
+  commitPlaces: idle(),
   card: null,
   running: null,
   stopping: false,
@@ -1146,10 +1152,25 @@ export async function selectCommit(id: string): Promise<void> {
     // The selection may have moved while this was in flight.
     if (state.open !== path || state.commit.status !== "loading") return;
     state.commit = { status: "ready", value: detail };
+    void readPlaces(path, detail.id.full);
     const first = detail.files[0];
     if (first) await selectCommitFile(first.path);
   } catch (error) {
     state.commit = { status: "failed", error: message(error) };
+  }
+}
+
+async function readPlaces(path: string, id: string): Promise<void> {
+  state.commitPlaces = { status: "loading" };
+  try {
+    const places = await api.commitPlaces(path, id);
+    const current = state.commit.status === "ready" ? state.commit.value.id.full : null;
+    if (state.open === path && current === id)
+      state.commitPlaces = { status: "ready", value: places };
+  } catch (error) {
+    // The detail stands without it; say why in the log, not over the message.
+    void api.log("warn", `commit_places: ${message(error)}`);
+    state.commitPlaces = { status: "failed", error: message(error) };
   }
 }
 

@@ -2,7 +2,7 @@
 // One commit: what it says, who made it, and what it changed.
 
 import { computed } from "vue";
-import { authored, exact, when } from "../format";
+import { authored, branchColor, exact, when } from "../format";
 import {
   app,
   goToZone,
@@ -18,6 +18,27 @@ import { count, t } from "../i18n";
 import Splitter from "./Splitter.vue";
 
 const detail = computed(() => (app.commit.status === "ready" ? app.commit.value : null));
+
+/// How many branches of each kind the detail names before "and n more".
+const PLACES_SHOWN = 6;
+const places = computed(() =>
+  app.commitPlaces.status === "ready" ? app.commitPlaces.value : null,
+);
+const hidden = computed(() =>
+  places.value
+    ? Math.max(0, places.value.local.length - PLACES_SHOWN) +
+      Math.max(0, places.value.remote.length - PLACES_SHOWN)
+    : 0,
+);
+/// The upstream of the branch you are on, when that branch holds this commit
+/// and the upstream does not: the commit is yours and not pushed yet.
+const unpushed = computed(() => {
+  const summary = app.summary;
+  const tracking = summary?.tracking;
+  if (!places.value || !summary || !tracking || tracking.gone) return null;
+  if (!places.value.local.includes(summary.head)) return null;
+  return places.value.remote.includes(tracking.upstream) ? null : tracking.upstream;
+});
 const comparison = computed(() => (app.compare.status === "ready" ? app.compare.value : null));
 
 /// A comparison takes the pane over while it is on: it answers a different
@@ -166,6 +187,33 @@ const panelStyle = computed(() =>
             {{ when(detail.committer.when) }}
           </span>
         </p>
+
+        <!-- Where this commit lives (DESIGN v2): the branches that hold it, and
+             whether the remote of the branch you are on has it yet. -->
+        <div v-if="places" class="detail-places">
+          <span class="dim">{{ t("places.in") }}</span>
+          <span v-if="places.local.length + places.remote.length === 0" class="dim">
+            {{ t("places.nowhere") }}
+          </span>
+          <span
+            v-for="name in places.local.slice(0, PLACES_SHOWN)"
+            :key="name"
+            class="ov-chip mono"
+            :style="{ '--chip': branchColor(name) }"
+            >{{ name }}</span
+          >
+          <span
+            v-for="name in places.remote.slice(0, PLACES_SHOWN)"
+            :key="'r' + name"
+            class="ov-chip remote mono"
+            :style="{ '--chip': branchColor(name.slice(name.indexOf('/') + 1)) }"
+            >{{ name }}</span
+          >
+          <span v-if="hidden > 0" class="dim">{{ t("overview.more", { n: hidden }) }}</span>
+          <span v-if="unpushed" class="ov-pill warning">
+            {{ t("places.notPushed", { upstream: unpushed }) }}
+          </span>
+        </div>
 
         <p class="detail-parents mono">
           <span class="dim">{{

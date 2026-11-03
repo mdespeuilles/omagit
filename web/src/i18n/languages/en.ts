@@ -850,4 +850,9 @@ export const strings = {
   "switcher.create": "Create {name} from here and switch to it",
   "switcher.overview": "Overview →",
   "switcher.keys": "↑↓ choose · ⏎ switch · Esc close",
+
+  // ── Where a commit lives (v2) ───────────────────────────────────────────────
+  "places.in": "On",
+  "places.nowhere": "no branch: only a tag or the reflog keeps it",
+  "places.notPushed": "not yet on {upstream}",
 } as const;

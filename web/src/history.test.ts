@@ -257,6 +257,21 @@ describe("the commit detail", () => {
     expect(state.app.diff.status).toBe("ready");
   });
 
+  it("says which branches hold the commit, read beside the detail", async () => {
+    const state = await open(chain(3));
+    backend.current.places = { local: ["main", "feat/x"], remote: ["origin/main"] };
+    state.showScreen("history");
+    await settled(state);
+
+    await state.selectCommit(rows(state)[0]!.id.full);
+    await until(state, () => state.app.commitPlaces.status === "ready");
+
+    expect(state.app.commitPlaces.status === "ready" && state.app.commitPlaces.value).toEqual({
+      local: ["main", "feat/x"],
+      remote: ["origin/main"],
+    });
+  });
+
   it("leaves the Working Copy's own state alone", async () => {
     // Both screens write to `state.diff`. What must not happen is History
     // quietly changing which file the Working Copy thinks is selected.

@@ -544,6 +544,16 @@ pub fn commit_detail(
     Ok(dto::commit_detail(&commit, &diff))
 }
 
+/// Which branches a commit is on — the detail's "in main, not yet on origin".
+#[tauri::command(async)]
+pub fn commit_places(state: State<'_, AppState>, path: String, id: String) -> Answer<dto::Places> {
+    let open = state.open(&PathBuf::from(path)).map_err(say)?;
+    let git = state.git().map_err(say)?.clone();
+    let id = id.parse().map_err(unreadable)?;
+    let refs = omagit_git::ops::containing(&git, &open.repo, id, &state.cancel()).map_err(say)?;
+    Ok(dto::places(&refs))
+}
+
 /// One file of one commit, against its first parent.
 #[tauri::command(async)]
 pub fn commit_file_diff(

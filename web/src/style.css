@@ -4445,3 +4445,16 @@ button.switcher-row.current .switcher-name {
   padding: 4px 6px 0;
   border-top: 1px solid var(--border);
 }
+
+/* Where a commit lives (DESIGN v2): the branches that hold it, as the same
+   chips the overview draws. */
+.detail-places {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.detail-places .ov-chip {
+  height: 22px;
+}
