@@ -22,7 +22,7 @@
 # At each release: bump pkgver, replace the sha256, regenerate .SRCINFO, push.
 
 pkgname=omagit-bin
-pkgver=0.3.0
+pkgver=0.3.1
 pkgrel=1
 pkgdesc="A git client that shows you the repository, not a form to fill in"
 arch=('x86_64')
@@ -40,7 +40,7 @@ conflicts=('omagit')
 # it.
 options=('!strip' '!debug')
 source=("$pkgname-$pkgver.deb::$url/releases/download/v$pkgver/omagit_${pkgver}_amd64.deb")
-sha256sums=('a8132a47814905bed9d4bfb002cd3f6233377603ab5d1001dd58aaac7337ada6')
+sha256sums=('108341d9a929e69282110a6f3f6f3d88dd849bdd426f3eb13f57f9edc277c7ed')
 # Unpacked in package(), not by makepkg: what to do with an `ar` archive is a
 # decision, not a default worth inheriting.
 noextract=("$pkgname-$pkgver.deb")
