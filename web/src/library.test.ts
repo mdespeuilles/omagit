@@ -190,6 +190,87 @@ describe("adding", () => {
     expect(state.app.repositories).toHaveLength(1);
     expect(state.app.addError).toContain("n'est pas un dépôt");
   });
+
+  it("fetches a repository it has just added, so its arrows are about the remote", async () => {
+    // The background fetch only watches the open repository. Without this, a
+    // clone nobody had fetched in months was added and called itself clean.
+    const state = await open([entry("/one")], (fake) => {
+      fake.remotes = [{ name: "origin", url: "git@example.com:me/two.git" }];
+    });
+    backend.picked = "/two";
+
+    await state.addRepository();
+    await settled(state);
+    await new Promise((resume) => setTimeout(resume, 0));
+
+    const fetched = backend.current.calls.filter((call) => call.command === "fetch");
+    expect(fetched.map((call) => call.args["path"])).toEqual(["/two"]);
+  });
+
+  it("does not fetch one added with no remote: there is nothing to ask", async () => {
+    const state = await open([entry("/one")]);
+    backend.picked = "/two";
+
+    await state.addRepository();
+    await settled(state);
+    await new Promise((resume) => setTimeout(resume, 0));
+
+    expect(backend.current.calls.filter((call) => call.command === "fetch")).toHaveLength(0);
+  });
+});
+
+describe("the marks beside a row", () => {
+  const marks = async (
+    ahead: number,
+    behind: number,
+    files: InstanceType<typeof Repository>["files"] = [],
+  ) => {
+    await open([entry("/one")], (fake) => {
+      fake.files = files;
+      fake.tracking = { upstream: "origin/main", ahead, behind, gone: false };
+    });
+    const RepositoryList = (await import("./components/RepositoryList.vue")).default;
+    const row = mount(RepositoryList);
+    const sync = row.find(".library-sync");
+    return {
+      square: row.find(".library-dot").classes(),
+      sync: sync.exists() ? sync.classes() : null,
+      arrow: sync.exists() ? sync.text() : null,
+    };
+  };
+
+  it("shows a green square and no arrow when level and clean", async () => {
+    const seen = await marks(0, 0);
+    expect(seen.square).toContain("clean");
+    expect(seen.sync).toBeNull();
+  });
+
+  it("says there is something to pull with an arrow, not with the square", async () => {
+    const seen = await marks(0, 3);
+    expect(seen.square).toContain("clean");
+    expect(seen.sync).toContain("to-pull");
+    expect(seen.arrow).toBe("↓");
+  });
+
+  it("says there is something to push", async () => {
+    const seen = await marks(2, 0);
+    expect(seen.sync).toContain("to-push");
+    expect(seen.arrow).toBe("↑");
+  });
+
+  it("puts pulling first when the branch has diverged", async () => {
+    expect((await marks(2, 3)).sync).toContain("to-pull");
+  });
+
+  it("does not call a modified file out of date", async () => {
+    // A `.DS_Store` the Finder rewrote, on a branch level with origin: the
+    // square says "changed", and nothing says "pull".
+    const seen = await marks(0, 0, [
+      { path: ".DS_Store", staged: null, unstaged: "modified", hunks: 1 },
+    ]);
+    expect(seen.square).toContain("changed");
+    expect(seen.sync).toBeNull();
+  });
 });
 
 describe("forgetting", () => {

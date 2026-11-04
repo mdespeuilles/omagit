@@ -702,6 +702,7 @@ async function addPath(path: string): Promise<void> {
     await api.addRepository(path);
     await readLibrary();
     state.card = path;
+    void fetchAdded(path);
   } catch (error) {
     state.addError = message(error);
   }
@@ -1490,6 +1491,41 @@ export async function fetchIfStale(now = Math.floor(Date.now() / 1000)): Promise
       quietly = null;
     }
     if (state.open === path && !state.running) await settle();
+  })();
+  await quietly;
+}
+
+/// Fetch a repository just added to the library, once, in the background.
+///
+/// The background fetch only ever looks at the open repository, so one that
+/// was added and not opened compared itself with whatever `origin/*` said the
+/// last time anything fetched it — months ago, for a clone nobody touched —
+/// and called itself clean. Queued behind any fetch already running rather
+/// than skipped: adding three repositories should check all three.
+async function fetchAdded(path: string): Promise<void> {
+  const held = state.library[path];
+  if (held?.status !== "ready" || held.value.remotes.length === 0) return;
+  const now = Math.floor(Date.now() / 1000);
+  if (now - (held.value.fetched_at ?? 0) < FETCH_EVERY) return;
+  while (quietly) await quietly;
+  if (state.running || state.gitUnusable) return;
+  tried.set(path, now);
+  quietly = (async () => {
+    try {
+      await api.fetch(path, "");
+    } catch (error) {
+      void api.log("info", `fetch of added ${path}: ${message(error)}`);
+      return;
+    } finally {
+      quietly = null;
+    }
+    // Replace the summary in place: a row blinking to "…" while it re-reads
+    // would look like the add went wrong.
+    try {
+      state.library[path] = { status: "ready", value: await api.summary(path) };
+    } catch (error) {
+      state.library[path] = { status: "failed", error: message(error) };
+    }
   })();
   await quietly;
 }

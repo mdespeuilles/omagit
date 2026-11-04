@@ -171,21 +171,33 @@ async function rename(group: number): Promise<void> {
 /// is a different question — "nothing to do", "work in progress", "stuck",
 /// "not on a branch", "not here" — and collapsing them into a count would lose
 /// the only one that is urgent.
-type State = { text: string; kind: "clean" | "changed" | "conflict" | "detached" | "gone" };
+///
+/// The square is about the working copy and nothing else. Where the branch
+/// stands against its upstream is a second mark, `sync`: an arrow in the
+/// overview's direction colours. One square for both read `.DS_Store`
+/// modified as "not up to date", and a square green beside `↓3` read as
+/// "nothing to pull".
+type Kind = "clean" | "changed" | "conflict" | "detached" | "gone";
+type Sync = "to-pull" | "to-push" | null;
+type State = { text: string; kind: Kind; sync: Sync };
 
 function state(row: LibraryRow): State {
-  if (row.missing) return { text: t("library.missing"), kind: "gone" };
+  if (row.missing) return { text: t("library.missing"), kind: "gone", sync: null };
   const held = app.library[row.path];
-  if (!held || held.status === "loading") return { text: "…", kind: "clean" };
-  if (held.status === "failed") return { text: held.error, kind: "gone" };
-  if (held.status !== "ready") return { text: "", kind: "clean" };
+  if (!held || held.status === "loading") return { text: "…", kind: "clean", sync: null };
+  if (held.status === "failed") return { text: held.error, kind: "gone", sync: null };
+  if (held.status !== "ready") return { text: "", kind: "clean", sync: null };
 
   const { head, head_kind, operation, counts, tracking } = held.value;
   const where = operation ?? head;
+  const level = tracking && !tracking.gone ? tracking : null;
+  // Behind wins over ahead: a diverged branch has to pull before it can push.
+  const sync: Sync = level?.behind ? "to-pull" : level?.ahead ? "to-push" : null;
   if (counts.conflicted > 0) {
     return {
       text: `${where} · ${count("library.conflicts", counts.conflicted)}`,
       kind: "conflict",
+      sync,
     };
   }
 
@@ -193,20 +205,17 @@ function state(row: LibraryRow): State {
   // The backend's answer, not a sniff at the label: a branch called
   // `detached-head-fix` was drawn as a detached HEAD.
   const detached = head_kind === "detached";
-  const divergence =
-    tracking && !tracking.gone
-      ? [
-          tracking.ahead > 0 ? `↑${tracking.ahead}` : "",
-          tracking.behind > 0 ? `↓${tracking.behind}` : "",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      : "";
+  const divergence = level
+    ? [level.ahead > 0 ? `↑${level.ahead}` : "", level.behind > 0 ? `↓${level.behind}` : ""]
+        .filter(Boolean)
+        .join(" ")
+    : "";
 
   if (changed + counts.untracked === 0) {
     return {
       text: [where, divergence || t("library.clean")].filter(Boolean).join(" "),
       kind: detached ? "detached" : "clean",
+      sync,
     };
   }
   const what = [
@@ -215,7 +224,7 @@ function state(row: LibraryRow): State {
   ]
     .filter(Boolean)
     .join(" · ");
-  return { text: `${where} · ${what}`, kind: detached ? "detached" : "changed" };
+  return { text: `${where} · ${what}`, kind: detached ? "detached" : "changed", sync };
 }
 </script>
 
@@ -369,6 +378,13 @@ function state(row: LibraryRow): State {
             <span class="library-name">{{ row.name }}</span>
             <span class="library-state mono" :class="state(row).kind">{{ state(row).text }}</span>
           </span>
+          <span
+            v-if="state(row).sync"
+            class="library-sync mono"
+            :class="state(row).sync"
+            aria-hidden="true"
+            >{{ state(row).sync === "to-pull" ? "↓" : "↑" }}</span
+          >
           <span class="library-dot" :class="state(row).kind" aria-hidden="true" />
           <button
             class="row-action danger"

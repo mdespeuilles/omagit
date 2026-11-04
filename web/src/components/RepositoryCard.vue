@@ -208,7 +208,7 @@ const spark = computed(() => {
           <dd class="card-status mono">
             <span v-if="counted.length === 0" class="dim">{{ t("library.clean") }}</span>
             <span v-for="entry in counted" :key="entry.label" :class="entry.kind">
-              {{ entry.n }} {{ entry.label }}{{ entry.n > 1 ? "s" : "" }}
+              {{ entry.label }}
             </span>
           </dd>
           <dt>{{ t("card.stashes") }}</dt>

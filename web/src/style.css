@@ -2320,6 +2320,21 @@ select:focus {
 .library-dot.gone {
   background: var(--danger);
 }
+/* Where the branch stands against its upstream, beside the square rather than
+   in it: the square is the working copy, and one mark for both read a modified
+   `.DS_Store` as "not up to date". */
+.library-sync {
+  flex: none;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  line-height: 1;
+}
+.library-sync.to-pull {
+  color: var(--behind);
+}
+.library-sync.to-push {
+  color: var(--ahead);
+}
 .library-dot.detached {
   background: transparent;
   border: 1px solid var(--text-muted);
