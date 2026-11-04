@@ -144,6 +144,15 @@ Not released yet — it arrives with M10, signed and notarised. It is the one
 paid build: see [Licence](#licence) for why, and for how to build it yourself in
 the meantime.
 
+To build it and put it in `/Applications` on your own Mac:
+
+```sh
+./scripts/install-macos.sh          # add --open to launch it afterwards
+```
+
+That build is unsigned and does not update itself: it opens on the Mac that
+built it, and a newer version means running the script again.
+
 ### From source
 
 ```sh
